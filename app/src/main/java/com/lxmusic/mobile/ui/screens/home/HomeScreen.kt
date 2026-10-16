@@ -32,9 +32,9 @@ import top.yukonga.miuix.kmp.utils.PressFeedbackType
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val navigator = LocalNavigator.current
-    val boards by viewModel.boards.collectAsState()
-    val hotSearch by viewModel.hotSearch.collectAsState()
-    val selectedSource by viewModel.selectedSource.collectAsState()
+    val boards by viewModel.boards
+    val hotSearch by viewModel.hotSearch
+    val selectedSource by viewModel.selectedSource
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口

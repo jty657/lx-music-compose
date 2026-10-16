@@ -45,7 +45,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val userApis by viewModel.userApis.collectAsState()
-    val currentSource by viewModel.currentSource.collectAsState()
+    val currentSource by viewModel.currentSource
 
     var showImportDialog by remember { mutableStateOf(false) }
     var importUrl by remember { mutableStateOf("") }

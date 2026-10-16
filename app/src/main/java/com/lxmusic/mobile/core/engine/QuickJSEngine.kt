@@ -22,9 +22,12 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -419,9 +422,9 @@ class QuickJSEngine(
         is JsonNull -> null
         is JsonPrimitive -> when {
             el.isString -> el.content
-            el.booleanOrNull != null -> el.booleanOrNull
-            el.intOrNull != null -> el.intOrNull
-            el.doubleOrNull != null -> el.doubleOrNull
+            el.booleanOrNull != null -> el.booleanOrNull ?: false
+            el.intOrNull != null -> el.intOrNull ?: 0
+            el.doubleOrNull != null -> el.doubleOrNull ?: 0.0
             else -> el.content
         }
         is JsonArray -> el.map { jsonElementToAny(it) }
@@ -451,7 +454,7 @@ fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
             qualitys.forEach { q ->
                 add(buildJsonObject {
                     put("type", JsonPrimitive(q.type))
-                    put("size", q.size ?: JsonNull)
+                    put("size", q.size?.let { JsonPrimitive(it) } ?: JsonNull)
                     q.hash?.let { put("hash", JsonPrimitive(it)) }
                 })
             }
@@ -459,7 +462,7 @@ fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
         put("_types", buildJsonObject {
             _qualitys.forEach { (k, v) ->
                 put(k, buildJsonObject {
-                    put("size", v.size ?: JsonNull)
+                    put("size", v.size?.let { JsonPrimitive(it) } ?: JsonNull)
                     v.hash?.let { put("hash", JsonPrimitive(it)) }
                 })
             }

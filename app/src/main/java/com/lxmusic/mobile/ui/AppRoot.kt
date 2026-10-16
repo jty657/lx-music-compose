@@ -1,6 +1,7 @@
 package com.lxmusic.mobile.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -11,14 +12,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kyant.backdrop.BackdropEffectScope
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.backdrops.drawBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.effects.blur
@@ -104,7 +104,7 @@ private fun MainScaffold(
 }
 
 @Composable
-private fun GlassBottomBar(
+private fun BoxScope.GlassBottomBar(
     backdrop: LayerBackdrop,
     blurRadius: Float,
     navigator: Navigator,
@@ -151,7 +151,7 @@ private fun GlassBottomBar(
 }
 
 @Composable
-private fun PlainBottomBar(navigator: Navigator) {
+private fun BoxScope.PlainBottomBar(navigator: Navigator) {
     val current = navigator.backStack.last()
     val items = listOf(
         Screen.Home to MiuixIcons.Home,

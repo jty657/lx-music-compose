@@ -388,9 +388,9 @@ class BuiltinSdkBridge(context: Context) {
                 is JsonNull -> Unit
                 is JsonPrimitive -> {
                     if (v.isString) obj.setProperty(k, v.content)
-                    else if (v.booleanOrNull != null) obj.setProperty(k, v.booleanOrNull)
-                    else if (v.intOrNull != null) obj.setProperty(k, v.intOrNull)
-                    else if (v.doubleOrNull != null) obj.setProperty(k, v.doubleOrNull)
+                    else v.booleanOrNull?.let { obj.setProperty(k, it) }
+                        ?: v.intOrNull?.let { obj.setProperty(k, it) }
+                        ?: v.doubleOrNull?.let { obj.setProperty(k, it) }
                 }
                 is JsonArray -> {
                     val arr = context.createNewJSArray()
@@ -409,9 +409,9 @@ class BuiltinSdkBridge(context: Context) {
         is JsonNull -> null
         is JsonPrimitive -> when {
             el.isString -> el.content
-            el.booleanOrNull != null -> el.booleanOrNull
-            el.intOrNull != null -> el.intOrNull
-            el.doubleOrNull != null -> el.doubleOrNull
+            el.booleanOrNull != null -> el.booleanOrNull ?: false
+            el.intOrNull != null -> el.intOrNull ?: 0
+            el.doubleOrNull != null -> el.doubleOrNull ?: 0.0
             else -> el.content
         }
         is JsonArray -> el.map { jsonElementToJava(it, context) }

@@ -50,9 +50,10 @@ class MusicRepository(
     /** 当前全局音源（原版 settingState.setting['common.apiSource']） */
     private var _currentApiSource: String = "kw"
 
-    private fun currentApiSource(): String {
+    /** 当前激活的自定义音源 id（没有则为空字符串，与内置音源区分） */
+    private fun currentUserApiId(): String {
         val userApi = engineManager.currentApiId()
-        return userApi ?: _currentApiSource
+        return userApi ?: if (SourceConst.isUserApi(_currentApiSource)) _currentApiSource else ""
     }
 
     /** 设置当前音源（内置或 user_api） */
@@ -101,7 +102,7 @@ class MusicRepository(
     // ================= 歌词 =================
 
     suspend fun getLyricInfo(musicInfo: MusicInfo, allowToggleSource: Boolean = true): LyricInfo {
-        if (SourceConst.isUserApi(currentApiSource())) {
+        if (SourceConst.isUserApi(currentUserApiId())) {
             // 用户音源处理 local 与各源歌词
             return try {
                 val oldInfo = musicInfo.toOldMusicInfo()
@@ -126,7 +127,7 @@ class MusicRepository(
 
     suspend fun getPicUrl(musicInfo: MusicInfo, allowToggleSource: Boolean = true): String {
         musicInfo.meta.picUrl?.let { return it }
-        if (SourceConst.isUserApi(currentApiSource())) {
+        if (SourceConst.isUserApi(currentUserApiId())) {
             // 用户音源可以为 local 提供封面
             try {
                 return engineManager.getPic(musicInfo.source, musicInfo.toOldMusicInfo())
@@ -177,7 +178,7 @@ class MusicRepository(
     }
 
     private suspend fun getOnlineMusicUrl(musicInfo: MusicInfo, targetQuality: String): String {
-        if (SourceConst.isUserApi(currentApiSource())) {
+        if (SourceConst.isUserApi(currentUserApiId())) {
             val oldInfo = musicInfo.toOldMusicInfo()
             return engineManager.getMusicUrl(musicInfo.source, oldInfo, targetQuality)
         }
@@ -208,9 +209,6 @@ class MusicRepository(
         val list = _qualityList.value[musicInfo.source] ?: return "128k"
         return sdk.negotiateQuality(musicInfo, preferQuality, list)
     }
-
-    private fun currentApiSource(): String = engineManager.currentApiId()
-        ?: if (SourceConst.isUserApi(_currentApiSource)) _currentApiSource else ""
 
     /** 歌词有效性校验（原版 existTimeExp 逻辑） */
     fun isValidLyric(lyric: String): Boolean = LRC_TIME_RXP.containsMatchIn(lyric)

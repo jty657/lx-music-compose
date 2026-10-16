@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.util.concurrent.ConcurrentHashMap
 
@@ -90,7 +91,7 @@ class ScriptEngineManager(private val context: Context) {
                 when (action) {
                     is ScriptAction.Request -> {
                         // 脚本发起 HTTP 请求：直接由引擎内部执行
-                        newEngine.executeScriptRequest(action.requestKey, action.url, action.options)
+                        engine?.executeScriptRequest(action.requestKey, action.url, action.options)
                     }
                     is ScriptAction.CancelRequest -> {
                         scriptRequests.remove(action.requestKey)?.cancel()
