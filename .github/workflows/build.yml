@@ -19,12 +19,11 @@ jobs:
           java-version: '21'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 37
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools" "cmdline-tools;16.0"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
