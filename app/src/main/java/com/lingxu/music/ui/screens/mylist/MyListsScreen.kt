@@ -536,13 +536,12 @@ class MyListsViewModel : ViewModel() {
                 val collected = mutableListOf<MusicInfo>()
                 var page = 1
                 while (page <= 100) {
-                    val items = if (sourceListId.startsWith("board__")) {
+                    val listData = if (sourceListId.startsWith("board__")) {
                         val bangId = sourceListId.removePrefix("board__").substringAfter("__", "")
-                        LxApp.app.musicRepository.getBoardList(source, bangId, page)
+                        LxApp.app.musicRepository.getBoardList(source, bangId, page).list
                     } else {
-                        LxApp.app.musicRepository.getSongListDetail(source, sourceListId, page)
+                        LxApp.app.musicRepository.getSongListDetail(source, sourceListId, page).list
                     }
-                    val listData = items.list
                     if (listData.isEmpty()) break
                     collected += listData.filterNot { m -> collected.any { it.id == m.id } }
                     onProgress(collected.size)

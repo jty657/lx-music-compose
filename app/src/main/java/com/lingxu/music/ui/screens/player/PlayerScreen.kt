@@ -3,6 +3,7 @@ package com.lingxu.music.ui.screens.player
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +51,7 @@ import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Pause
 import top.yukonga.miuix.kmp.icon.extended.Share
+import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** 播放页：封面、歌词、控制按钮 */
@@ -63,6 +65,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val showLrcTranslation by LxApp.app.settings.showLyricTranslation.collectAsState(initial = true)
     val showLrcRoma by LxApp.app.settings.showLyricRoma.collectAsState(initial = false)
     val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
+    var showMore by remember { mutableStateOf(false) }
 
     // 拖动进度条时，用本地值展示，避免被 500ms 的位置更新覆盖导致回弹
     var dragValue by remember { mutableStateOf<Float?>(null) }
@@ -166,6 +169,16 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         }
                     }
                 },
+            )
+            Spacer(Modifier.size(16.dp))
+            IconButtonWrap(MiuixIcons.Settings, onClick = { showMore = true })
+        }
+
+        // 倍速/音量/定时（对应原版播放页 SettingPopup）
+        if (showMore) {
+            PlayerMoreSettings(
+                onDismiss = { showMore = false },
+                onTimeout = { minutes -> viewModel.setTimeoutExit(minutes) },
             )
         }
 
@@ -309,4 +322,44 @@ private fun IconButtonWrap(icon: androidx.compose.ui.graphics.vector.ImageVector
                 onClick = onClick,
             ),
     )
+}
+
+/** 播放页更多设置：倍速 / 音量 / 定时停止（对应原版播放页 SettingPopup） */
+@Composable
+private fun PlayerMoreSettings(
+    onDismiss: () -> Unit,
+    onTimeout: (Int) -> Unit,
+) {
+    val rate by LxApp.app.settings.playbackRate.collectAsState(initial = 1f)
+    val volume by LxApp.app.settings.volume.collectAsState(initial = 1f)
+    val viewModel: PlayerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    com.lingxu.music.ui.components.GlassDialog(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 4.dp)) {
+            Text("播放设置", fontSize = MiuixTheme.textStyles.title1.fontSize)
+            Spacer(Modifier.size(12.dp))
+            Text("播放倍速 ${(rate * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            androidx.compose.material3.Slider(
+                value = rate,
+                onValueChange = { viewModel.setPlaybackRate(it) },
+                valueRange = 0.5f..3f,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.size(8.dp))
+            Text("音量 ${(volume * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            androidx.compose.material3.Slider(
+                value = volume,
+                onValueChange = { viewModel.setVolume(it) },
+                valueRange = 0f..1f,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.size(8.dp))
+            Text("定时停止播放", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(15, 30, 60).forEach { min ->
+                    Button(onClick = { onTimeout(min); onDismiss() }) { Text("${min}分") }
+                }
+                Button(onClick = { onTimeout(0); onDismiss() }) { Text("关闭") }
+            }
+        }
+    }
 }
