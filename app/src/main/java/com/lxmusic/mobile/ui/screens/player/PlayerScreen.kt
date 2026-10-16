@@ -40,7 +40,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("正在播放", fontSize = MiuixTheme.textStyles.title.fontSize)
+        Text("正在播放", fontSize = MiuixTheme.textStyles.title1.fontSize)
         Spacer(Modifier.size(12.dp))
 
         // 歌曲信息
@@ -53,7 +53,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 Text(
                     state.current?.singer ?: "",
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    color = MiuixTheme.colorScheme.onSurfaceVariant,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
         }
@@ -64,7 +64,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
         Text(
             state.lyric.ifEmpty { "暂无歌词" },
             fontSize = MiuixTheme.textStyles.body2.fontSize,
-            color = MiuixTheme.colorScheme.onSurfaceVariant,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             modifier = Modifier.weight(1f),
         )
 
@@ -110,7 +110,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         .padding(4.dp)
                         .clickable { viewModel.setMode(mode) },
                     color = if (state.playMode == mode) MiuixTheme.colorScheme.primary
-                    else MiuixTheme.colorScheme.onSurfaceVariant,
+                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                 )
             }

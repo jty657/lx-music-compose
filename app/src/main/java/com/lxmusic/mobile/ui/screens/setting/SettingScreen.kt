@@ -38,7 +38,7 @@ fun SettingScreen(viewModel: SettingViewModel = viewModel()) {
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
     ) {
-        Text("设置", fontSize = MiuixTheme.textStyles.title.fontSize)
+        Text("设置", fontSize = MiuixTheme.textStyles.title1.fontSize)
         Spacer(Modifier.size(12.dp))
 
         Text("主题", fontSize = MiuixTheme.textStyles.body2.fontSize)

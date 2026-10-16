@@ -438,7 +438,7 @@ fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
     put("singer", JsonPrimitive(singer))
     put("source", JsonPrimitive(source))
     put("songmid", JsonPrimitive(meta.songId))
-    put("interval", interval ?: JsonNull)
+    put("interval", interval?.let { JsonPrimitive(it) } ?: JsonNull)
     put("albumName", JsonPrimitive(meta.albumName))
     put("img", JsonPrimitive(meta.picUrl ?: ""))
     put("typeUrl", buildJsonObject {})
@@ -449,7 +449,7 @@ fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
         put("types", buildJsonObject {})
         put("_types", buildJsonObject {})
     } else {
-        put("albumId", meta.albumId ?: JsonNull)
+        put("albumId", meta.albumId?.let { JsonPrimitive(it) } ?: JsonNull)
         put("types", buildJsonArray {
             qualitys.forEach { q ->
                 add(buildJsonObject {

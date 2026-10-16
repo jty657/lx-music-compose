@@ -13,8 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * 音乐统一仓库：对应原版 core/music 系列。
@@ -73,10 +75,10 @@ class MusicRepository(
         val qualitys = mutableMapOf<String, List<String>>()
         val validQualitys = setOf("128k", "320k", "flac", "flac24bit")
         caps.forEach { (source, cap) ->
-            val type = cap["type"]?.let { it.toString() } ?: return@forEach
+            val type = cap["type"]?.jsonPrimitive?.content ?: return@forEach
             if (type != "music") return@forEach
-            val qs = (cap["qualitys"] as? kotlinx.serialization.json.JsonArray)
-                ?.mapNotNull { it.toString().trim('"') }
+            val qs = (cap["qualitys"] as? JsonArray)
+                ?.mapNotNull { it.jsonPrimitive.content }
                 ?.filter { it in validQualitys }
                 ?: emptyList()
             qualitys[source] = qs

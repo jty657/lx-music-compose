@@ -45,7 +45,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val userApis by viewModel.userApis.collectAsState()
-    val currentSource by viewModel.currentSource
+    val currentSource = viewModel.currentSource
 
     var showImportDialog by remember { mutableStateOf(false) }
     var importUrl by remember { mutableStateOf("") }
@@ -59,7 +59,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     }
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Text("音源管理", fontSize = MiuixTheme.textStyles.title.fontSize)
+        Text("音源管理", fontSize = MiuixTheme.textStyles.title1.fontSize)
 
         Spacer(Modifier.size(8.dp))
 
@@ -128,7 +128,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                             Text(
                                 "${api.author} ${api.version}".trim(),
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                color = MiuixTheme.colorScheme.onSurfaceVariant,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             )
                         }
                         if (currentSource == api.id) {

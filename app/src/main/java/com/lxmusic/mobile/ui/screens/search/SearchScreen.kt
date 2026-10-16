@@ -87,7 +87,6 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
             sources.forEach { source ->
                 Button(
                     onClick = { selectedSource = source },
-                    colors = if (source == selectedSource) null else null,
                 ) {
                     Text(
                         text = when (source) {
@@ -108,7 +107,7 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
         Spacer(Modifier.height(8.dp))
 
         // 结果列表
-        val results by viewModel.results
+        val results = viewModel.results
         LazyColumn {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
@@ -143,7 +142,7 @@ private fun SearchResultCard(music: MusicInfo, onClick: () -> Unit) {
                 Text(
                     "${music.singer} · ${music.interval ?: ""}",
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    color = MiuixTheme.colorScheme.onSurfaceVariant,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
         }

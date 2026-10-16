@@ -32,9 +32,9 @@ import top.yukonga.miuix.kmp.utils.PressFeedbackType
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val navigator = LocalNavigator.current
-    val boards by viewModel.boards
-    val hotSearch by viewModel.hotSearch
-    val selectedSource by viewModel.selectedSource
+    val boards = viewModel.boards
+    val hotSearch = viewModel.hotSearch
+    val selectedSource = viewModel.selectedSource
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口
@@ -50,7 +50,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     Text(
                         viewModel.sourceLabel(),
                         fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = MiuixTheme.colorScheme.onSurfaceVariant,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     )
                 }
             }
@@ -59,7 +59,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         Spacer(Modifier.size(12.dp))
 
         // 榜单
-        Text("排行榜", fontSize = MiuixTheme.textStyles.title.fontSize)
+        Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
         Spacer(Modifier.size(4.dp))
         LazyColumn(Modifier.weight(1f)) {
             items(boards, key = { it.id }) { board ->

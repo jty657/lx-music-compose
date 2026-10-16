@@ -262,48 +262,60 @@ class BuiltinSdkBridge(context: Context) {
 
     // ================= 歌词 =================
 
-    suspend fun getLyric(source: String, oldInfo: JsonObject): LyricInfo = withSdkThread {
-        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
-        val fn = module.getJSFunction("getLyric")
-        val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
+    suspend fun getLyric(source: String, oldInfo: JsonObject): LyricInfo {
+        val jsObj = withSdkThread {
+            val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+            val fn = module.getJSFunction("getLyric")
+            val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
+            raw as? JSObject ?: throw IllegalStateException("invalid lyric response")
+        }
         // 返回 { promise } 结构
-        val jsObj = raw as? JSObject ?: throw IllegalStateException("invalid lyric response")
-        val promise = jsObj.getJSObject("promise") ?: throw IllegalStateException("lyric promise missing")
-        val result = awaitPromise(promise) as? JSObject
-            ?: throw IllegalStateException("lyric failed")
-        parseLyric(result)
+        val promise = withSdkThread { jsObj.getJSObject("promise") }
+            ?: throw IllegalStateException("lyric promise missing")
+        val result = awaitPromise(promise) as? JSObject ?: throw IllegalStateException("lyric failed")
+        return withSdkThread { parseLyric(result) }
     }
 
     // ================= 封面 =================
 
-    suspend fun getPic(source: String, oldInfo: JsonObject): String = withSdkThread {
-        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
-        val fn = module.getJSFunction("getPic")
-        val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
-        // 返回 url 字符串或 Promise
-        when (raw) {
+    suspend fun getPic(source: String, oldInfo: JsonObject): String {
+        val raw = withSdkThread {
+            val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+            val fn = module.getJSFunction("getPic")
+            callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
+        }
+        // 返回 url 字符串或 Promise / { promise }
+        return when (raw) {
             is String -> raw
             else -> {
-                val jsObj = raw as? JSObject
-                val promise = jsObj?.getJSObject("promise") ?: jsObj
-                awaitPromise(promise as JSObject)?.toString() ?: throw IllegalStateException("pic failed")
+                val jsObj = raw as? JSObject ?: throw IllegalStateException("invalid pic response")
+                val promise = withSdkThread { jsObj.getJSObject("promise") ?: jsObj }
+                val result = awaitPromise(promise)
+                when (result) {
+                    is String -> result
+                    else -> withSdkThread { (result as? JSObject)?.getString("url") }
+                        ?: result?.toString()
+                        ?: throw IllegalStateException("pic failed")
+                }
             }
         }
     }
 
     // ================= 歌曲 URL（内置源无 api-list 时走 global.lx.apis） =================
 
-    suspend fun getMusicUrl(source: String, oldInfo: JsonObject, type: String): String = withSdkThread {
-        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
-        val fn = module.getJSFunction("getMusicUrl")
-        val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject(), type))
+    suspend fun getMusicUrl(source: String, oldInfo: JsonObject, type: String): String {
+        val jsObj = withSdkThread {
+            val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+            val fn = module.getJSFunction("getMusicUrl")
+            callJSFunction(fn, arrayOf(oldInfo.toJsObject(), type)) as? JSObject
+                ?: throw IllegalStateException("invalid response")
+        }
         // 返回 { promise } 或 { canceleFn, promise }
-        val jsObj = raw as? JSObject ?: throw IllegalStateException("invalid response")
-        val promise = jsObj.getJSObject("promise") as? JSObject
+        val promise = withSdkThread { jsObj.getJSObject("promise") }
             ?: throw IllegalStateException("Api is not found")
-        val result = awaitPromise(promise) as? JSObject
-            ?: throw IllegalStateException("music url failed")
-        result.getString("url") ?: throw IllegalStateException("invalid url")
+        val result = awaitPromise(promise) as? JSObject ?: throw IllegalStateException("music url failed")
+        return withSdkThread { result.getString("url") }
+            ?: throw IllegalStateException("invalid url")
     }
 
     /** 音质协商（对应原版 getMusicType）：从 preference 向下取可用的音质 */
