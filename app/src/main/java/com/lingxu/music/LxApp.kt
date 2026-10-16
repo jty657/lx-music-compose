@@ -9,6 +9,7 @@ import com.lingxu.music.core.repository.ApiSourceRepository
 import com.lingxu.music.core.repository.FavoritesRepository
 import com.lingxu.music.core.repository.MyListsRepository
 import com.lingxu.music.core.repository.MusicRepository
+import com.lingxu.music.core.repository.PresetScriptRepository
 import com.lingxu.music.core.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,8 @@ class LxApp : Application() {
         private set
     lateinit var myListsRepository: MyListsRepository
         private set
+    lateinit var presetScriptRepository: PresetScriptRepository
+        private set
 
     /** 当前音源能力收集协程（切换音源时重建，避免协程泄漏） */
     private var capabilitiesJob: kotlinx.coroutines.Job? = null
@@ -52,6 +55,7 @@ class LxApp : Application() {
         apiSourceRepository = ApiSourceRepository(database)
         favoritesRepository = FavoritesRepository(database)
         myListsRepository = MyListsRepository(database)
+        presetScriptRepository = PresetScriptRepository(this, apiSourceRepository)
         musicRepository = MusicRepository(sdkBridge, engineManager, settings)
         playerRepository = PlayerRepository.get(this)
         // 注入歌词加载器（播放器切歌时自动拉歌词，含翻译）
@@ -77,6 +81,7 @@ class LxApp : Application() {
             sdkBridge.init(apiSource)
             musicRepository.setApiSource(apiSource)
             favoritesRepository.load()
+            presetScriptRepository.importPresetsIfNeeded()
             // 恢复播放模式（原版 player.togglePlayMethod）
             playerRepository.restorePlayMode(settings.playMode.first())
             // 如果是用户音源，加载脚本
