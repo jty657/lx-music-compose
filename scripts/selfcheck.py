@@ -11,6 +11,8 @@
 7. Card 等 Miuix 组件同时带 onClick 与 combinedClickable（点击区域冲突）
 8. MusicInfo / MusicMeta 的字段访问必须真实存在（本项目音质字段在 MusicInfo 顶层，
    不在 meta 里；原版则在 meta.qualitys，极易写错位置）
+9. 项目内 import 的顶层符号必须真实存在（拦「组件被误删但调用方还在 import」）
+10. 重复的 @Composable 注解（同函数写两遍会报 not repeatable）
 """
 import pathlib
 import re
@@ -53,6 +55,45 @@ def model_fields() -> dict[str, set[str]]:
                 fields[m.group(1)] = set(re.findall(r"\bval\s+(\w+)\s*:", m.group(2)))
     return fields
 
+
+
+def project_symbols() -> set[str]:
+    """所有 com.lingxu.music.* 下的顶层符号全限定名（含嵌套类成员）。"""
+    syms: set[str] = set()
+    for p in BASE.rglob("*.kt"):
+        s = p.read_text(encoding="utf-8")
+        m = re.search(r"^package ([\w.]+)", s, re.M)
+        if not m:
+            continue
+        pkg = m.group(1)
+        # 顶层声明
+        for d in re.finditer(
+            r"^(?:@\w+\s*)*(?:internal |private )?"
+            r"(?:data class|enum class|sealed class|sealed interface|value class|fun|class|object|interface|val|var)\s+(\w+)",
+            s,
+            re.M,
+        ):
+            syms.add(f"{pkg}.{d.group(1)}")
+        # 嵌套成员：ClassName.Member
+        for cls in re.finditer(r"^(?:data class|class|object|enum class|sealed class)\s+(\w+)", s, re.M):
+            cname = cls.group(1)
+            for mem in re.finditer(r"\n    (?:fun|val|var|class|object|sealed class|data class|enum class)\s+(\w+)", s[cls.end():]):
+                syms.add(f"{pkg}.{cname}.{mem.group(1)}")
+    return syms
+
+
+def check_dangling_imports() -> list[str]:
+    """项目内 import 但符号不存在 —— 典型场景：组件被误删/改名而调用方没跟上。"""
+    syms = project_symbols()
+    issues: list[str] = []
+    for p in sorted(BASE.rglob("*.kt")):
+        s = p.read_text(encoding="utf-8")
+        for m in re.finditer(r"^import (com\.lingxu\.music\.[\w.]+)$", s, re.M):
+            fq = m.group(1)
+            # 扩展函数等动态成员不做强校验：只查明显的形式
+            if fq not in syms and not fq.split(".")[-1][0].islower():
+                issues.append(f"{p.relative_to(ROOT)} import {fq} 找不到定义（符号被删或改名？）")
+    return issues
 
 
 def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
@@ -108,6 +149,10 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
         if re.search(r"=\s*(?:false|true)\(\)", line):
             issues.append(f"{rel}:{i} 赋值被写成函数调用: {line.strip()[:70]}")
 
+    # 6b) 重复注解
+    if re.search(r"@Composable\s*\n\s*@Composable", s):
+        issues.append(f"{rel} 出现重复的 @Composable 注解")
+
     # 7) clickable 冲突
     if "combinedClickable" in s:
         for m in re.finditer(r"\.combinedClickable\([^)]*\)", s):
@@ -148,6 +193,7 @@ def main() -> int:
         return 2
     fields = model_fields()
     all_issues: list[str] = []
+    all_issues.extend(check_dangling_imports())
     for p in sorted(BASE.rglob("*.kt")):
         file_issues = check_file(p, fields)
         file_issues.extend(check_fields(p.read_text(encoding="utf-8"), p.relative_to(ROOT), fields))

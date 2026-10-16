@@ -108,7 +108,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                             viewModel.loadMusics(list.id,
 ) { musics = it }
                         },
-                        onLongPress = { renaming = list },
+                        onLongClick = { renaming = list },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                             Icon(

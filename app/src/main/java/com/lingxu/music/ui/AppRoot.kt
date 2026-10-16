@@ -271,7 +271,6 @@ private fun MiniPlayerBar(navigator: Navigator) {
 }
 
 @Composable
-@Composable
 private fun GlassBottomBar(glass: GlassContext, navigator: Navigator) {
     Box(
         Modifier

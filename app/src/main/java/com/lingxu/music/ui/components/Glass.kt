@@ -51,6 +51,80 @@ class GlassContext(
 val LocalGlass = androidx.compose.runtime.staticCompositionLocalOf<GlassContext?> { null }
 
 /**
+ * 玻璃容器：包住页面内容并向下游提供 [LocalGlass]。
+ * 整个 App 只应有一个（在 AppRoot 里）。
+ */
+@Composable
+fun GlassHost(
+    dark: Boolean,
+    radius: Float,
+    refraction: Boolean,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val backdrop = rememberLayerBackdrop {
+        drawRect(if (dark) Color.Black else Color.White)
+        drawContent()
+    }
+    val context = remember(dark, radius, refraction) {
+        GlassContext(backdrop, dark, radius, refraction)
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalGlass provides context) {
+        Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+            content()
+        }
+    }
+}
+
+/**
+ * 玻璃顶栏：贴在页面顶部的磨砂条。自动从 [LocalGlass] 取 backdrop，
+ * 关闭模糊时退化为纯色条，不会破版。
+ */
+@Composable
+fun GlassTopBar(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val glass = LocalGlass.current
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (glass != null && glass.radius > 0f) {
+                    Modifier.drawBackdrop(
+                        backdrop = glass.content,
+                        shape = { RoundedCornerShape(0.dp) },
+                        effects = {
+                            vibrancy()
+                            blur(glass.radius.dp.toPx())
+                            if (glass.refraction) {
+                                lens(
+                                    refractionHeight = 6.dp.toPx(),
+                                    refractionAmount = 12.dp.toPx(),
+                                    depthEffect = false,
+                                )
+                            }
+                        },
+                        highlight = null,
+                        shadow = null,
+                        onDrawSurface = {
+                            drawRect(
+                                if (glass.dark) Color.Black.copy(alpha = 0.42f)
+                                else Color.White.copy(alpha = 0.55f),
+                            )
+                        },
+                    )
+                } else {
+                    Modifier.background(
+                        if (glass?.dark != false) Color.Black.copy(alpha = 0.3f)
+                        else Color.White.copy(alpha = 0.6f),
+                    )
+                },
+            ),
+        content = content,
+    )
+}
+
+/**
  * 便捷版玻璃卡片：自动从 [LocalGlass] 取 backdrop。
  * 关闭模糊或 API < 31 时退化为普通半透明卡片，观感一致不破版。
  */
