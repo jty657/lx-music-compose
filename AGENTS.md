@@ -1,6 +1,9 @@
-# LX Music Compose 项目规则
+# 聆序（LX Music Compose）
 
 洛雪音乐 Compose 移植版。所有功能对齐原版 lx-music-mobile v1.9.1（React Native 版，包名 cn.toside.music.mobile）。
+
+- **应用名**：聆序；`applicationId` / `namespace` = `com.lingxu.music`；源码目录 `app/src/main/java/com/lingxu/music/`。
+- 改任何 .kt 后**必须先跑 `python3 scripts/selfcheck.py`**，它专门拦「只有云端编译才会暴露」的低级错误（import 粘连、MiuixIcons.X 未 import、Spacer/Column/Row/Box 未 import、括号不平衡、包名笔误、赋值写成函数调用、Card 的 onClick 与 combinedClickable 冲突）。
 
 ## 构建要求（重要）
 
@@ -16,14 +19,18 @@
 
 - `wang.harlon.quickjs:wrapper-android:2.4.0` + `wrapper-java:2.4.0`（与原版相同的 QuickJS 引擎）
 - `top.yukonga.miuix.kmp:miuix-ui/preference/icons:0.9.3`
-- `io.github.kyant0:backdrop:2.0.1`（Liquid Glass，API 31 以下自动降级）
+- `io.github.kyant0:backdrop:2.0.1`（Liquid Glass，API 31 以下自动降级）。**不要换 Haze**：Haze 2.x 需要 Compose CMP 1.12.1，与 Miuix 0.9.3 钉的 1.11.x 冲突。
+- backdrop 的 `blur` 需 API 31+、`lens` 需 API 33+，低于则静默无效果；UI 上必须按 `Build.VERSION.SDK_INT` 门控降级，否则低版本拿到「半透明色块」而不是玻璃。
 
 ## 音源脚本兼容性协议（与原版 1:1）
 
 - assets/scripts/user-api-preload.js 是从原版 APK 提取的**原封不动**的脚本，不要修改。
 - 脚本协议：`lx_setup(key,...)` 初始化 → `lx.on(EVENT_NAMES.request, handler)` 注册（musicUrl/lyric/pic 三个 action）→ `lx.send(EVENT_NAMES.inited, {sources})` 宣告就绪。
 - native 桥：`__lx_native_call__(key, action, data)` + 6 个 utils 函数（str2b64/b642buf/str2md5/aes_encrypt/rsa_encrypt/set_timeout）。
-- 内置 SDK（kw/kg/tx/wy/mg）来自原版 src/utils/musicSdk 的 esbuild 打包产物（assets/engine/music-sdk.bundle.js），重新打包用 /tmp/sdk-bundle 的 esbuild.config.mjs。
+- 内置 SDK（kw/kg/tx/wy/mg）来自原版 src/utils/musicSdk 的 esbuild 打包产物（assets/engine/music-sdk.bundle.js），重新打包用 /tmp/sdk-bundle 的 esbuild.config.mjs。bundle 内含各源 musicSearch/leaderboard/songList/hotSearch/tipSearch（`getList(sortId,tagId,page)` / `getListDetail(id,page)` / `getTags()` / `search(text,page,limit)`）。
+- **搜索/榜单/歌单只走内置 SDK bundle；用户音源只提供 `musicUrl`（播放取 URL）**。这是原版的既定架构，不要试图让用户音源提供搜索。
+- **SDK 的 fetch 桥必须让 `resp.text()/blob()/json()` 返回 thenable，且提供 `resp.headers.map`**，否则 SDK 的 `resp.text().then(JSON.parse)` 链直接崩（表现为「搜索无效」）。
+- 预置音源放 `assets/scripts/presets/*.js`，首次启动由 `PresetScriptRepository` 自动导入。
 - 已用 quickjs-emscripten（Node）做过端到端协议测试，全部通过。
 
 ## 云端编译与验证

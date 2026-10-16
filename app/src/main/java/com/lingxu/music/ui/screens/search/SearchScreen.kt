@@ -260,8 +260,8 @@ private fun SearchResultCard(
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
                 // 可用音质标签（对应原版列表项的音质角标）
-                val qualities = music.meta.qualitys?.mapNotNull { it.type }?.distinct()
-                if (!qualities.isNullOrEmpty()) {
+                val qualities = music.qualitys.mapNotNull { it.type }.distinct()
+                if (qualities.isNotEmpty()) {
                     Text(
                         qualities.joinToString(" "),
                         fontSize = MiuixTheme.textStyles.footnote1.fontSize,

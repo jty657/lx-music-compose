@@ -9,6 +9,8 @@
 5. 包名笔误 com.lingxu.mobile / muii
 6. 把赋值写成函数调用：= false() / = true()
 7. Card 等 Miuix 组件同时带 onClick 与 combinedClickable（点击区域冲突）
+8. MusicInfo / MusicMeta 的字段访问必须真实存在（本项目音质字段在 MusicInfo 顶层，
+   不在 meta 里；原版则在 meta.qualitys，极易写错位置）
 """
 import pathlib
 import re
@@ -20,7 +22,21 @@ BASE = ROOT / "app/src/main/java"
 LAYOUT_SYMBOLS = {"Spacer", "Column", "Row", "Box"}
 
 
-def check_file(p: pathlib.Path) -> list[str]:
+def model_fields() -> dict[str, set[str]]:
+    """所有 data class 的字段表（在 core/model 与 core/db 下收集）。"""
+    fields: dict[str, set[str]] = {}
+    for d in (BASE / "com/lingxu/music/core/model", BASE / "com/lingxu/music/core/db"):
+        if not d.exists():
+            continue
+        for p in d.glob("*.kt"):
+            s = p.read_text(encoding="utf-8")
+            for m in re.finditer(r"data class (\w+)\s*\((.*?)\n\)", s, re.S):
+                fields[m.group(1)] = set(re.findall(r"\bval\s+(\w+)\s*:", m.group(2)))
+    return fields
+
+
+
+def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
     issues: list[str] = []
     s = p.read_text(encoding="utf-8")
     rel = p.relative_to(ROOT)
@@ -76,13 +92,35 @@ def check_file(p: pathlib.Path) -> list[str]:
     return issues
 
 
+def check_fields(s: str, rel: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
+    """检查 <var>.meta.<field> / <var>.qualitys 之类对本项目模型的字段访问是否真实存在。"""
+    issues: list[str] = []
+    # music.meta.X / info.meta.X
+    for m in re.finditer(r"\b(?:music|info|item|current|song|m)\.meta\.(\w+)", s):
+        field = m.group(1)
+        if field in ("copy", "toString", "equals", "hashCode"):
+            continue
+        meta = fields.get("MusicMeta")
+        if meta is not None and field not in meta:
+            issues.append(f"{rel} 访问 meta.{field} 但 MusicMeta 没有该字段（音质在 MusicInfo 顶层：qualitys/_qualitys）")
+    # music.qualitys（顶层）——本项目确实在顶层
+    for m in re.finditer(r"\b(?:music|info|item|current|song|m)\.qualitys\b", s):
+        mi = fields.get("MusicInfo")
+        if mi is not None and "qualitys" not in mi:
+            issues.append(f"{rel} 访问 qualitys 但 MusicInfo 没有该字段")
+    return issues
+
+
 def main() -> int:
     if not BASE.exists():
         print(f"未找到源码目录: {BASE}")
         return 2
+    fields = model_fields()
     all_issues: list[str] = []
     for p in sorted(BASE.rglob("*.kt")):
-        all_issues.extend(check_file(p))
+        file_issues = check_file(p, fields)
+        file_issues.extend(check_fields(p.read_text(encoding="utf-8"), p.relative_to(ROOT), fields))
+        all_issues.extend(file_issues)
     for i in all_issues:
         print(i)
     print(f"\n共 {len(all_issues)} 处问题" if all_issues else "\n静态自检通过")
