@@ -21,6 +21,13 @@ BASE = ROOT / "app/src/main/java"
 
 LAYOUT_SYMBOLS = {"Spacer", "Column", "Row", "Box"}
 
+# 项目自有类型：用了简化名就必须 import（云端编译才报，坑过多次）
+PROJECT_SYMBOLS = {
+    "LxApp": "com.lingxu.music.LxApp",
+    "SourceConst": "com.lingxu.music.core.model.SourceConst",
+    "MusicInfo": "com.lingxu.music.core.model.MusicInfo",
+}
+
 
 def model_fields() -> dict[str, set[str]]:
     """所有 data class 的字段表（在 core/model 与 core/db 下收集）。"""
@@ -61,6 +68,12 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
         imported = re.search(r"^import androidx\.compose\.foundation\.layout\." + sym + r"$", s, re.M)
         if used and not imported:
             issues.append(f"{rel} 使用了 {sym}() 但未 import androidx.compose.foundation.layout.{sym}")
+
+    # 3b) 项目自有类型用了简化名必须 import
+    for sym, fqcn in PROJECT_SYMBOLS.items():
+        # 出现 `LxApp.app` / `SourceConst.` 之类用法
+        if re.search(r"(?<![\w.])" + sym + r"\s*\.", s) and f"import {fqcn}\n" not in s:
+            issues.append(f"{rel} 使用了 {sym} 但未 import {fqcn}")
 
     # 4) 括号平衡
     if s.count("{") != s.count("}"):

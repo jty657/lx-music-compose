@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SourceConst

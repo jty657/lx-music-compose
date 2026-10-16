@@ -20,12 +20,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.PlayMode
@@ -33,6 +35,7 @@ import com.lingxu.music.core.request.HttpClient
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -44,6 +47,7 @@ import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Pause
+import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** 播放页：封面、歌词、控制按钮 */
@@ -51,6 +55,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val state by LxApp.app.playerRepository.state.collectAsState()
     val navigator = LocalNavigator.current
+    val scope = rememberCoroutineScope()
     val lyricFontScale by LxApp.app.settings.lyricFontSize.collectAsState(initial = 1f)
     val zoomActiveLrc by LxApp.app.settings.isZoomActiveLrc.collectAsState(initial = false)
     val showLrcTranslation by LxApp.app.settings.showLyricTranslation.collectAsState(initial = true)
@@ -147,6 +152,18 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
             IconButtonWrap(
                 MiuixIcons.Layers,
                 onClick = { navigator.push(Screen.PlayQueue) },
+            )
+            Spacer(Modifier.size(16.dp))
+            IconButtonWrap(
+                MiuixIcons.Share,
+                onClick = {
+                    state.current?.let { music ->
+                        scope.launch {
+                            val type = LxApp.app.settings.shareType.first()
+                            LxApp.app.shareRepository.share(music, type)
+                        }
+                    }
+                },
             )
         }
 
