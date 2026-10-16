@@ -40,6 +40,12 @@ PROJECT_SYMBOLS = {
     "LxApp": "com.lingxu.music.LxApp",
     "SourceConst": "com.lingxu.music.core.model.SourceConst",
     "MusicInfo": "com.lingxu.music.core.model.MusicInfo",
+    "GlassSurface": "com.lingxu.music.ui.components.GlassSurface",
+    "GlassTopBar": "com.lingxu.music.ui.components.GlassTopBar",
+    "GlassDialog": "com.lingxu.music.ui.components.GlassDialog",
+    "GlassFab": "com.lingxu.music.ui.components.GlassFab",
+    "GlassCard": "com.lingxu.music.ui.components.GlassCard",
+    "GlassHost": "com.lingxu.music.ui.components.GlassHost",
 }
 
 
@@ -122,10 +128,21 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
         if used and not imported:
             issues.append(f"{rel} 使用了 {sym}() 但未 import androidx.compose.foundation.layout.{sym}")
 
-    # 3b) 项目自有类型用了简化名必须 import
+    # 3b) 项目自有类型用了简化名必须 import（含 `Sym.` 与 `Sym(` 两种用法）
     for sym, fqcn in PROJECT_SYMBOLS.items():
-        if re.search(r"(?<![\w.])" + sym + r"\s*\.", s) and f"import {fqcn}\n" not in s:
-            issues.append(f"{rel} 使用了 {sym} 但未 import {fqcn}")
+        used = re.search(r"(?<![\w.])" + sym + r"\s*[.(]", s)
+        if not used:
+            continue
+        if f"import {fqcn}\n" in s:
+            continue
+        # 同文件自己定义的符号无需 import
+        if re.search(r"^(?:@\w+\s*)*(?:fun|class|object|interface|val)\s+" + sym + r"\b", s, re.M):
+            continue
+        # 同包内的符号无需 import
+        pkg_m = re.search(r"^package ([\w.]+)", s, re.M)
+        if pkg_m and fqcn == f"{pkg_m.group(1)}.{sym}":
+            continue
+        issues.append(f"{rel} 使用了 {sym} 但未 import {fqcn}")
 
     # 3c) Compose 扩展函数必须 import
     for name, fqcn in COMPOSE_EXTENSIONS.items():
