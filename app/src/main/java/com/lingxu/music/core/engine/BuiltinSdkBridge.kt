@@ -59,6 +59,14 @@ class BuiltinSdkBridge(context: Context) {
         it.readBytes().toString(Charsets.UTF_8)
     }
 
+    /**
+     * Buffer polyfill。bundle 的 esbuild 配置是 platform:neutral，不会注入全局 Buffer，
+     * 而 QuickJS 也没有 Node 的 Buffer，不先注入会报 "'Buffer' is not defined" 导致 SDK 初始化失败。
+     */
+    private val bufferPolyfill: String = context.assets.open("engine/buffer-polyfill.js").use {
+        it.readBytes().toString(Charsets.UTF_8)
+    }
+
     /** 单线程执行器：QuickJSContext 同线程要求 */
     private val executor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "BuiltinSDK").apply { isDaemon = true }
@@ -152,6 +160,9 @@ class BuiltinSdkBridge(context: Context) {
                     ctrl.setProperty("abort") { _: Array<Any?> -> null }
                     ctrl
                 }
+
+                // 执行 Buffer polyfill（必须早于 SDK bundle）
+                context.evaluate(bufferPolyfill, "buffer-polyfill.js")
 
                 // 执行 SDK bundle
                 context.evaluate(sdkBundle, "music-sdk.bundle.js")

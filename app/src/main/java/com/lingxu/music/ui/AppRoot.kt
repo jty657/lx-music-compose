@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -94,12 +95,13 @@ fun AppRoot() {
                 dark = dark,
                 radius = effectiveRadius,
                 refraction = runtimeShaderSupported && blurEnabled,
-            ) {
+            ) { glass ->
                 Box(Modifier.fillMaxSize()) {
-                    // 主内容（被玻璃模糊的目标）
+                    // 主内容（被玻璃模糊的目标）。layerBackdrop 只套在这里，
+                    // 底栏/迷你播放条必须是它的兄弟节点，否则 drawBackdrop 会自采样导致闪退
                     MainScaffold(
                         navigator = navigator,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().layerBackdrop(glass.content),
                     )
 
                     // 底部：迷你播放条 + 导航栏

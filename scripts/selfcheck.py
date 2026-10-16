@@ -158,6 +158,12 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
             if f"import {fqcn}\n" not in s:
                 issues.append(f"{rel} 使用了 .{name} 但未 import {fqcn}")
 
+    # 4c) 页面内禁止 drawBackdrop：layerBackdrop 子树里出现 drawBackdrop 会自采样递归，
+    #     渲染树无限递归 -> RenderThread 栈溢出闪退（SIGSEGV, 512 帧）。只有 AppRoot 的
+    #     底栏/迷你播放条（layerBackdrop 的兄弟节点）可以用。
+    if "screens/" in str(p) and re.search(r"\bdrawBackdrop\s*\(", s):
+        issues.append(f"{rel} 页面内使用了 drawBackdrop —— 会与 layerBackdrop 形成自采样递归导致闪退")
+
     # 5) 括号平衡
     if s.count("{") != s.count("}"):
         issues.append(f"{rel} 花括号不平衡: {{={s.count('{')} }}={s.count('}')}")
