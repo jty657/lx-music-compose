@@ -14,6 +14,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * 音乐统一仓库：对应原版 core/music 系列。
@@ -106,11 +107,11 @@ class MusicRepository(
                 val oldInfo = musicInfo.toOldMusicInfo()
                 val result = engineManager.getLyric(musicInfo.source, oldInfo)
                 LyricInfo(
-                    lyric = result["lyric"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                    lyric = result["lyric"]?.let { (it as? JsonPrimitive)?.content }
                         ?: throw IllegalStateException("invalid lyric"),
-                    tlyric = result["tlyric"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content },
-                    rlyric = result["rlyric"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content },
-                    lxlyric = result["lxlyric"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content },
+                    tlyric = result["tlyric"]?.let { (it as? JsonPrimitive)?.content },
+                    rlyric = result["rlyric"]?.let { (it as? JsonPrimitive)?.content },
+                    lxlyric = result["lxlyric"]?.let { (it as? JsonPrimitive)?.content },
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "user api lyric failed: ${e.message}")
