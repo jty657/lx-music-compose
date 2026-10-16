@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.core.model.SourceConst
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -44,6 +45,9 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
     val favorites by viewModel.favorites.collectAsState()
     val scope = rememberCoroutineScope()
     var addTarget by remember { mutableStateOf<MusicInfo?>(null) }
+    val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
+    val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
+    val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
 
     Column(
         Modifier
@@ -87,6 +91,9 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                         scope.launch { viewModel.remove(music.id) }
                     },
                     onAddToList = { addTarget = music },
+                    showSource = showSource,
+                    showInterval = showInterval,
+                    showAlbumName = showAlbumName,
                 )
             }
         }
@@ -132,7 +139,15 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
 }
 
 @Composable
-private fun FavoriteCard(music: MusicInfo, onPlay: () -> Unit, onRemove: () -> Unit, onAddToList: () -> Unit = {}) {
+private fun FavoriteCard(
+    music: MusicInfo,
+    onPlay: () -> Unit,
+    onRemove: () -> Unit,
+    onAddToList: () -> Unit = {},
+    showSource: Boolean = true,
+    showInterval: Boolean = true,
+    showAlbumName: Boolean = false,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -147,8 +162,14 @@ private fun FavoriteCard(music: MusicInfo, onPlay: () -> Unit, onRemove: () -> U
             Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(music.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                val subtitle = buildList {
+                    add(music.singer)
+                    if (showAlbumName) music.meta.albumName.takeIf { it.isNotBlank() }?.let { add(it) }
+                    if (showSource) add(SourceConst.displayName(music.source))
+                    if (showInterval) music.interval?.let { add(it) }
+                }.filter { it.isNotBlank() }
                 Text(
-                    "${music.singer} · ${music.interval ?: ""}",
+                    subtitle.joinToString(" · "),
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )

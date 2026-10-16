@@ -40,6 +40,14 @@ sealed class Screen(val route: String) {
 
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("No navigator found") }
 
+/**
+ * 列表滚动状态上报：列表向下滚动时写入正数、回顶部写 0，
+ * 供 AppRoot 决定是否隐藏迷你播放条（对应原版 common.autoHidePlayBar）
+ */
+val LocalMiniBarScroll = staticCompositionLocalOf<androidx.compose.runtime.MutableState<Int>> {
+    androidx.compose.runtime.mutableStateOf(0)
+}
+
 /** 简单导航器（Navigation3 的 backStack 驱动） */
 class Navigator(
     val backStack: MutableList<Screen>,

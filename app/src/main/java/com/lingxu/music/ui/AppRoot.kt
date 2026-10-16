@@ -64,6 +64,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun AppRoot() {
     val themeMode by LxApp.app.settings.theme.collectAsState(initial = "system")
+    val fontScale by LxApp.app.settings.fontScale.collectAsState(initial = 1f)
     val blurSettingEnabled by LxApp.app.settings.blurEnabled.collectAsState(initial = true)
     val blurRadius by LxApp.app.settings.blurRadius.collectAsState(initial = 24f)
     // RenderEffect 需 API 31+；低版本上 backdrop 的 blur 是静默 no-op，只会得到半透明色块，
@@ -72,10 +73,17 @@ fun AppRoot() {
     val runtimeShaderSupported = android.os.Build.VERSION.SDK_INT >= 33
     val blurEnabled = blurSettingEnabled && renderEffectSupported
 
-    LxTheme(themeMode = themeMode) {
+    LxTheme(themeMode = themeMode, fontScale = fontScale) {
         val navigator = rememberNavigator()
         val dark = isInDarkTheme()
-        CompositionLocalProvider(LocalNavigator provides navigator) {
+        val autoHidePlayBar by LxApp.app.settings.autoHidePlayBar.collectAsState(initial = true)
+        // 列表向下滚动时隐藏迷你播放条（对应原版 common.autoHidePlayBar）
+        var miniBarVisible by remember { mutableStateOf(true) }
+        val miniBarScroll = remember { mutableStateOf(0) }
+        CompositionLocalProvider(
+            LocalNavigator provides navigator,
+            LocalMiniBarScroll provides miniBarScroll,
+        ) {
             Box(Modifier.fillMaxSize()) {
                 val backdrop = rememberLayerBackdrop {
                     drawRect(if (dark) Color.Black else Color.White)
@@ -89,12 +97,15 @@ fun AppRoot() {
                 )
 
                 // 底部：迷你播放条 + 导航栏
+                LaunchedEffect(miniBarScroll.value) {
+                    miniBarVisible = autoHidePlayBar && miniBarScroll.value <= 0
+                }
                 Column(
                     Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding(),
                 ) {
-                    MiniPlayerBar(navigator)
+                    if (miniBarVisible) MiniPlayerBar(navigator)
                     if (blurEnabled) {
                         GlassBottomBar(backdrop, blurRadius, dark, runtimeShaderSupported, navigator)
                     } else {

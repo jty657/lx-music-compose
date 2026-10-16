@@ -74,6 +74,7 @@ class LxApp : Application() {
         playerRepository.coverLoader = { musicInfo ->
             runCatching { musicRepository.getPicUrl(musicInfo) }.getOrNull()
         }
+        playerRepository.lastPlaySaver = { state -> database.saveLastPlay(state) }
         playerRepository.playInfoLoader = { musicInfo ->
             val url = runCatching { musicRepository.getMusicUrl(musicInfo) }.getOrNull()
             if (url != null) musicInfo.copy(meta = musicInfo.meta.copy(filePath = url)) else musicInfo
@@ -88,6 +89,16 @@ class LxApp : Application() {
             presetScriptRepository.importPresetsIfNeeded()
             // 恢复播放模式（原版 player.togglePlayMethod）
             playerRepository.restorePlayMode(settings.playMode.first())
+            // 恢复上次播放的队列；startupAutoPlay 决定是否直接开播
+            val lastPlay = database.loadLastPlay()
+            if (lastPlay != null) {
+                playerRepository.restoreLastPlay(lastPlay, settings.startupAutoPlay.first())
+            }
+            // 音频焦点处理开关
+            playerRepository.setHandleAudioFocus(settings.isHandleAudioFocus.first())
+            appScope.launch {
+                settings.isHandleAudioFocus.collect { playerRepository.setHandleAudioFocus(it) }
+            }
             // 如果是用户音源，加载脚本
             if (apiSource.startsWith("user_api")) {
                 loadUserApi(apiSource)

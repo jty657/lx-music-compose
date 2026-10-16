@@ -8,7 +8,7 @@ object LrcParser {
     /** 时间标签，如 [01:23.45] 或 [01:23.456] 或 [1:23] */
     private val TIME_TAG = Regex("\\[(\\d{1,3}):(\\d{1,2})(?:[.:](\\d{1,3}))?]")
 
-    /** 解析歌词信息：主歌词 + 翻译歌词（同时间点合并到 translation） */
+    /** 解析歌词信息：主歌词 + 翻译/罗马音（同时间点合并到 translation/roma） */
     fun parse(info: LyricInfo?): List<LyricLine> {
         if (info == null) return emptyList()
         val main = parseSingle(info.lyric)
@@ -18,9 +18,16 @@ object LrcParser {
         } else {
             parseSingle(info.tlyric).associate { it.timeMs to it.text }
         }
-        if (translations.isEmpty()) return main
+        val romas = if (info.rlyric.isNullOrBlank()) {
+            emptyMap()
+        } else {
+            parseSingle(info.rlyric).associate { it.timeMs to it.text }
+        }
         return main.map { line ->
-            line.copy(translation = translations[line.timeMs]?.takeIf { it != line.text })
+            line.copy(
+                translation = translations[line.timeMs]?.takeIf { it != line.text },
+                roma = romas[line.timeMs]?.takeIf { it != line.text },
+            )
         }
     }
 

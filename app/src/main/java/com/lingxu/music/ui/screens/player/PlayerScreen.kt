@@ -51,6 +51,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val state by LxApp.app.playerRepository.state.collectAsState()
     val navigator = LocalNavigator.current
+    val lyricFontScale by LxApp.app.settings.lyricFontSize.collectAsState(initial = 1f)
+    val zoomActiveLrc by LxApp.app.settings.isZoomActiveLrc.collectAsState(initial = false)
+    val showLrcTranslation by LxApp.app.settings.showLyricTranslation.collectAsState(initial = true)
+    val showLrcRoma by LxApp.app.settings.showLyricRoma.collectAsState(initial = false)
+    val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
 
     // 拖动进度条时，用本地值展示，避免被 500ms 的位置更新覆盖导致回弹
     var dragValue by remember { mutableStateOf<Float?>(null) }
@@ -90,7 +95,15 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
         }
 
         // 歌词（滚动到当前行）
-        LyricView(state, Modifier.weight(1f))
+        LyricView(
+            state,
+            Modifier.weight(1f),
+            fontScale = lyricFontScale,
+            zoomActive = zoomActiveLrc,
+            showTranslation = showLrcTranslation,
+            showRoma = showLrcRoma,
+            centered = lyricAlign == "center",
+        )
 
         // 进度条
         Slider(
@@ -156,7 +169,15 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
 /** 歌词视图：显示当前行并滚动跟随 */
 @Composable
-private fun LyricView(state: com.lingxu.music.core.player.PlayState, modifier: Modifier = Modifier) {
+private fun LyricView(
+    state: com.lingxu.music.core.player.PlayState,
+    modifier: Modifier = Modifier,
+    fontScale: Float = 1f,
+    zoomActive: Boolean = false,
+    showTranslation: Boolean = true,
+    showRoma: Boolean = false,
+    centered: Boolean = false,
+) {
     if (state.lyricLines.isEmpty()) {
         Text(
             "暂无歌词",
@@ -168,6 +189,7 @@ private fun LyricView(state: com.lingxu.music.core.player.PlayState, modifier: M
     }
     val scrollState = rememberScrollState()
     val currentIndex = state.currentLyricIndex
+    val baseSp = (MiuixTheme.textStyles.body2.fontSize.value * fontScale).sp
     androidx.compose.runtime.LaunchedEffect(currentIndex) {
         if (currentIndex >= 0) {
             // 让当前行大致居中
@@ -179,25 +201,38 @@ private fun LyricView(state: com.lingxu.music.core.player.PlayState, modifier: M
             .fillMaxWidth()
             .heightIn(min = 120.dp)
             .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
     ) {
         state.lyricLines.forEachIndexed { index, line ->
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(vertical = 4.dp),
+                horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
             ) {
                 Text(
                     line.text,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    fontSize = if (zoomActive && index == currentIndex) baseSp * 1.4f else baseSp,
                     color = if (index == currentIndex) MiuixTheme.colorScheme.primary
                     else MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
-                line.translation?.let { tr ->
-                    Text(
-                        tr,
-                        fontSize = MiuixTheme.textStyles.footnote1.fontSize,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    )
+                if (showRoma) {
+                    line.roma?.let { roma ->
+                        Text(
+                            roma,
+                            fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
+                }
+                if (showTranslation) {
+                    line.translation?.let { tr ->
+                        Text(
+                            tr,
+                            fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
                 }
             }
         }

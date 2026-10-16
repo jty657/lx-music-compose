@@ -60,6 +60,7 @@ class AppDatabase(private val context: Context) {
         private const val FILE_PLAYLIST = "playlist.json"
         private const val FILE_FAVORITES = "favorites.json"
         private const val FILE_SEARCH_HISTORY = "search_history.json"
+        private const val FILE_LAST_PLAY = "last_play.json"
 
         fun build(context: Context): AppDatabase = AppDatabase(context)
     }
@@ -208,6 +209,22 @@ class AppDatabase(private val context: Context) {
     suspend fun saveSearchHistory(list: List<String>) = withContext(Dispatchers.IO) {
         java.io.File(dataDir, FILE_SEARCH_HISTORY).writeText(JSON.encodeToString(list))
     }
+
+    // ============ 上次播放（启动自动播放/保存进度用） ============
+
+    suspend fun loadLastPlay(): com.lingxu.music.core.player.PlayState? =
+        withContext(Dispatchers.IO) {
+            val file = java.io.File(dataDir, FILE_LAST_PLAY)
+            if (!file.exists()) return@withContext null
+            runCatching { JSON.decodeFromString<com.lingxu.music.core.player.PlayState>(file.readText()) }
+                .getOrNull()
+        }
+
+    suspend fun saveLastPlay(state: com.lingxu.music.core.player.PlayState) =
+        withContext(Dispatchers.IO) {
+            java.io.File(dataDir, FILE_LAST_PLAY)
+                .writeText(JSON.encodeToString(state))
+        }
 
     fun toInfo(meta: ApiSourceMeta): ApiSourceInfo = ApiSourceInfo(
         id = meta.id,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -96,11 +97,14 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
 
         Spacer(Modifier.size(12.dp))
 
-        // 热搜
-        if (hotSearch.isNotEmpty()) {
+        // 热搜（可在设置里关闭）
+        val showHotSearch by LxApp.app.settings.isShowHotSearch.collectAsState(initial = true)
+        if (showHotSearch && hotSearch.isNotEmpty()) {
             Text("热搜", fontSize = MiuixTheme.textStyles.title1.fontSize)
             Spacer(Modifier.size(4.dp))
-            LazyColumn(Modifier.weight(1f)) {
+            val hotState = rememberLazyListState()
+            com.lingxu.music.ui.components.ReportScrollForMiniBar(hotState)
+            LazyColumn(Modifier.weight(1f), state = hotState) {
                 itemsIndexed(hotSearch) { index, word ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -125,7 +129,9 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             // 榜单
             Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
             Spacer(Modifier.size(4.dp))
-            LazyColumn(Modifier.weight(1f)) {
+            val boardState = rememberLazyListState()
+            com.lingxu.music.ui.components.ReportScrollForMiniBar(boardState)
+            LazyColumn(Modifier.weight(1f), state = boardState) {
                 items(boards, key = { it.id }) { board ->
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

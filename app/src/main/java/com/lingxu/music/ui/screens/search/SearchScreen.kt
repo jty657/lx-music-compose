@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -133,8 +134,9 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
             )
         }
 
-        // 搜索历史（无结果且输入为空时展示）
-        if (viewModel.results.isEmpty() && viewModel.songLists.isEmpty() && viewModel.history.isNotEmpty()) {
+        // 搜索历史（无结果且输入为空时展示；可在设置里关闭）
+        val showHistory by LxApp.app.settings.isShowHistorySearch.collectAsState(initial = true)
+        if (showHistory && viewModel.results.isEmpty() && viewModel.songLists.isEmpty() && viewModel.history.isNotEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("搜索历史", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Spacer(Modifier.weight(1f))
@@ -203,7 +205,9 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
             return@Column
         }
 
-        LazyColumn {
+        val resultState = rememberLazyListState()
+        com.lingxu.music.ui.components.ReportScrollForMiniBar(resultState)
+        LazyColumn(state = resultState) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
                     music = music,

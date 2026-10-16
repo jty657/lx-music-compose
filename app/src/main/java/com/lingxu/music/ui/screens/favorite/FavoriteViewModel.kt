@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class FavoriteViewModel : ViewModel() {
@@ -46,10 +47,11 @@ class FavoriteViewModel : ViewModel() {
         }
     }
 
-    /** 加入「我的列表」（对应原版 addMusicLocationType） */
+    /** 加入「我的列表」（位置取设置项 list.addMusicLocationType） */
     fun addToList(listId: String, musicInfo: MusicInfo) {
         viewModelScope.launch {
-            runCatching { LxApp.app.myListsRepository.addMusics(listId, listOf(musicInfo)) }
+            val location = LxApp.app.settings.addMusicLocation.first()
+            runCatching { LxApp.app.myListsRepository.addMusics(listId, listOf(musicInfo), location) }
                 .onFailure { errorMessage = "加入列表失败：${it.message}" }
         }
     }

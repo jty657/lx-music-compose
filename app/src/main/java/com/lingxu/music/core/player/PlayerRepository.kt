@@ -48,9 +48,11 @@ data class LyricLine(
     val timeMs: Long,
     val text: String,
     val translation: String? = null,
+    val roma: String? = null,
 )
 
 /** 播放状态 */
+@kotlinx.serialization.Serializable
 data class PlayState(
     val current: MusicInfo? = null,
     val queue: List<MusicInfo> = emptyList(),
@@ -91,9 +93,49 @@ class PlayerRepository(context: Context) {
                 .setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .build(),
-            true,
+            /* handleAudioFocus = */ true,
         )
         .build()
+
+    /**
+     * 音频焦点处理开关（设置项 player.isHandleAudioFocus）。
+     * 关闭时来电或其它 App 播放不会让本 App 暂停。
+     */
+    fun setHandleAudioFocus(enabled: Boolean) {
+        player.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build(),
+            enabled,
+        )
+    }
+
+    /** 持久化回调（由 App 注入）：切歌/暂停时保存，供启动时恢复 */
+    var lastPlaySaver: (suspend (PlayState) -> Unit)? = null
+
+    /** 保存当前播放状态（对应原版 player.isSavePlayTime + 上次播放记忆） */
+    fun saveLastPlay() {
+        val state = _state.value
+        if (state.current == null) return
+        scope.launch { lastPlaySaver?.invoke(state) }
+    }
+
+    /**
+     * 恢复上次播放的队列（不自动播放）。
+     * @param autoPlay 为 true 时直接开始播放（对应设置项 player.startupAutoPlay）
+     */
+    fun restoreLastPlay(state: PlayState, autoPlay: Boolean) {
+        if (state.queue.isEmpty() || state.current == null) return
+        val index = state.queueIndex.coerceIn(0, state.queue.lastIndex)
+        _state.update {
+            state.copy(isPlaying = false, positionMs = 0L, durationMs = 0L)
+        }
+        player.setMediaItems(state.queue.map { it.toMediaItem() }, index, 0L)
+        player.prepare()
+        if (autoPlay) player.play()
+        loadLyric(state.queue[index])
+    }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var lyricJob: Job? = null
@@ -186,6 +228,7 @@ class PlayerRepository(context: Context) {
         player.prepare()
         player.play()
         loadLyric(queue[safeIndex])
+        saveLastPlay()
     }
 
     /** 播放队列中第 index 首 */
@@ -246,14 +289,17 @@ class PlayerRepository(context: Context) {
 
     fun togglePlay() {
         if (player.isPlaying) player.pause() else player.play()
+        saveLastPlay()
     }
 
     fun next() {
         if (player.hasNextMediaItem()) player.seekToNextMediaItem()
+        saveLastPlay()
     }
 
     fun prev() {
         if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem()
+        saveLastPlay()
     }
 
     fun seekTo(positionMs: Long) {
