@@ -259,6 +259,15 @@ private fun SearchResultCard(
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
+                // 可用音质标签（对应原版列表项的音质角标）
+                val qualities = music.meta.qualitys?.mapNotNull { it.type }?.distinct()
+                if (!qualities.isNullOrEmpty()) {
+                    Text(
+                        qualities.joinToString(" "),
+                        fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                        color = MiuixTheme.colorScheme.primary,
+                    )
+                }
             }
             Icon(
                 if (isFavorite) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
