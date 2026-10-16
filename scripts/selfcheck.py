@@ -46,6 +46,12 @@ PROJECT_SYMBOLS = {
     "GlassFab": "com.lingxu.music.ui.components.GlassFab",
     "GlassCard": "com.lingxu.music.ui.components.GlassCard",
     "GlassHost": "com.lingxu.music.ui.components.GlassHost",
+    # Miuix 基础组件（漏 import 同样只在云端编译才报）
+    "Button": "top.yukonga.miuix.kmp.basic.Button",
+    "TextField": "top.yukonga.miuix.kmp.basic.TextField",
+    "Switch": "top.yukonga.miuix.kmp.basic.Switch",
+    "Slider": "top.yukonga.miuix.kmp.basic.Slider",
+    "RadioButton": "top.yukonga.miuix.kmp.basic.RadioButton",
 }
 
 
@@ -133,7 +139,8 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
         used = re.search(r"(?<![\w.])" + sym + r"\s*[.(]", s)
         if not used:
             continue
-        if f"import {fqcn}\n" in s:
+        # 任意包下同名符号的 import 都算已导入（如 RadioButton 可能来自 material3）
+        if re.search(r"^import [\w.]*\." + sym + r"$", s, re.M):
             continue
         # 同文件自己定义的符号无需 import
         if re.search(r"^(?:@\w+\s*)*(?:fun|class|object|interface|val)\s+" + sym + r"\b", s, re.M):

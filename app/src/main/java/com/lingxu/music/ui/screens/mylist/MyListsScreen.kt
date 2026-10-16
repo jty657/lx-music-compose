@@ -72,6 +72,30 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     var showSync by remember { mutableStateOf(false) }
     var syncCount by remember { mutableStateOf(0) }
     var toast by remember { mutableStateOf<String?>(null) }
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    // 单列表导出
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val target = lists.firstOrNull { it.id == openList } ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            com.lingxu.music.core.repository.ListTransfer.export(appContext, uri, target.name, musics)
+                .onSuccess { toast = "已导出 $it 首" }
+                .onFailure { toast = "导出失败：${it.message}" }
+        }
+    }
+    // 单列表导入
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            com.lingxu.music.core.repository.ListTransfer.read(appContext, uri)
+                .onSuccess { data -> viewModel.importList(data.name, data.musics) { toast = it } }
+                .onFailure { toast = "导入失败：${it.message}" }
+        }
+    }
 
     val shownMusics = remember(musics, keyword) {
         if (keyword.isBlank()) musics
@@ -119,6 +143,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 )
                 if (openList == null) {
                     Button(onClick = { showCreate = true }) { Text("新建") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = { importLauncher.launch(arrayOf("application/json")) }) { Text("导入") }
                 } else {
                     Button(onClick = { showSort = true }) { Text("排序") }
                     Spacer(Modifier.size(8.dp))
@@ -359,6 +385,18 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 }
                 Spacer(Modifier.size(8.dp))
                 Text(
+                    "导出此歌单",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val target = lists.firstOrNull { it.id == openList }
+                            showSort = false
+                            if (target != null) exportLauncher.launch("${target.name}.json")
+                        }
+                        .padding(vertical = 10.dp),
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
                     "去除重复歌曲",
                     color = MiuixTheme.colorScheme.error,
                     modifier = Modifier
@@ -517,6 +555,17 @@ class MyListsViewModel : ViewModel() {
     /** 覆盖写入整个列表（排序/去重后使用） */
     fun setMusics(listId: String, musics: List<MusicInfo>) {
         viewModelScope.launch { runCatching { LxApp.app.myListsRepository.saveMusics(listId, musics) } }
+    }
+
+    /** 导入单个歌单（新建一个本地列表并写入歌曲） */
+    fun importList(name: String, musics: List<MusicInfo>, onDone: (String) -> Unit) {
+        viewModelScope.launch {
+            runCatching {
+                val list = LxApp.app.myListsRepository.create(name.ifBlank { "导入的歌单" })
+                LxApp.app.myListsRepository.addMusics(list.id, musics)
+            }.onSuccess { onDone("已导入 ${musics.size} 首") }
+                .onFailure { onDone("导入失败：${it.message}") }
+        }
     }
 
     /**
