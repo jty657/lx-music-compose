@@ -121,7 +121,7 @@ fun SettingScreen(
                 "zh_tw" -> "繁體中文"
                 "en" -> "English"
                 else -> lang
-            },
+            } + "（界面文案暂仅简体中文）"
             onClick = { viewModel.cycleLang() },
         )
         SliderPreference(
