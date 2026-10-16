@@ -93,7 +93,7 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
             if f"import {fqcn}\n" not in s:
                 issues.append(f"{rel} 使用了 .{name} 但未 import {fqcn}")
 
-    # 4) 括号平衡
+    # 5) 括号平衡
     if s.count("{") != s.count("}"):
         issues.append(f"{rel} 花括号不平衡: {{={s.count('{')} }}={s.count('}')}")
     if s.count("(") != s.count(")"):
