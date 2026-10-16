@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lxmusic.mobile"
+    namespace = "com.lingxu.music"
     compileSdk {
         version = release(37) {
             minorApiLevel = 0
@@ -13,11 +13,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.lxmusic.mobile"
+        applicationId = "com.lingxu.mobile"
         minSdk = 24
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
     }
 
     buildTypes {

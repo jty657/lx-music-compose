@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LXMusicCompose"
+rootProject.name = "LingXuMusic"
 include(":app")
