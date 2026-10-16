@@ -38,7 +38,7 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk out/lx-music-compose-1.0.0.apk
+          cp app/build/outputs/apk/release/app-release.apk out/lx-music-compose-1.1.0.apk
           ls -la out/
 
       - name: Upload APK artifact
