@@ -188,6 +188,44 @@ class PlayerRepository(context: Context) {
         loadLyric(queue[safeIndex])
     }
 
+    /** 播放队列中第 index 首 */
+    fun playAt(index: Int) {
+        val queue = _state.value.queue
+        if (index !in queue.indices) return
+        player.seekTo(index, 0L)
+        player.prepare()
+        player.play()
+        _state.update { it.copy(queueIndex = index, current = queue[index], positionMs = 0L) }
+        loadLyric(queue[index])
+    }
+
+    /**
+     * 从队列移除第 index 首。
+     * 移除当前项时切到同下标（即原来的下一首），否则保持当前播放不变。
+     */
+    fun removeFromQueue(index: Int) {
+        val state = _state.value
+        if (index !in state.queue.indices) return
+        val next = state.queue.filterIndexed { i, _ -> i != index }
+        if (next.isEmpty()) {
+            clear()
+            return
+        }
+        val wasCurrent = index == state.queueIndex
+        val newIndex = when {
+            wasCurrent -> index.coerceAtMost(next.lastIndex)
+            index < state.queueIndex -> state.queueIndex - 1
+            else -> state.queueIndex
+        }
+        _state.update { it.copy(queue = next, queueIndex = newIndex) }
+        player.setMediaItems(next.map { it.toMediaItem() }, newIndex, 0L)
+        if (wasCurrent) {
+            player.prepare()
+            player.play()
+            loadLyric(next[newIndex])
+        }
+    }
+
     /** 播放单曲（替换整个队列） */
     fun playSingle(musicInfo: MusicInfo) = playQueue(listOf(musicInfo), 0)
 

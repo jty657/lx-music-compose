@@ -33,6 +33,9 @@ sealed class Screen(val route: String) {
 
     /** 我的列表（本地歌单管理） */
     object MyLists : Screen("myLists")
+
+    /** 播放队列 */
+    object PlayQueue : Screen("playQueue")
 }
 
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("No navigator found") }

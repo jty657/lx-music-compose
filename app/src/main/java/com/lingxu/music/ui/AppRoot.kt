@@ -144,6 +144,7 @@ private fun MainScaffold(
                     name = current.name,
                 )
                 is Screen.MyLists -> MyListsScreen()
+                is Screen.PlayQueue -> com.lingxu.music.ui.screens.playqueue.PlayQueueScreen()
             }
         }
     }
@@ -189,6 +190,20 @@ private fun MiniPlayerBar(navigator: Navigator) {
                     indication = null,
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     onClick = { LxApp.app.playerRepository.togglePlay() },
+                ),
+        )
+        Spacer(Modifier.size(8.dp))
+        Icon(
+            MiuixIcons.Layers,
+            contentDescription = "播放队列",
+            modifier = Modifier
+                .size(28.dp)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    onClick = {
+                        if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
+                    },
                 ),
         )
     }

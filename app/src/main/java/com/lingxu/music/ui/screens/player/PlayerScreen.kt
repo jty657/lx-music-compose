@@ -30,6 +30,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.PlayMode
 import com.lingxu.music.core.request.HttpClient
+import com.lingxu.music.ui.navigation.LocalNavigator
+import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
@@ -47,6 +49,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val state by LxApp.app.playerRepository.state.collectAsState()
+    val navigator = LocalNavigator.current
 
     // 拖动进度条时，用本地值展示，避免被 500ms 的位置更新覆盖导致回弹
     var dragValue by remember { mutableStateOf<Float?>(null) }
@@ -126,6 +129,11 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
             )
             Spacer(Modifier.size(16.dp))
             IconButtonWrap(MiuixIcons.Forward, onClick = { viewModel.next() })
+            Spacer(Modifier.size(16.dp))
+            IconButtonWrap(
+                MiuixIcons.Layers,
+                onClick = { navigator.push(Screen.PlayQueue) },
+            )
         }
 
         // 播放模式
