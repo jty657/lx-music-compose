@@ -319,9 +319,9 @@ class QuickJSEngine(
         postAction(
             "response",
             buildJsonObject {
-                put("requestKey", requestKey)
+                put("requestKey", JsonPrimitive(requestKey))
                 if (error != null) {
-                    put("error", error)
+                    put("error", JsonPrimitive(error))
                 } else {
                     put("error", JsonNull)
                 }
@@ -339,10 +339,10 @@ class QuickJSEngine(
         postAction(
             "request",
             buildJsonObject {
-                put("requestKey", requestKey)
+                put("requestKey", JsonPrimitive(requestKey))
                 put("data", buildJsonObject {
-                    put("source", source)
-                    put("action", action)
+                    put("source", JsonPrimitive(source))
+                    put("action", JsonPrimitive(action))
                     put("info", info)
                 })
             }.toString(),
@@ -365,10 +365,10 @@ class QuickJSEngine(
                     requestKey,
                     null,
                     buildJsonObject {
-                        put("statusCode", resp.statusCode)
-                        put("statusMessage", resp.statusMessage)
+                        put("statusCode", JsonPrimitive(resp.statusCode))
+                        put("statusMessage", JsonPrimitive(resp.statusMessage))
                         put("headers", buildJsonObject {
-                            resp.headers.forEach { (k, v) -> put(k, v) }
+                            resp.headers.forEach { (k, v) -> put(k, JsonPrimitive(v)) }
                         })
                         put("body", bodyJson)
                     },
@@ -431,18 +431,18 @@ class QuickJSEngine(
 
 /** musicInfo 转为旧版脚本结构（原版 toOldMusicInfo） */
 fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
-    put("name", name)
-    put("singer", singer)
-    put("source", source)
-    put("songmid", meta.songId)
+    put("name", JsonPrimitive(name))
+    put("singer", JsonPrimitive(singer))
+    put("source", JsonPrimitive(source))
+    put("songmid", JsonPrimitive(meta.songId))
     put("interval", interval ?: JsonNull)
-    put("albumName", meta.albumName)
-    put("img", meta.picUrl ?: "")
+    put("albumName", JsonPrimitive(meta.albumName))
+    put("img", JsonPrimitive(meta.picUrl ?: ""))
     put("typeUrl", buildJsonObject {})
     if (source == "local") {
-        put("filePath", meta.filePath ?: "")
-        put("ext", meta.ext ?: "")
-        put("albumId", "")
+        put("filePath", JsonPrimitive(meta.filePath ?: ""))
+        put("ext", JsonPrimitive(meta.ext ?: ""))
+        put("albumId", JsonPrimitive(""))
         put("types", buildJsonObject {})
         put("_types", buildJsonObject {})
     } else {
@@ -450,9 +450,9 @@ fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
         put("types", buildJsonArray {
             qualitys.forEach { q ->
                 add(buildJsonObject {
-                    put("type", q.type)
+                    put("type", JsonPrimitive(q.type))
                     put("size", q.size ?: JsonNull)
-                    q.hash?.let { put("hash", it) }
+                    q.hash?.let { put("hash", JsonPrimitive(it)) }
                 })
             }
         })
@@ -460,21 +460,21 @@ fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
             _qualitys.forEach { (k, v) ->
                 put(k, buildJsonObject {
                     put("size", v.size ?: JsonNull)
-                    v.hash?.let { put("hash", it) }
+                    v.hash?.let { put("hash", JsonPrimitive(it)) }
                 })
             }
         })
         when (source) {
-            "kg" -> hash?.let { put("hash", it) }
+            "kg" -> hash?.let { put("hash", JsonPrimitive(it)) }
             "tx" -> {
-                strMediaMid?.let { put("strMediaMid", it) }
-                put("songId", meta.songId)
+                strMediaMid?.let { put("strMediaMid", JsonPrimitive(it)) }
+                put("songId", JsonPrimitive(meta.songId))
             }
             "mg" -> {
-                copyrightId?.let { put("copyrightId", it) }
-                lrcUrl?.let { put("lrcUrl", it) }
-                mrcUrl?.let { put("mrcUrl", it) }
-                trcUrl?.let { put("trcUrl", it) }
+                copyrightId?.let { put("copyrightId", JsonPrimitive(it)) }
+                lrcUrl?.let { put("lrcUrl", JsonPrimitive(it)) }
+                mrcUrl?.let { put("mrcUrl", JsonPrimitive(it)) }
+                trcUrl?.let { put("trcUrl", JsonPrimitive(it)) }
             }
         }
     }

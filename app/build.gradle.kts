@@ -60,7 +60,7 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-ui:0.9.3")
     implementation("top.yukonga.miuix.kmp:miuix-preference:0.9.3")
     implementation("top.yukonga.miuix.kmp:miuix-icons:0.9.3")
-    implementation("top.yukonga.miuix.kmp:miuix-blur:0.9.3")
+    // 注：miuix-blur 要求 minSdk 33，模糊层用 Backdrop 实现，不引入
 
     // Liquid Glass / Backdrop 2.0.1（可调节背景模糊层、开屏与弹窗表面；API 31 以下自动降级）
     implementation("io.github.kyant0:backdrop:2.0.1")

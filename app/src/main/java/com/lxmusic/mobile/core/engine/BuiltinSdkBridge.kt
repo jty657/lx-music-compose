@@ -26,7 +26,10 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -554,7 +557,7 @@ class BuiltinSdkBridge(context: Context) {
         // 手动构造 Promise 对象（QuickJS wrapper 无内置 Promise 构造函数桥）
         // 方案：直接返回 thenable 对象 —— JS 侧 await 会等 then 回调
         val promiseObj = context.createNewJSObject()
-        val thenCallbacks = mutableListOf<Pair<com.whl.quickjs.wrapper.JSCallFunction, com.whl.quickjs.wrapper.JSCallFunction?>>()
+        val thenCallbacks = mutableListOf<Pair<com.whl.quickjs.wrapper.JSCallFunction?, com.whl.quickjs.wrapper.JSCallFunction?>>()
         promiseObj.setProperty("then") { args: Array<Any?> ->
             val onFulfilled = args.getOrNull(0) as? com.whl.quickjs.wrapper.JSCallFunction
             val onRejected = args.getOrNull(1) as? com.whl.quickjs.wrapper.JSCallFunction

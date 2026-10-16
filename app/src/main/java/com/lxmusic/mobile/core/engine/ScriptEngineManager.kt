@@ -8,6 +8,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.concurrent.ConcurrentHashMap
@@ -221,7 +222,7 @@ class ScriptEngineManager(private val context: Context) {
             source,
             "musicUrl",
             buildJsonObject {
-                put("type", type)
+                put("type", JsonPrimitive(type))
                 put("musicInfo", musicInfoJson)
             },
         )
