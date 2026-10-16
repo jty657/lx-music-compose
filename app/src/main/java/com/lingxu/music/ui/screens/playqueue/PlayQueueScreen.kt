@@ -23,6 +23,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.GlassSurface
+import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
@@ -44,7 +46,8 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     val currentIndex = state.queueIndex
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Icon(
                 MiuixIcons.Back,
                 contentDescription = "返回",
@@ -62,6 +65,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                 modifier = Modifier.padding(start = 12.dp),
             )
         }
+        }
         Spacer(Modifier.size(8.dp))
 
         if (queue.isEmpty()) {
@@ -75,9 +79,8 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
 
         LazyColumn(Modifier.weight(1f)) {
             itemsIndexed(queue, key = { index, item -> "$index-${item.id}" }) { index, music ->
-                Card(
+                GlassSurface(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    pressFeedbackType = PressFeedbackType.Sink,
                     onClick = { viewModel.playAt(index) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {

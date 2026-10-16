@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.PlayMode
 import com.lingxu.music.core.request.HttpClient
+import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
@@ -77,8 +78,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
         Text("正在播放", fontSize = MiuixTheme.textStyles.title1.fontSize)
         Spacer(Modifier.size(12.dp))
 
-        // 歌曲信息
-        Card(Modifier.fillMaxWidth()) {
+        // 歌曲信息（玻璃卡片）
+        GlassSurface(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text(
                     state.current?.name ?: "未在播放",

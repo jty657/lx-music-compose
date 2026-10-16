@@ -25,6 +25,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.GlassSurface
+import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -67,7 +69,10 @@ fun SongListDetailScreen(
     LaunchedEffect(source, id) { load(1) }
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        GlassTopBar(
+            modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp),
+        ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Icon(
                 MiuixIcons.Back,
                 contentDescription = "返回",
@@ -84,6 +89,7 @@ fun SongListDetailScreen(
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
                 modifier = Modifier.padding(start = 12.dp),
             )
+        }
         }
         Spacer(Modifier.size(8.dp))
 
@@ -105,9 +111,8 @@ fun SongListDetailScreen(
 
         LazyColumn(Modifier.weight(1f)) {
             items(musicList, key = { it.id }) { music ->
-                Card(
+                GlassSurface(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    pressFeedbackType = PressFeedbackType.Sink,
                     onClick = { viewModel.play(musicList, music) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {

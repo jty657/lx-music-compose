@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.Board
+import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import top.yukonga.miuix.kmp.basic.Card
@@ -39,9 +40,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val selectedSource = viewModel.selectedSource
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口
-        Card(
+        GlassSurface(
             modifier = Modifier.fillMaxWidth(),
-            pressFeedbackType = PressFeedbackType.Sink,
             onClick = { navigator.push(Screen.Source) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
@@ -61,9 +61,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
 
         // 我的列表 / 歌单广场入口
         Row(Modifier.fillMaxWidth()) {
-            Card(
+            GlassSurface(
                 modifier = Modifier.weight(1f),
-                pressFeedbackType = PressFeedbackType.Sink,
                 onClick = { navigator.push(Screen.MyLists) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
@@ -79,9 +78,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 }
             }
             Spacer(Modifier.size(8.dp))
-            Card(
+            GlassSurface(
                 modifier = Modifier.weight(1f),
-                pressFeedbackType = PressFeedbackType.Sink,
                 onClick = { navigator.push(Screen.SongList(selectedSource)) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
@@ -136,11 +134,11 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             com.lingxu.music.ui.components.ReportScrollForMiniBar(boardState)
             LazyColumn(Modifier.weight(1f), state = boardState) {
                 items(boards, key = { it.id }) { board ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        pressFeedbackType = PressFeedbackType.Sink,
-                        onClick = {
-                            val (source, bangId, name) = viewModel.boardTarget(board)
+                    GlassSurface(
+    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    onClick = {
+                            val (source, bangId, name,
+) = viewModel.boardTarget(board)
                             navigator.push(Screen.BoardList(source, bangId, name))
                         },
                     ) {

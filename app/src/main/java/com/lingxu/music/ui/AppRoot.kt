@@ -25,14 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.lingxu.music.LxApp
+import com.lingxu.music.ui.components.GlassContext
+import com.lingxu.music.ui.components.GlassHost
+import com.lingxu.music.ui.components.LocalGlass
 import com.lingxu.music.ui.navigation.LocalMiniBarScroll
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Navigator
@@ -84,36 +84,44 @@ fun AppRoot() {
         // 列表向下滚动时隐藏迷你播放条（对应原版 common.autoHidePlayBar）
         var miniBarVisible by remember { mutableStateOf(true) }
         val miniBarScroll = remember { mutableStateOf(0) }
+        // 关闭模糊或系统不支持 RenderEffect（API < 31）时，radius 传 0 让玻璃面变成纯 tint
+        val effectiveRadius = if (blurEnabled) blurRadius else 0f
         CompositionLocalProvider(
             LocalNavigator provides navigator,
             LocalMiniBarScroll provides miniBarScroll,
         ) {
-            Box(Modifier.fillMaxSize()) {
-                val backdrop = rememberLayerBackdrop {
-                    drawRect(if (dark) Color.Black else Color.White)
-                    drawContent()
-                }
+            GlassHost(
+                dark = dark,
+                radius = effectiveRadius,
+                refraction = runtimeShaderSupported && blurEnabled,
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    // 主内容（被玻璃模糊的目标）
+                    MainScaffold(
+                        navigator = navigator,
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-                // 主内容（被玻璃模糊的目标）
-                MainScaffold(
-                    navigator = navigator,
-                    modifier = Modifier.layerBackdrop(backdrop),
-                )
-
-                // 底部：迷你播放条 + 导航栏
-                LaunchedEffect(miniBarScroll.value) {
-                    miniBarVisible = autoHidePlayBar && miniBarScroll.value <= 0
-                }
-                Column(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding(),
-                ) {
-                    if (miniBarVisible) MiniPlayerBar(navigator)
-                    if (blurEnabled) {
-                        GlassBottomBar(backdrop, blurRadius, dark, runtimeShaderSupported, navigator)
-                    } else {
-                        PlainBottomBar(navigator)
+                    // 底部：迷你播放条 + 导航栏
+                    LaunchedEffect(miniBarScroll.value) {
+                        miniBarVisible = autoHidePlayBar && miniBarScroll.value <= 0
+                    }
+                    Column(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding(),
+                    ) {
+                        if (miniBarVisible) MiniPlayerBar(navigator)
+                        if (blurEnabled) {
+                            val glass = LocalGlass.current
+                            if (glass != null) {
+                                GlassBottomBar(glass, navigator)
+                            } else {
+                                PlainBottomBar(navigator)
+                            }
+                        } else {
+                            PlainBottomBar(navigator)
+                        }
                     }
                 }
             }
@@ -171,7 +179,43 @@ private fun MainScaffold(
 private fun MiniPlayerBar(navigator: Navigator) {
     val state by LxApp.app.playerRepository.state.collectAsState()
     val current = state.current ?: return
+    val glass = LocalGlass.current
 
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 6.dp)
+            .then(
+                if (glass != null && glass.radius > 0f) {
+                    Modifier.drawBackdrop(
+                        backdrop = glass.content,
+                        shape = { RoundedCornerShape(20.dp) },
+                        effects = {
+                            vibrancy()
+                            blur(glass.radius.dp.toPx())
+                            if (glass.refraction) {
+                                lens(
+                                    refractionHeight = 6.dp.toPx(),
+                                    refractionAmount = 16.dp.toPx(),
+                                    depthEffect = false,
+                                )
+                            }
+                        },
+                        highlight = { com.kyant.backdrop.highlight.Highlight.Default },
+                        shadow = { com.kyant.backdrop.shadow.Shadow.Default },
+                        onDrawSurface = {
+                            drawRect(
+                                if (glass.dark) Color.Black.copy(alpha = 0.38f)
+                                else Color.White.copy(alpha = 0.5f),
+                            )
+                        },
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -223,27 +267,23 @@ private fun MiniPlayerBar(navigator: Navigator) {
                 ),
         )
     }
+    }
 }
 
 @Composable
-private fun GlassBottomBar(
-    backdrop: LayerBackdrop,
-    blurRadius: Float,
-    dark: Boolean,
-    refraction: Boolean,
-    navigator: Navigator,
-) {
+@Composable
+private fun GlassBottomBar(glass: GlassContext, navigator: Navigator) {
     Box(
         Modifier
             .padding(horizontal = 12.dp)
             .drawBackdrop(
-                backdrop = backdrop,
+                backdrop = glass.content,
                 shape = { RoundedCornerShape(28.dp) },
                 effects = {
                     vibrancy()
-                    blur(blurRadius.dp.toPx())
+                    blur(glass.radius.dp.toPx())
                     // lens 折射：仅 API 33+ 生效，且 shape 必须是圆角形状
-                    if (refraction) {
+                    if (glass.refraction) {
                         lens(
                             refractionHeight = 12.dp.toPx(),
                             refractionAmount = 24.dp.toPx(),
@@ -252,7 +292,7 @@ private fun GlassBottomBar(
                     }
                 },
                 onDrawSurface = {
-                    drawRect(if (dark) Color.Black.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.45f))
+                    drawRect(if (glass.dark) Color.Black.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.45f))
                 },
             ),
     ) {

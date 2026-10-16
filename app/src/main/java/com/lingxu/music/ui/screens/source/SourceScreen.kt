@@ -1,5 +1,8 @@
 package com.lingxu.music.ui.screens.source
 
+import com.lingxu.music.ui.components.GlassTopBar
+import androidx.compose.foundation.layout.Arrangement
+import com.lingxu.music.ui.components.GlassDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,7 +51,13 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     }
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Text("音源管理", fontSize = MiuixTheme.textStyles.title1.fontSize)
+        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+            Text(
+                "音源管理",
+                fontSize = MiuixTheme.textStyles.title1.fontSize,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            )
+        }
 
         Spacer(Modifier.size(8.dp))
 
@@ -69,11 +77,11 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         Spacer(Modifier.size(4.dp))
 
         SourceConst.ONLINE.forEach { source ->
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                pressFeedbackType = PressFeedbackType.Sink,
-                onClick = {
-                    viewModel.switchSource(source)
+            GlassSurface(
+    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    onClick = {
+                    viewModel.switchSource(source,
+)
                 },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
@@ -95,11 +103,11 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
         LazyColumn(Modifier.weight(1f)) {
             items(userApis, key = { it.id }) { api ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    pressFeedbackType = PressFeedbackType.Sink,
-                    onClick = {
-                        viewModel.switchSource(api.id)
+                GlassSurface(
+    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    onClick = {
+                        viewModel.switchSource(api.id,
+)
                     },
                     onLongPress = {
                         deletingId = api.id
@@ -130,55 +138,62 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
     // 网络导入对话框
     if (showUrlInput) {
-        AlertDialog(
-            onDismissRequest = {
+        GlassDialog(
+                onDismissRequest = {
                 showUrlInput = false
                 importUrl = ""
             },
-            title = { Text("网络导入音源") },
-            text = {
-                Column {
-                    Text("输入音源脚本 URL（http/https）", fontSize = MiuixTheme.textStyles.body2.fontSize)
-                    Spacer(Modifier.size(8.dp))
-                    OutlinedTextField(
-                        value = importUrl,
-                        onValueChange = { importUrl = it },
-                        placeholder = { Text("https://example.com/source.js") },
-                        singleLine = true,
+            ) {
+                Column(Modifier.padding(horizontal = 4.dp)) {
+                    Text(
+                        "网络导入音源",
+                        fontSize = MiuixTheme.textStyles.title1.fontSize,
                     )
+                    Spacer(Modifier.size(12.dp))
+                    Column {
+                        Text("输入音源脚本 URL（http/https）", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                        Spacer(Modifier.size(8.dp))
+                        OutlinedTextField(
+                            value = importUrl,
+                            onValueChange = { importUrl = it },
+                            placeholder = { Text("https://example.com/source.js") },
+                            singleLine = true,
+                        )
+                    }
+                    Spacer(Modifier.size(16.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = {
+                        showUrlInput = false
+                        importUrl = ""
+                    }) { Text("取消") }
+                        Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        showUrlInput = false
+                        viewModel.importFromUrl(importUrl)
+                        importUrl = ""
+                    }) { Text("导入") }
+                    }
                 }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    showUrlInput = false
-                    viewModel.importFromUrl(importUrl)
-                    importUrl = ""
-                }) { Text("导入") }
-            },
-            dismissButton = {
-                Button(onClick = {
-                    showUrlInput = false
-                    importUrl = ""
-                }) { Text("取消") }
-            },
-        )
+            }
     }
 
     // 删除确认
     deletingId?.let { id ->
-        AlertDialog(
-            onDismissRequest = { deletingId = null },
-            title = { Text("删除音源") },
-            text = { Text("确定删除该自定义音源吗？") },
-            confirmButton = {
-                Button(onClick = {
-                    viewModel.delete(id)
-                    deletingId = null
-                }) { Text("删除") }
-            },
-            dismissButton = {
-                Button(onClick = { deletingId = null }) { Text("取消") }
-            },
-        )
+        GlassDialog(onDismissRequest = { deletingId = null }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("删除音源", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text("确定删除该自定义音源吗？")
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { deletingId = null }) { Text("取消") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        viewModel.delete(id)
+                        deletingId = null
+                    }) { Text("删除") }
+                }
+            }
+        }
     }
 }

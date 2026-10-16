@@ -31,6 +31,8 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.GlassSurface
+import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.launch
@@ -59,31 +61,35 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
             .fillMaxSize()
             .padding(12.dp),
     ) {
-        // 搜索输入框
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            TextField(
-                state = textFieldState,
-                label = "搜索歌曲、歌手",
-                useLabelAsPlaceholder = true,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.size(8.dp))
-            Button(
-                onClick = {
-                    val text = textFieldState.text.toString()
-                    if (text.isNotBlank()) {
-                        scope.launch {
-                            viewModel.search(text, selectedSource)
-                        }
-                    }
-                },
+        // 搜索输入框（磨砂玻璃条）
+        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                Icon(MiuixIcons.Search, contentDescription = "搜索")
+                TextField(
+                    state = textFieldState,
+                    label = "搜索歌曲、歌手",
+                    useLabelAsPlaceholder = true,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.size(8.dp))
+                Button(
+                    onClick = {
+                        val text = textFieldState.text.toString()
+                        if (text.isNotBlank()) {
+                            scope.launch {
+                                viewModel.search(text, selectedSource)
+                            }
+                        }
+                    },
+                ) {
+                    Icon(MiuixIcons.Search, contentDescription = "搜索")
+                }
             }
         }
+
+        Spacer(Modifier.height(8.dp))
 
         Spacer(Modifier.height(8.dp))
 
@@ -174,11 +180,11 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
         if (songLists.isNotEmpty()) {
             LazyColumn(Modifier.weight(1f)) {
                 items(songLists, key = { "${it.source}_${it.id}" }) { item ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        pressFeedbackType = top.yukonga.miuix.kmp.utils.PressFeedbackType.Sink,
-                        onClick = {
-                            navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
+                    GlassSurface(
+    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    onClick = {
+                            navigator.push(Screen.SongListDetail(item.source, item.id, item.name,
+))
                         },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
@@ -212,7 +218,7 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
         LazyColumn(state = resultState) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
-                    music = music,
+    music = music,
                     isFavorite = music.id in viewModel.favoriteIds,
                     onClick = {
                         scope.launch {
@@ -246,11 +252,10 @@ private fun SearchResultCard(
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
 ) {
-    Card(
+    GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        pressFeedbackType = top.yukonga.miuix.kmp.utils.PressFeedbackType.Sink,
         onClick = onClick,
     ) {
         Row(

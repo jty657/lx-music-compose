@@ -28,6 +28,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SongListTag
+import com.lingxu.music.ui.components.GlassSurface
+import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.launch
@@ -86,23 +88,25 @@ fun SongListScreen(
     }
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            top.yukonga.miuix.kmp.basic.Icon(
-                MiuixIcons.Back,
-                contentDescription = "返回",
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        onClick = { navigator.pop() },
-                    ),
-            )
-            Text(
-                com.lingxu.music.core.model.SourceConst.displayName(source) + " 歌单",
-                fontSize = MiuixTheme.textStyles.title1.fontSize,
-                modifier = Modifier.padding(start = 12.dp),
-            )
+        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                top.yukonga.miuix.kmp.basic.Icon(
+                    MiuixIcons.Back,
+                    contentDescription = "返回",
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            onClick = { navigator.pop() },
+                        ),
+                )
+                Text(
+                    com.lingxu.music.core.model.SourceConst.displayName(source) + " 歌单",
+                    fontSize = MiuixTheme.textStyles.title1.fontSize,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+            }
         }
         Spacer(Modifier.size(8.dp))
 
@@ -159,13 +163,13 @@ fun SongListScreen(
 
         LazyColumn(Modifier.weight(1f)) {
             items(list, key = { "${it.source}_${it.id}" }) { item ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    pressFeedbackType = PressFeedbackType.Sink,
-                    onClick = {
-                        navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
+                GlassSurface(
+    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    onClick = {
+                        navigator.push(Screen.SongListDetail(item.source, item.id, item.name,
+))
                     },
-                    onLongPress = { viewModel.collect(item) },
+                    onLongClick = { viewModel.collect(item) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         top.yukonga.miuix.kmp.basic.Icon(

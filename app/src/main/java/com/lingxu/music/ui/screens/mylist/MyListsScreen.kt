@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,6 +27,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.db.Playlist
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.ui.components.GlassSurface
+import androidx.compose.foundation.layout.Arrangement
+import com.lingxu.music.ui.components.GlassDialog
+import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.launch
@@ -57,30 +60,32 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     var musics by remember { mutableStateOf<List<MusicInfo>>(emptyList()) }
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                MiuixIcons.Back,
-                contentDescription = "返回",
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        onClick = {
-                            if (openList != null) {
-                                openList = null
-                                musics = emptyList()
-                            } else navigator.pop()
-                        }
-                    ),
-            )
-            Text(
-                openList?.let { id -> lists.firstOrNull { it.id == id }?.name } ?: "我的列表",
-                fontSize = MiuixTheme.textStyles.title1.fontSize,
-                modifier = Modifier.weight(1f).padding(start = 12.dp),
-            )
-            if (openList == null) {
-                Button(onClick = { showCreate = true }) { Text("新建") }
+        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                Icon(
+                    MiuixIcons.Back,
+                    contentDescription = "返回",
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            onClick = {
+                                if (openList != null) {
+                                    openList = null
+                                    musics = emptyList()
+                                } else navigator.pop()
+                            }
+                        ),
+                )
+                Text(
+                    openList?.let { id -> lists.firstOrNull { it.id == id }?.name } ?: "我的列表",
+                    fontSize = MiuixTheme.textStyles.title1.fontSize,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp),
+                )
+                if (openList == null) {
+                    Button(onClick = { showCreate = true }) { Text("新建") }
+                }
             }
         }
         Spacer(Modifier.size(8.dp))
@@ -96,12 +101,12 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
             }
             LazyColumn(Modifier.weight(1f)) {
                 items(lists, key = { it.id }) { list ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        pressFeedbackType = PressFeedbackType.Sink,
-                        onClick = {
+                    GlassSurface(
+    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    onClick = {
                             openList = list.id
-                            viewModel.loadMusics(list.id) { musics = it }
+                            viewModel.loadMusics(list.id,
+) { musics = it }
                         },
                         onLongPress = { renaming = list },
                     ) {
@@ -145,9 +150,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
             }
             LazyColumn(Modifier.weight(1f)) {
                 items(musics, key = { it.id }) { music ->
-                    Card(
+                    GlassSurface(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        pressFeedbackType = PressFeedbackType.Sink,
                         onClick = { viewModel.play(musics, music) },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
@@ -179,55 +183,62 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     }
 
     if (showCreate) {
-        AlertDialog(
-            onDismissRequest = { showCreate = false; newName = "" },
-            title = { Text("新建列表") },
-            text = {
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    placeholder = { Text("列表名称") },
-                    singleLine = true,
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (newName.isNotBlank()) {
-                        viewModel.create(newName.trim())
+        GlassDialog(
+                onDismissRequest = { showCreate = false; newName = "" },
+            ) {
+                Column(Modifier.padding(horizontal = 4.dp)) {
+                    Text(
+                        "新建列表",
+                        fontSize = MiuixTheme.textStyles.title1.fontSize,
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        placeholder = { Text("列表名称") },
+                        singleLine = true,
+                    )
+                    Spacer(Modifier.size(16.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = {
+                        showCreate = false
                         newName = ""
+                    }) { Text("取消") }
+                        Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        if (newName.isNotBlank()) {
+                            viewModel.create(newName.trim())
+                            newName = ""
+                        }
+                        showCreate = false
+                    }) { Text("创建") }
                     }
-                    showCreate = false
-                }) { Text("创建") }
-            },
-            dismissButton = {
-                Button(onClick = {
-                    showCreate = false
-                    newName = ""
-                }) { Text("取消") }
-            },
-        )
+                }
+            }
     }
 
     renaming?.let { list ->
         var name by remember(list.id) { mutableStateOf(list.name) }
-        AlertDialog(
-            onDismissRequest = { renaming = null },
-            title = { Text("重命名") },
-            text = {
+        GlassDialog(onDismissRequest = { renaming = null }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("重命名", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     singleLine = true,
                 )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (name.isNotBlank()) viewModel.rename(list.id, name.trim())
-                    renaming = null
-                }) { Text("保存") }
-            },
-            dismissButton = { Button(onClick = { renaming = null }) { Text("取消") } },
-        )
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { renaming = null }) { Text("取消") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        if (name.isNotBlank()) viewModel.rename(list.id, name.trim())
+                        renaming = null
+                    }) { Text("保存") }
+                }
+            }
+        }
     }
 }
 

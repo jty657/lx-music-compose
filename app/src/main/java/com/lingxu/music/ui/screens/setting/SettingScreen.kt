@@ -3,11 +3,14 @@ package com.lingxu.music.ui.screens.setting
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.lingxu.music.ui.components.GlassDialog
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -306,12 +309,17 @@ fun SettingScreen(
         Spacer(Modifier.size(24.dp))
     }
     if (toast != null) {
-        AlertDialog(
-            onDismissRequest = { toast = null },
-            title = { Text("备份") },
-            text = { Text(toast!!) },
-            confirmButton = { Button(onClick = { toast = null }) { Text("好") } },
-        )
+        GlassDialog(onDismissRequest = { toast = null }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("备份", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text(toast!!)
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { toast = null }) { Text("好") }
+                }
+            }
+        }
     }
 }
 

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -27,6 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.ui.components.GlassSurface
+import androidx.compose.foundation.layout.Arrangement
+import com.lingxu.music.ui.components.GlassDialog
+import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.core.model.SourceConst
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -54,7 +57,13 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
             .fillMaxSize()
             .padding(12.dp),
     ) {
-        Text("我喜欢", fontSize = MiuixTheme.textStyles.title1.fontSize)
+        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+            Text(
+                "我喜欢",
+                fontSize = MiuixTheme.textStyles.title1.fontSize,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            )
+        }
         Spacer(Modifier.size(8.dp))
 
         viewModel.errorMessage?.let { err ->
@@ -103,10 +112,10 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         var picked by remember(music.id) {
             mutableStateOf(LxApp.app.myListsRepository.lists.value.firstOrNull()?.id)
         }
-        AlertDialog(
-            onDismissRequest = { addTarget = null },
-            title = { Text("加入列表") },
-            text = {
+        GlassDialog(onDismissRequest = { addTarget = null }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("加入列表", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
                 val lists = LxApp.app.myListsRepository.lists.collectAsState().value
                 if (lists.isEmpty()) {
                     Text("还没有列表，请先到「我的列表」新建")
@@ -126,15 +135,17 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                         }
                     }
                 }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    picked?.let { viewModel.addToList(it, music) }
-                    addTarget = null
-                }) { Text("加入") }
-            },
-            dismissButton = { Button(onClick = { addTarget = null }) { Text("取消") } },
-        )
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { addTarget = null }) { Text("取消") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        picked?.let { viewModel.addToList(it, music) }
+                        addTarget = null
+                    }) { Text("加入") }
+                }
+            }
+        }
     }
 }
 
@@ -148,12 +159,12 @@ private fun FavoriteCard(
     showInterval: Boolean = true,
     showAlbumName: Boolean = false,
 ) {
-    Card(
+    GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .combinedClickable(onClick = onPlay, onLongClick = onAddToList),
-        pressFeedbackType = PressFeedbackType.Sink,
+            .padding(vertical = 4.dp),
+        onClick = onPlay,
+        onLongClick = onAddToList,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
