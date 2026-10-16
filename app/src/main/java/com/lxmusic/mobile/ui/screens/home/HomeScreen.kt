@@ -32,7 +32,6 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     val boards = viewModel.boards
     val hotSearch = viewModel.hotSearch
-    val selectedSource = viewModel.selectedSource
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口
         Card(

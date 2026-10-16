@@ -1,8 +1,7 @@
 package com.lxmusic.mobile.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Boximport androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,10 +15,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -39,6 +39,7 @@ import com.lxmusic.mobile.ui.screens.search.SearchScreen
 import com.lxmusic.mobile.ui.screens.setting.SettingScreen
 import com.lxmusic.mobile.ui.screens.source.SourceScreen
 import com.lxmusic.mobile.ui.theme.LxTheme
+import com.lxmusic.mobile.ui.theme.isInDarkTheme
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
@@ -47,6 +48,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Home
+import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.icon.extended.Pause
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Search
@@ -54,17 +56,18 @@ import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun AppRoot(viewModel: MainViewModel = viewModel()) {
+fun AppRoot() {
     val themeMode by LxApp.app.settings.theme.collectAsState(initial = "system")
     val blurEnabled by LxApp.app.settings.blurEnabled.collectAsState(initial = true)
     val blurRadius by LxApp.app.settings.blurRadius.collectAsState(initial = 24f)
 
     LxTheme(themeMode = themeMode) {
         val navigator = rememberNavigator()
+        val dark = isInDarkTheme()
         CompositionLocalProvider(LocalNavigator provides navigator) {
             Box(Modifier.fillMaxSize()) {
                 val backdrop = rememberLayerBackdrop {
-                    drawRect(Color.White)
+                    drawRect(if (dark) Color.Black else Color.White)
                     drawContent()
                 }
 
@@ -82,7 +85,7 @@ fun AppRoot(viewModel: MainViewModel = viewModel()) {
                 ) {
                     MiniPlayerBar(navigator)
                     if (blurEnabled) {
-                        GlassBottomBar(backdrop, blurRadius, navigator)
+                        GlassBottomBar(backdrop, blurRadius, dark, navigator)
                     } else {
                         PlainBottomBar(navigator)
                     }
@@ -100,6 +103,10 @@ private fun MainScaffold(
     Scaffold(modifier = modifier.fillMaxSize()) { padding ->
         val current = navigator.backStack.last()
         val playState by LxApp.app.playerRepository.state.collectAsState()
+        // 系统返回键：非根页时回退一级
+        BackHandler(enabled = navigator.backStack.size > 1) {
+            navigator.pop()
+        }
         // 底部留白：导航栏 + （有歌曲时的）迷你播放条
         val bottomInset = if (playState.current != null) 132.dp else 76.dp
         Box(
@@ -137,19 +144,23 @@ private fun MiniPlayerBar(navigator: Navigator) {
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
             .padding(bottom = 6.dp)
-            .clickable { navigator.push(Screen.Player) },
+            .clickable {
+                if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
+            },
     ) {
         Column(Modifier.weight(1f)) {
             Text(
                 current.name,
                 fontSize = MiuixTheme.textStyles.body1.fontSize,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 current.singer,
                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Icon(
@@ -170,6 +181,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
 private fun GlassBottomBar(
     backdrop: LayerBackdrop,
     blurRadius: Float,
+    dark: Boolean,
     navigator: Navigator,
 ) {
     Box(
@@ -182,7 +194,9 @@ private fun GlassBottomBar(
                     vibrancy()
                     blur(blurRadius.dp.toPx())
                 },
-                onDrawSurface = { drawRect(Color.White.copy(alpha = 0.45f)) },
+                onDrawSurface = {
+                    drawRect(if (dark) Color.Black.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.45f))
+                },
             ),
     ) {
         NavItems(navigator)
@@ -201,7 +215,7 @@ private fun NavItems(navigator: Navigator) {
         Triple(Screen.Home, MiuixIcons.Home, "首页"),
         Triple(Screen.Search, MiuixIcons.Search, "搜索"),
         Triple(Screen.Favorite, MiuixIcons.Favorites, "我喜欢"),
-        Triple(Screen.Source, MiuixIcons.Settings, "音源"),
+        Triple(Screen.Source, MiuixIcons.Layers, "音源"),
         Triple(Screen.Setting, MiuixIcons.Settings, "设置"),
     )
     NavigationBar {

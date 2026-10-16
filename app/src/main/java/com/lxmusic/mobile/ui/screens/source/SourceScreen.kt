@@ -38,7 +38,6 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     val userApis by viewModel.userApis.collectAsState()
     val currentSource = viewModel.currentSource
 
-    var showImportDialog by remember { mutableStateOf(false) }
     var importUrl by remember { mutableStateOf("") }
     var showUrlInput by remember { mutableStateOf(false) }
     var deletingId by remember { mutableStateOf<String?>(null) }
@@ -59,7 +58,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                 Text("网络导入")
             }
             Spacer(Modifier.size(8.dp))
-            Button(onClick = { filePicker.launch(arrayOf("text/*", "application/javascript", "*/*")) }) {
+            Button(onClick = { filePicker.launch(arrayOf("text/*", "application/javascript")) }) {
                 Text("文件导入")
             }
         }
@@ -94,7 +93,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         Text("自定义音源（${userApis.size}/20）", fontSize = MiuixTheme.textStyles.body2.fontSize)
         Spacer(Modifier.size(4.dp))
 
-        LazyColumn {
+        LazyColumn(Modifier.weight(1f)) {
             items(userApis, key = { it.id }) { api ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -132,7 +131,10 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     // 网络导入对话框
     if (showUrlInput) {
         AlertDialog(
-            onDismissRequest = { showUrlInput = false },
+            onDismissRequest = {
+                showUrlInput = false
+                importUrl = ""
+            },
             title = { Text("网络导入音源") },
             text = {
                 Column {
@@ -154,7 +156,10 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                 }) { Text("导入") }
             },
             dismissButton = {
-                Button(onClick = { showUrlInput = false }) { Text("取消") }
+                Button(onClick = {
+                    showUrlInput = false
+                    importUrl = ""
+                }) { Text("取消") }
             },
         )
     }

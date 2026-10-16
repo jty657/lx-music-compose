@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -26,8 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxmusic.mobile.core.model.MusicInfo
 import com.lxmusic.mobile.core.model.SourceConst
-import com.lxmusic.mobile.ui.navigation.LocalNavigator
-import com.lxmusic.mobile.ui.navigation.Screen
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -43,11 +42,10 @@ import top.yukonga.miuix.kmp.basic.TextField
 
 @Composable
 fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
-    val navigator = LocalNavigator.current
     val scope = rememberCoroutineScope()
     val textFieldState = remember { TextFieldState() }
     val sources = listOf("all") + SourceConst.ONLINE
-    var selectedSource by remember { mutableStateOf("all") }
+    var selectedSource by rememberSaveable { mutableStateOf("all") }
 
     Column(
         modifier = Modifier
@@ -100,6 +98,16 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
         }
 
         Spacer(Modifier.height(8.dp))
+
+        // 错误提示
+        viewModel.errorMessage?.let { err ->
+            Text(
+                err,
+                color = MiuixTheme.colorScheme.error,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        }
 
         // 搜索历史（无结果且输入为空时展示）
         if (viewModel.results.isEmpty() && viewModel.history.isNotEmpty()) {

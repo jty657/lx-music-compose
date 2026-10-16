@@ -43,6 +43,15 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         Text("我喜欢", fontSize = MiuixTheme.textStyles.title1.fontSize)
         Spacer(Modifier.size(8.dp))
 
+        viewModel.errorMessage?.let { err ->
+            Text(
+                err,
+                color = MiuixTheme.colorScheme.error,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+            )
+            Spacer(Modifier.size(4.dp))
+        }
+
         if (favorites.isEmpty()) {
             Text(
                 "还没有收藏的歌曲",

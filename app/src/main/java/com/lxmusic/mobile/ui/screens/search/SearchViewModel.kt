@@ -53,7 +53,7 @@ class SearchViewModel : ViewModel() {
             runCatching {
                 LxApp.app.musicRepository.search(text, page, source)
             }.onSuccess { list ->
-                results = list
+                results = list.distinctBy { it.id }
                 hasMore = list.isNotEmpty()
                 recordHistory(text)
             }.onFailure { e ->
