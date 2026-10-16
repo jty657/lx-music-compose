@@ -164,7 +164,8 @@ class MusicRepository(
         }
 
         val preferQuality = quality ?: settings.currentQuality()
-        val targetQuality = negotiateQuality(musicInfo, preferQuality)
+        // 原版 handleGetOnlineMusicUrl: quality ?? getPlayQuality(playQuality, musicInfo)
+        val targetQuality = getPlayQuality(musicInfo, preferQuality)
 
         return try {
             getOnlineMusicUrl(musicInfo, targetQuality)
@@ -205,10 +206,10 @@ class MusicRepository(
         return null
     }
 
-    /** 音质协商（原版 getMusicType） */
-    private fun negotiateQuality(musicInfo: MusicInfo, preferQuality: String): String {
-        val list = _qualityList.value[musicInfo.source] ?: return "128k"
-        return sdk.negotiateQuality(musicInfo, preferQuality, list)
+    /** 原版 getPlayQuality：偏好为高音质档位时逐级下降，否则固定 128k */
+    private fun getPlayQuality(musicInfo: MusicInfo, preferQuality: String): String {
+        val list = _qualityList.value[musicInfo.source] ?: emptyList()
+        return sdk.getPlayQuality(preferQuality, musicInfo, list)
     }
 
     /** 歌词有效性校验（原版 existTimeExp 逻辑） */

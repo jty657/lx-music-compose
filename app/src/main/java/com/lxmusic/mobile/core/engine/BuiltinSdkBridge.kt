@@ -312,17 +312,17 @@ class BuiltinSdkBridge(context: Context) {
             ?: throw IllegalStateException("invalid url")
     }
 
-    /** 音质协商（对应原版 getMusicType）：从 preference 向下取可用的音质 */
-    fun negotiateQuality(musicInfo: MusicInfo, preferQuality: String, qualityList: List<String>): String {
-        if (qualityList.isEmpty()) return "128k"
-        var type = preferQuality
-        if (!qualityList.contains(type)) type = qualityList.last()
-        val rangeType = listOf("flac24bit", "flac", "wav", "ape", "320k", "192k", "128k")
-            .dropWhile { it != type }
-        for (t in rangeType) {
-            if (musicInfo._qualitys.containsKey(t)) return t
-        }
-        return "128k"
+    /**
+     * 播放音质选择（对应原版 core/music/utils.ts getPlayQuality）：
+     * 仅在偏好为高音质档位时逐级下降，否则固定 128k
+     */
+    fun getPlayQuality(preferQuality: String, musicInfo: MusicInfo, qualityList: List<String>): String {
+        val tryQualitys = listOf("flac24bit", "flac", "320k")
+        if (preferQuality !in tryQualitys) return "128k"
+        return tryQualitys
+            .dropWhile { it != preferQuality }
+            .firstOrNull { q -> musicInfo._qualitys.containsKey(q) && qualityList.contains(q) }
+            ?: "128k"
     }
 
     // ================= 内部实现 =================

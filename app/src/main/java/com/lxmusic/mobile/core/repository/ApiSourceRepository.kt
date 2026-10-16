@@ -46,7 +46,7 @@ class ApiSourceRepository(private val db: AppDatabase) {
         val meta = matchInfo(headComment)
         val name = meta["name"].orEmpty().ifEmpty { "user_api_${System.currentTimeMillis()}" }
         val apiMeta = ApiSourceMeta(
-            id = "user_api_${(Math.random() * 900 + 100).toInt()}_${System.currentTimeMillis()}",
+            id = "user_api_${System.currentTimeMillis()}_${Thread.currentThread().id}",
             name = name,
             description = meta["description"].orEmpty(),
             author = meta["author"].orEmpty(),

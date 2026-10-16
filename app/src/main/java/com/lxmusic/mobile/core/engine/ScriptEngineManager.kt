@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -189,7 +190,7 @@ class ScriptEngineManager(private val context: Context) {
     ): JsonObject {
         awaitInit()
         val eng = engine ?: throw IllegalStateException("script not loaded")
-        val requestKey = "request__${(Math.random() * 1e15).toLong()}"
+        val requestKey = "request__${UUID.randomUUID()}"
         val deferred = CompletableDeferred<JsonObject?>()
         pendingAppRequests[requestKey] = deferred
 

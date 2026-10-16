@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 我喜欢（收藏）仓库。
@@ -20,21 +21,27 @@ class FavoritesRepository(private val db: AppDatabase) {
 
     val favoriteIds: Flow<Set<String>> = favorites.map { list -> list.map { it.id }.toSet() }
 
+    /** Mutex 非重入，读写收藏都在同一临界区内完成 */
+    private val mutex = Mutex()
+
     private var loaded = false
 
-    suspend fun load(): List<MusicInfo> {
-        if (loaded) return _favorites.value
-        val list = db.loadFavorites()
-        _favorites.value = list
-        loaded = true
-        return list
+    suspend fun load(): List<MusicInfo> = mutex.withLock {
+        if (!loaded) {
+            _favorites.value = db.loadFavorites()
+            loaded = true
+        }
+        _favorites.value
     }
 
     fun isFavorite(id: String): Boolean = _favorites.value.any { it.id == id }
 
     /** 切换收藏状态，返回切换后是否已收藏 */
-    suspend fun toggle(musicInfo: MusicInfo): Boolean {
-        load()
+    suspend fun toggle(musicInfo: MusicInfo): Boolean = mutex.withLock {
+        if (!loaded) {
+            _favorites.value = db.loadFavorites()
+            loaded = true
+        }
         val current = _favorites.value
         val exists = current.any { it.id == musicInfo.id }
         val next = if (exists) {
@@ -44,18 +51,23 @@ class FavoritesRepository(private val db: AppDatabase) {
         }
         db.saveFavorites(next)
         _favorites.value = next
-        return !exists
+        !exists
     }
 
-    suspend fun remove(id: String) {
-        load()
+    suspend fun remove(id: String) = mutex.withLock {
+        if (!loaded) {
+            _favorites.value = db.loadFavorites()
+            loaded = true
+        }
         val next = _favorites.value.filterNot { it.id == id }
         db.saveFavorites(next)
         _favorites.value = next
+        Unit
     }
 
-    suspend fun clear() {
+    suspend fun clear() = mutex.withLock {
         db.saveFavorites(emptyList())
         _favorites.value = emptyList()
+        Unit
     }
 }

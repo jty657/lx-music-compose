@@ -386,6 +386,8 @@ class QuickJSEngine(
         handler?.sendEmptyMessage(MSG_DESTROY)
         pendingRequests.values.forEach { it.cancel() }
         pendingRequests.clear()
+        timeoutHandler.removeCallbacksAndMessages(null)
+        scope.cancel()
     }
 
     fun isReady() = inited
