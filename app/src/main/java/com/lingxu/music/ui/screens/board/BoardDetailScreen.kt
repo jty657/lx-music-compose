@@ -1,6 +1,7 @@
 package com.lingxu.music.ui.screens.board
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
@@ -53,6 +55,7 @@ fun BoardDetailScreen(
     var loading by remember { mutableStateOf(false) }
     var hasMore by remember { mutableStateOf(true) }
     var page by remember { mutableStateOf(1) }
+    var toast by remember { mutableStateOf<String?>(null) }
     val searchState = remember { androidx.compose.foundation.text.input.TextFieldState() }
     val keyword = searchState.text.toString()
     val shownMusic = if (keyword.isBlank()) musicList
@@ -112,6 +115,18 @@ fun BoardDetailScreen(
         }
 
         if (musicList.isNotEmpty()) {
+            Row {
+                Button(onClick = { viewModel.playAll(musicList) }) {
+                    Text("播放全部")
+                }
+                Spacer(Modifier.size(8.dp))
+                Button(onClick = {
+                    viewModel.collectBoard(source, bangId, name) { toast = it }
+                }) {
+                    Text("收藏榜单")
+                }
+            }
+            Spacer(Modifier.size(8.dp))
             TextField(
                 state = searchState,
                 label = "在此榜单内搜索",
@@ -158,6 +173,18 @@ fun BoardDetailScreen(
             }
         }
     }
+
+    toast?.let { msg ->
+        com.lingxu.music.ui.components.GlassDialog(onDismissRequest = { toast = null }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text(msg, fontSize = MiuixTheme.textStyles.body1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { toast = null }) { Text("好") }
+                }
+            }
+        }
+    }
 }
 
 class BoardDetailViewModel : ViewModel() {
@@ -178,6 +205,20 @@ class BoardDetailViewModel : ViewModel() {
                 val resolved = queue.map { info -> LxApp.app.playerRepository.resolvePlayInfo(info) }
                 LxApp.app.playerRepository.playQueue(resolved, index)
             }
+        }
+    }
+
+    fun playAll(queue: List<MusicInfo>) {
+        if (queue.isEmpty()) return
+        play(queue, queue.first())
+    }
+
+    /** 收藏榜单为「我的列表」（对应原版 Leaderboard 的收藏） */
+    fun collectBoard(source: String, bangId: String, name: String, onDone: (String) -> Unit) {
+        viewModelScope.launch {
+            runCatching { LxApp.app.myListsRepository.collectBoard(source, bangId, name) }
+                .onSuccess { onDone("已收藏到我的列表") }
+                .onFailure { onDone("收藏失败：${it.message}") }
         }
     }
 }

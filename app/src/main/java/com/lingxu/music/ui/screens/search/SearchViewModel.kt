@@ -108,6 +108,15 @@ class SearchViewModel : ViewModel() {
         }
     }
 
+    /** 删除单条搜索历史 */
+    fun removeHistory(word: String) {
+        viewModelScope.launch {
+            val next = history.filterNot { it == word }
+            history = next
+            LxApp.app.database.saveSearchHistory(next)
+        }
+    }
+
     /** 加载下一页 */
     fun loadMore() {
         if (!hasMore) return

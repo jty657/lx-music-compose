@@ -6,7 +6,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 /** 页面路由 */
 sealed class Screen(val route: String) {
     object Home : Screen("home")
-    object Search : Screen("search")
+
+    /** 搜索页（可携带初始关键词，供热搜/历史直接进入） */
+    data class Search(val keyword: String = "") : Screen("search")
     object Source : Screen("source")
     object Setting : Screen("setting")
     object Player : Screen("player")

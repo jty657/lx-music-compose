@@ -1,6 +1,7 @@
 package com.lingxu.music.ui.screens.search
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,12 +50,20 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.TextField
 
 @Composable
-fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
+fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewModel()) {
     val scope = rememberCoroutineScope()
     val navigator = LocalNavigator.current
     val textFieldState = remember { TextFieldState() }
     val sources = listOf("all") + SourceConst.ONLINE
     var selectedSource by rememberSaveable { mutableStateOf("all") }
+
+    // 由热词/历史进入时自动搜索
+    androidx.compose.runtime.LaunchedEffect(initialKeyword) {
+        if (initialKeyword.isNotBlank()) {
+            textFieldState.setTextAndPlaceCursorAtEnd(initialKeyword)
+            viewModel.search(initialKeyword, selectedSource)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -149,6 +158,12 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
                 Text("搜索历史", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Spacer(Modifier.weight(1f))
                 Text(
+                    "长按删除单条",
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
                     "清空",
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.primary,
@@ -162,10 +177,13 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
                     fontSize = MiuixTheme.textStyles.body1.fontSize,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            textFieldState.setTextAndPlaceCursorAtEnd(word)
-                            scope.launch { viewModel.search(word, selectedSource) }
-                        }
+                        .combinedClickable(
+                            onClick = {
+                                textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                scope.launch { viewModel.search(word, selectedSource) }
+                            },
+                            onLongClick = { viewModel.removeHistory(word) },
+                        )
                         .padding(vertical = 6.dp),
                 )
             }

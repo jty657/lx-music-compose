@@ -151,7 +151,7 @@ private fun MainScaffold(
         ) {
             when (current) {
                 is Screen.Home -> HomeScreen()
-                is Screen.Search -> SearchScreen()
+                is Screen.Search -> SearchScreen(initialKeyword = current.keyword)
                 is Screen.Source -> SourceScreen()
                 is Screen.Setting -> SettingScreen()
                 is Screen.Player -> PlayerScreen()
@@ -309,7 +309,7 @@ private fun NavItems(navigator: Navigator) {
     val current = navigator.backStack.last()
     val items = listOf(
         Triple(Screen.Home, MiuixIcons.Home, "首页"),
-        Triple(Screen.Search, MiuixIcons.Search, "搜索"),
+        Triple(Screen.Search(), MiuixIcons.Search, "搜索"),
         Triple(Screen.Favorite, MiuixIcons.Favorites, "我喜欢"),
         Triple(Screen.Source, MiuixIcons.Layers, "音源"),
         Triple(Screen.Setting, MiuixIcons.Settings, "设置"),
