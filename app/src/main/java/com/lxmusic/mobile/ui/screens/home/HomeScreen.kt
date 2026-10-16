@@ -9,15 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxmusic.mobile.core.model.Board
-import com.lxmusic.mobile.core.model.SourceConst
 import com.lxmusic.mobile.ui.navigation.LocalNavigator
 import com.lxmusic.mobile.ui.navigation.Screen
 import top.yukonga.miuix.kmp.basic.Card
@@ -35,7 +33,6 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val boards = viewModel.boards
     val hotSearch = viewModel.hotSearch
     val selectedSource = viewModel.selectedSource
-
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口
         Card(
@@ -58,21 +55,48 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
 
         Spacer(Modifier.size(12.dp))
 
-        // 榜单
-        Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
-        Spacer(Modifier.size(4.dp))
-        LazyColumn(Modifier.weight(1f)) {
-            items(boards, key = { it.id }) { board ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    pressFeedbackType = PressFeedbackType.Sink,
-                    onClick = {
-                        viewModel.loadBoard(board)
-                    },
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                        IconWrap(MiuixIcons.Music)
-                        Text(board.name, modifier = Modifier.padding(start = 12.dp))
+        // 热搜
+        if (hotSearch.isNotEmpty()) {
+            Text("热搜", fontSize = MiuixTheme.textStyles.title1.fontSize)
+            Spacer(Modifier.size(4.dp))
+            LazyColumn(Modifier.weight(1f)) {
+                itemsIndexed(hotSearch) { index, word ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                    ) {
+                        Text(
+                            "${index + 1}",
+                            color = MiuixTheme.colorScheme.primary,
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        )
+                        Text(
+                            word,
+                            modifier = Modifier.padding(start = 12.dp),
+                            fontSize = MiuixTheme.textStyles.body1.fontSize,
+                        )
+                    }
+                }
+            }
+        } else {
+            // 榜单
+            Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
+            Spacer(Modifier.size(4.dp))
+            LazyColumn(Modifier.weight(1f)) {
+                items(boards, key = { it.id }) { board ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        pressFeedbackType = PressFeedbackType.Sink,
+                        onClick = {
+                            viewModel.loadBoard(board)
+                        },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+                            IconWrap(MiuixIcons.Music)
+                            Text(board.name, modifier = Modifier.padding(start = 12.dp))
+                        }
                     }
                 }
             }

@@ -5,11 +5,9 @@ import android.util.Log
 import com.lxmusic.mobile.core.crypto.CryptoUtils
 import com.lxmusic.mobile.core.model.Board
 import com.lxmusic.mobile.core.model.BoardDetail
-import com.lxmusic.mobile.core.model.HotSearchWord
 import com.lxmusic.mobile.core.model.LyricInfo
 import com.lxmusic.mobile.core.model.MusicInfo
 import com.lxmusic.mobile.core.request.HttpClient
-import com.lxmusic.mobile.core.request.ScriptRequestOptions
 import com.whl.quickjs.android.QuickJSLoader
 import com.whl.quickjs.wrapper.JSArray
 import com.whl.quickjs.wrapper.JSCallFunction

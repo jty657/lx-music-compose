@@ -1,12 +1,12 @@
 package com.lxmusic.mobile
 
 import android.app.Application
-import android.util.Log
 import com.lxmusic.mobile.core.db.AppDatabase
 import com.lxmusic.mobile.core.engine.BuiltinSdkBridge
 import com.lxmusic.mobile.core.engine.ScriptEngineManager
 import com.lxmusic.mobile.core.player.PlayerRepository
 import com.lxmusic.mobile.core.repository.ApiSourceRepository
+import com.lxmusic.mobile.core.repository.FavoritesRepository
 import com.lxmusic.mobile.core.repository.MusicRepository
 import com.lxmusic.mobile.core.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +26,8 @@ class LxApp : Application() {
         private set
     lateinit var apiSourceRepository: ApiSourceRepository
         private set
+    lateinit var favoritesRepository: FavoritesRepository
+        private set
     lateinit var musicRepository: MusicRepository
         private set
     lateinit var playerRepository: PlayerRepository
@@ -41,14 +43,20 @@ class LxApp : Application() {
         engineManager = ScriptEngineManager(this)
         sdkBridge = BuiltinSdkBridge(this)
         apiSourceRepository = ApiSourceRepository(database)
+        favoritesRepository = FavoritesRepository(database)
         musicRepository = MusicRepository(sdkBridge, engineManager, settings)
         playerRepository = PlayerRepository.get(this)
+        // 注入歌词加载器（播放器切歌时自动拉歌词）
+        playerRepository.lyricLoader = { musicInfo ->
+            musicRepository.fetchLyricText(musicInfo)
+        }
 
         // 初始化内置 SDK
         appScope.launch {
             val apiSource = settings.currentApiSource()
             sdkBridge.init(apiSource)
             musicRepository.setApiSource(apiSource)
+            favoritesRepository.load()
             // 如果是用户音源，加载脚本
             if (apiSource.startsWith("user_api")) {
                 loadUserApi(apiSource)

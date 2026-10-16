@@ -10,8 +10,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.lxmusic.mobile.core.model.MusicInfo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /** 播放模式（原版 player.togglePlayMethod） */
 object PlayMode {
@@ -20,7 +29,21 @@ object PlayMode {
     const val LIST = "list"
     const val SINGLE_LOOP = "singleLoop"
     const val SINGLE = "single"
+
+    val ALL = listOf(LIST_LOOP, RANDOM, LIST, SINGLE_LOOP, SINGLE)
+
+    fun label(mode: String): String = when (mode) {
+        LIST_LOOP -> "列表循环"
+        RANDOM -> "随机播放"
+        LIST -> "顺序播放"
+        SINGLE_LOOP -> "单曲循环"
+        SINGLE -> "单曲播放"
+        else -> "列表循环"
+    }
 }
+
+/** 歌词行 */
+data class LyricLine(val timeMs: Long, val text: String)
 
 /** 播放状态 */
 data class PlayState(
@@ -31,9 +54,21 @@ data class PlayState(
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
     val playMode: String = PlayMode.LIST_LOOP,
-    val lyric: String = "",
+    val lyricLines: List<LyricLine> = emptyList(),
     val loading: Boolean = false,
-)
+    val error: String? = null,
+) {
+    /** 当前应高亮的歌词行下标 */
+    val currentLyricIndex: Int
+        get() {
+            if (lyricLines.isEmpty()) return -1
+            var idx = -1
+            for (i in lyricLines.indices) {
+                if (lyricLines[i].timeMs <= positionMs) idx = i else break
+            }
+            return idx
+        }
+}
 
 /**
  * 播放仓库：Media3 ExoPlayer + 播放队列管理。
@@ -42,7 +77,7 @@ data class PlayState(
 class PlayerRepository(context: Context) {
 
     private val _state = MutableStateFlow(PlayState())
-    val state: StateFlow<PlayState> = _state
+    val state: StateFlow<PlayState> = _state.asStateFlow()
 
     val player: ExoPlayer = ExoPlayer.Builder(context)
         .setAudioAttributes(
@@ -54,43 +89,83 @@ class PlayerRepository(context: Context) {
         )
         .build()
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var lyricJob: Job? = null
+
+    /** 歌词加载器（由 App 注入，避免 core 层反向依赖） */
+    var lyricLoader: (suspend (MusicInfo) -> String?)? = null
+
     init {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _state.value = _state.value.copy(isPlaying = isPlaying)
+                _state.update { it.copy(isPlaying = isPlaying) }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                _state.value = _state.value.copy(loading = playbackState == Player.STATE_BUFFERING)
-                if (playbackState == Player.STATE_ENDED) {
-                    handleEnded()
-                }
-            }
-        })
-    }
-
-    private val positionUpdater = Thread {
-        while (true) {
-            runCatching {
-                if (player.isPlaying) {
-                    _state.value = _state.value.copy(
-                        positionMs = player.currentPosition,
-                        durationMs = player.duration,
+                _state.update {
+                    it.copy(
+                        loading = playbackState == Player.STATE_BUFFERING,
+                        error = null,
                     )
                 }
             }
-            Thread.sleep(500)
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                _state.update { it.copy(error = error.message ?: "播放失败", loading = false) }
+            }
+
+            /** 切歌时同步当前曲目与下标（手动、自动、循环、随机都走这里） */
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val index = player.currentMediaItemIndex
+                val current = _state.value.queue.getOrNull(index)
+                _state.update {
+                    it.copy(
+                        queueIndex = index,
+                        current = current,
+                        positionMs = 0L,
+                        durationMs = 0L,
+                        lyricLines = emptyList(),
+                    )
+                }
+                current?.let { loadLyric(it) }
+            }
+        })
+
+        scope.launch {
+            while (isActive) {
+                runCatching {
+                    val duration = player.duration
+                    _state.update {
+                        it.copy(
+                            positionMs = player.currentPosition.coerceAtLeast(0L),
+                            durationMs = if (duration > 0) duration else 0L,
+                        )
+                    }
+                }
+                delay(500)
+            }
         }
-    }.apply { isDaemon = true; start() }
+    }
 
     /** 播放指定队列 */
     fun playQueue(queue: List<MusicInfo>, index: Int) {
         if (queue.isEmpty()) return
         val safeIndex = index.coerceIn(0, queue.lastIndex)
-        _state.value = _state.value.copy(queue = queue, queueIndex = safeIndex)
+        _state.update {
+            it.copy(
+                queue = queue,
+                queueIndex = safeIndex,
+                current = queue[safeIndex],
+                lyricLines = emptyList(),
+                positionMs = 0L,
+                durationMs = 0L,
+                error = null,
+            )
+        }
         player.setMediaItems(queue.map { it.toMediaItem() }, safeIndex, 0L)
         player.prepare()
         player.play()
+        loadLyric(queue[safeIndex])
     }
 
     /** 播放单曲（替换整个队列） */
@@ -98,8 +173,7 @@ class PlayerRepository(context: Context) {
 
     /** 追加到队列 */
     fun addToQueue(musicInfo: MusicInfo) {
-        val newQueue = _state.value.queue + musicInfo
-        _state.value = _state.value.copy(queue = newQueue)
+        _state.update { it.copy(queue = it.queue + musicInfo) }
         player.addMediaItem(musicInfo.toMediaItem())
     }
 
@@ -108,28 +182,23 @@ class PlayerRepository(context: Context) {
     }
 
     fun next() {
-        if (player.hasNextMediaItem()) {
-            player.seekToNextMediaItem()
-            _state.value = _state.value.copy(queueIndex = _state.value.queueIndex + 1)
-        }
+        if (player.hasNextMediaItem()) player.seekToNextMediaItem()
     }
 
     fun prev() {
-        if (player.hasPreviousMediaItem()) {
-            player.seekToPreviousMediaItem()
-            _state.value = _state.value.copy(queueIndex = _state.value.queueIndex - 1)
-        }
+        if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem()
     }
 
     fun seekTo(positionMs: Long) {
         player.seekTo(positionMs)
+        _state.update { it.copy(positionMs = positionMs) }
     }
 
     fun setPlayMode(mode: String) {
-        _state.value = _state.value.copy(playMode = mode)
+        _state.update { it.copy(playMode = mode) }
         when (mode) {
             PlayMode.SINGLE_LOOP -> player.repeatMode = Player.REPEAT_MODE_ONE
-            PlayMode.LIST_LOOP -> player.repeatMode = Player.REPEAT_MODE_ALL
+            PlayMode.LIST_LOOP, PlayMode.RANDOM -> player.repeatMode = Player.REPEAT_MODE_ALL
             else -> player.repeatMode = Player.REPEAT_MODE_OFF
         }
         player.shuffleModeEnabled = mode == PlayMode.RANDOM
@@ -138,23 +207,27 @@ class PlayerRepository(context: Context) {
     fun clear() {
         player.stop()
         player.clearMediaItems()
-        _state.value = PlayState(playMode = _state.value.playMode)
-    }
-
-    private fun handleEnded() {
-        when (_state.value.playMode) {
-            PlayMode.SINGLE, PlayMode.LIST -> {
-                if (!player.hasNextMediaItem()) {
-                    player.pause()
-                    player.seekTo(0)
-                }
-            }
-            else -> Unit // loop 模式由 repeatMode 处理
+        lyricJob?.cancel()
+        _state.update {
+            PlayState(playMode = it.playMode)
         }
     }
 
     fun release() {
+        lyricJob?.cancel()
         player.release()
+    }
+
+    /** 加载当前歌曲歌词 */
+    private fun loadLyric(musicInfo: MusicInfo) {
+        val loader = lyricLoader ?: return
+        lyricJob?.cancel()
+        lyricJob = scope.launch {
+            val lyric = runCatching { loader(musicInfo) }.getOrNull().orEmpty()
+            // 若期间已切歌则丢弃结果
+            if (_state.value.current?.id != musicInfo.id) return@launch
+            _state.update { it.copy(lyricLines = LrcParser.parse(lyric)) }
+        }
     }
 
     private fun MusicInfo.toMediaItem(): MediaItem =

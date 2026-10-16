@@ -22,28 +22,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.lxmusic.mobile.LxApp
-import com.lxmusic.mobile.core.model.ApiSourceInfo
 import com.lxmusic.mobile.core.model.SourceConst
-import com.lxmusic.mobile.ui.navigation.LocalNavigator
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Download
 import top.yukonga.miuix.kmp.icon.extended.File
-import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 /** 音源管理页：内置音源 + 自定义音源，支持网络导入与文件导入 */
 @Composable
 fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
-    val navigator = LocalNavigator.current
-    val context = LocalContext.current
     val userApis by viewModel.userApis.collectAsState()
     val currentSource = viewModel.currentSource
 

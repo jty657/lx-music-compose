@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lxmusic.mobile.LxApp
 import com.lxmusic.mobile.core.model.Board
-import com.lxmusic.mobile.core.model.SourceConst
 import kotlinx.coroutines.launch
 
 class HomeViewModel : ViewModel() {
@@ -21,28 +20,34 @@ class HomeViewModel : ViewModel() {
     var selectedSource by mutableStateOf("kw")
         private set
 
+    private var sourceLabelText by mutableStateOf("酷我音乐")
+
     init {
         viewModelScope.launch {
             selectedSource = LxApp.app.settings.currentApiSource()
+            refreshSourceLabel()
             loadBoards()
+            loadHotSearch()
         }
     }
 
-    fun sourceLabel(): String {
-        if (selectedSource.startsWith("user_api")) {
-            val info = LxApp.app.apiSourceRepository.let { repo ->
-                // 从缓存列表查找名字
-                null
+    /** 当前音源显示名（内置源用中文名，自定义源用脚本名） */
+    fun sourceLabel(): String = sourceLabelText
+
+    private suspend fun refreshSourceLabel() {
+        val id = selectedSource
+        sourceLabelText = if (id.startsWith("user_api")) {
+            LxApp.app.apiSourceRepository.getAll().find { it.id == id }?.name
+                ?: "自定义音源"
+        } else {
+            when (id) {
+                "kw" -> "酷我音乐"
+                "kg" -> "酷狗音乐"
+                "tx" -> "QQ音乐"
+                "wy" -> "网易音乐"
+                "mg" -> "咪咕音乐"
+                else -> id
             }
-            return "自定义音源"
-        }
-        return when (selectedSource) {
-            "kw" -> "酷我音乐"
-            "kg" -> "酷狗音乐"
-            "tx" -> "QQ音乐"
-            "wy" -> "网易音乐"
-            "mg" -> "咪咕音乐"
-            else -> selectedSource
         }
     }
 
@@ -56,6 +61,20 @@ class HomeViewModel : ViewModel() {
                 boards = list
             }.onFailure {
                 boards = emptyList()
+            }
+        }
+    }
+
+    /** 热搜词（失败时为空，首页会回退展示榜单） */
+    fun loadHotSearch() {
+        viewModelScope.launch {
+            val source = if (selectedSource.startsWith("user_api")) "kw" else selectedSource
+            runCatching {
+                LxApp.app.musicRepository.getHotSearch(source)
+            }.onSuccess { list ->
+                hotSearch = list
+            }.onFailure {
+                hotSearch = emptyList()
             }
         }
     }

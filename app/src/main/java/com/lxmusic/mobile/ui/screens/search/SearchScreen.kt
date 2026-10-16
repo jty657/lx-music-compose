@@ -1,5 +1,6 @@
 package com.lxmusic.mobile.ui.screens.search
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +35,8 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Search
 import top.yukonga.miuix.kmp.icon.extended.Play
+import top.yukonga.miuix.kmp.icon.extended.Favorites
+import top.yukonga.miuix.kmp.icon.extended.FavoritesFill
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.TextField
@@ -112,19 +115,39 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
                     music = music,
+                    isFavorite = music.id in viewModel.favoriteIds,
                     onClick = {
                         scope.launch {
                             viewModel.play(music)
                         }
                     },
+                    onToggleFavorite = { viewModel.toggleFavorite(music) },
                 )
+            }
+            if (viewModel.hasMore) {
+                item(key = "__load_more__") {
+                    Button(
+                        onClick = { viewModel.loadMore() },
+                        enabled = !viewModel.loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                    ) {
+                        Text(if (viewModel.loading) "加载中…" else "加载更多")
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SearchResultCard(music: MusicInfo, onClick: () -> Unit) {
+private fun SearchResultCard(
+    music: MusicInfo,
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -137,7 +160,7 @@ private fun SearchResultCard(music: MusicInfo, onClick: () -> Unit) {
             modifier = Modifier.padding(8.dp),
         ) {
             Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(32.dp))
-            Column(Modifier.padding(start = 12.dp)) {
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(music.name, fontSize = MiuixTheme.textStyles.main.fontSize)
                 Text(
                     "${music.singer} · ${music.interval ?: ""}",
@@ -145,6 +168,19 @@ private fun SearchResultCard(music: MusicInfo, onClick: () -> Unit) {
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
+            Icon(
+                if (isFavorite) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
+                contentDescription = if (isFavorite) "取消收藏" else "收藏",
+                tint = if (isFavorite) MiuixTheme.colorScheme.primary
+                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        onClick = onToggleFavorite,
+                    ),
+            )
         }
     }
 }

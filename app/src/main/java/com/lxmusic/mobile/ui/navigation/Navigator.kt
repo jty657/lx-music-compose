@@ -1,7 +1,6 @@
 package com.lxmusic.mobile.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /** 页面路由 */
@@ -12,6 +11,7 @@ sealed class Screen(val route: String) {
     object Setting : Screen("setting")
     object Player : Screen("player")
     object BoardList : Screen("boardList")
+    object Favorite : Screen("favorite")
 }
 
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("No navigator found") }

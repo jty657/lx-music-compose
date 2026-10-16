@@ -6,13 +6,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -33,6 +38,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val state by LxApp.app.playerRepository.state.collectAsState()
+
+    // 拖动进度条时，用本地值展示，避免被 500ms 的位置更新覆盖导致回弹
+    var dragValue by remember { mutableStateOf<Float?>(null) }
+    val duration = state.durationMs.coerceAtLeast(1L).toFloat()
+    val shownPosition = dragValue ?: state.positionMs.toFloat()
 
     Column(
         Modifier
@@ -60,25 +70,32 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
         Spacer(Modifier.size(12.dp))
 
-        // 歌词（滚动显示当前歌词行）
-        Text(
-            state.lyric.ifEmpty { "暂无歌词" },
-            fontSize = MiuixTheme.textStyles.body2.fontSize,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier.weight(1f),
-        )
+        // 歌词（滚动到当前行）
+        LyricView(state, Modifier.weight(1f))
 
         // 进度条
         Slider(
-            value = state.positionMs.toFloat(),
-            onValueChange = { viewModel.seekTo(it.toLong()) },
-            valueRange = 0f..state.durationMs.coerceAtLeast(1).toFloat(),
+            value = shownPosition,
+            onValueChange = { dragValue = it },
+            onValueChangeFinished = {
+                dragValue?.let { viewModel.seekTo(it.toLong()) }
+                dragValue = null
+            },
+            valueRange = 0f..duration,
             modifier = Modifier.fillMaxWidth(),
         )
         Row(Modifier.fillMaxWidth()) {
-            Text(viewModel.formatTime(state.positionMs), fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Text(viewModel.formatTime(shownPosition.toLong()), fontSize = MiuixTheme.textStyles.body2.fontSize)
             Spacer(Modifier.weight(1f))
             Text(viewModel.formatTime(state.durationMs), fontSize = MiuixTheme.textStyles.body2.fontSize)
+        }
+
+        state.error?.let { err ->
+            Text(
+                err,
+                color = MiuixTheme.colorScheme.error,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+            )
         }
 
         // 控制按钮
@@ -98,14 +115,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
         // 播放模式
         Row {
-            listOf(
-                PlayMode.LIST_LOOP to "列表循环",
-                PlayMode.SINGLE_LOOP to "单曲循环",
-                PlayMode.RANDOM to "随机播放",
-                PlayMode.LIST to "顺序播放",
-            ).forEach { (mode, label) ->
+            PlayMode.ALL.forEach { mode ->
                 Text(
-                    label,
+                    PlayMode.label(mode),
                     modifier = Modifier
                         .padding(4.dp)
                         .clickable { viewModel.setMode(mode) },
@@ -114,6 +126,45 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                 )
             }
+        }
+    }
+}
+
+/** 歌词视图：显示当前行并滚动跟随 */
+@Composable
+private fun LyricView(state: com.lxmusic.mobile.core.player.PlayState, modifier: Modifier = Modifier) {
+    if (state.lyricLines.isEmpty()) {
+        Text(
+            "暂无歌词",
+            fontSize = MiuixTheme.textStyles.body2.fontSize,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = modifier,
+        )
+        return
+    }
+    val scrollState = rememberScrollState()
+    val currentIndex = state.currentLyricIndex
+    androidx.compose.runtime.LaunchedEffect(currentIndex) {
+        if (currentIndex >= 0) {
+            // 让当前行大致居中
+            scrollState.animateScrollTo(currentIndex * 40)
+        }
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 120.dp)
+            .verticalScroll(scrollState),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        state.lyricLines.forEachIndexed { index, line ->
+            Text(
+                line.text,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                color = if (index == currentIndex) MiuixTheme.colorScheme.primary
+                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
         }
     }
 }

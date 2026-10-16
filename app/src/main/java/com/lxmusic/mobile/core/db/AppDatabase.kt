@@ -49,6 +49,7 @@ class AppDatabase(private val context: Context) {
         private val JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyPrint = true }
         private const val FILE_API_SOURCE_LIST = "api_source_list.json"
         private const val FILE_PLAYLIST = "playlist.json"
+        private const val FILE_FAVORITES = "favorites.json"
 
         fun build(context: Context): AppDatabase = AppDatabase(context)
     }
@@ -162,6 +163,23 @@ class AppDatabase(private val context: Context) {
     private fun persistPlaylists(list: List<Playlist>) {
         java.io.File(dataDir, FILE_PLAYLIST).writeText(JSON.encodeToString(list))
     }
+
+    // ============ 我喜欢（收藏） ============
+
+    suspend fun loadFavorites(): List<com.lxmusic.mobile.core.model.MusicInfo> =
+        withContext(Dispatchers.IO) {
+            val file = java.io.File(dataDir, FILE_FAVORITES)
+            if (file.exists()) {
+                runCatching {
+                    JSON.decodeFromString<List<com.lxmusic.mobile.core.model.MusicInfo>>(file.readText())
+                }.getOrElse { emptyList() }
+            } else emptyList()
+        }
+
+    suspend fun saveFavorites(list: List<com.lxmusic.mobile.core.model.MusicInfo>) =
+        withContext(Dispatchers.IO) {
+            java.io.File(dataDir, FILE_FAVORITES).writeText(JSON.encodeToString(list))
+        }
 
     fun toInfo(meta: ApiSourceMeta): ApiSourceInfo = ApiSourceInfo(
         id = meta.id,

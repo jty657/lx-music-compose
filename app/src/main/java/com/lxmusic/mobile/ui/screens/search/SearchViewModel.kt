@@ -20,19 +20,68 @@ class SearchViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    /** 已收藏的歌曲 id 集合 */
+    var favoriteIds by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    private var lastQuery: String = ""
+    private var lastSource: String = "all"
+    private var page: Int = 1
+    var hasMore by mutableStateOf(false)
+        private set
+
+    init {
+        viewModelScope.launch {
+            LxApp.app.favoritesRepository.favoriteIds.collect { favoriteIds = it }
+        }
+    }
+
     fun search(text: String, source: String) {
+        lastQuery = text
+        lastSource = source
+        page = 1
         viewModelScope.launch {
             loading = true
             errorMessage = null
             runCatching {
-                LxApp.app.musicRepository.search(text, 1, source)
+                LxApp.app.musicRepository.search(text, page, source)
             }.onSuccess { list ->
                 results = list
+                hasMore = list.isNotEmpty()
             }.onFailure { e ->
                 errorMessage = e.message
                 results = emptyList()
+                hasMore = false
             }
             loading = false
+        }
+    }
+
+    /** 加载下一页 */
+    fun loadMore() {
+        if (loading || !hasMore || lastQuery.isBlank()) return
+        val nextPage = page + 1
+        viewModelScope.launch {
+            loading = true
+            runCatching {
+                LxApp.app.musicRepository.search(lastQuery, nextPage, lastSource)
+            }.onSuccess { list ->
+                if (list.isEmpty()) {
+                    hasMore = false
+                } else {
+                    // 按 id 去重追加
+                    val existing = results.map { it.id }.toSet()
+                    results = results + list.filterNot { it.id in existing }
+                    page = nextPage
+                }
+            }
+            loading = false
+        }
+    }
+
+    fun toggleFavorite(music: MusicInfo) {
+        viewModelScope.launch {
+            LxApp.app.favoritesRepository.toggle(music)
         }
     }
 

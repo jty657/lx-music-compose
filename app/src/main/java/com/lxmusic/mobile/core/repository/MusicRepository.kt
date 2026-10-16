@@ -11,7 +11,6 @@ import com.lxmusic.mobile.core.request.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -102,6 +101,10 @@ class MusicRepository(
     suspend fun getHotSearch(source: String) = sdk.getHotSearch(source)
 
     // ================= 歌词 =================
+
+    /** 获取歌词文本（供播放器展示，失败时返回 null） */
+    suspend fun fetchLyricText(musicInfo: MusicInfo): String? =
+        runCatching { getLyricInfo(musicInfo).lyric }.getOrNull()
 
     suspend fun getLyricInfo(musicInfo: MusicInfo, allowToggleSource: Boolean = true): LyricInfo {
         if (SourceConst.isUserApi(currentUserApiId())) {

@@ -1,6 +1,5 @@
 package com.lxmusic.mobile.core.api
 
-import com.lxmusic.mobile.core.engine.toOldMusicInfo
 import com.lxmusic.mobile.core.model.MusicInfo
 import kotlinx.coroutines.flow.StateFlow
 
