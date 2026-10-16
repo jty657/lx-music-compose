@@ -40,11 +40,16 @@ data class Playlist(
     val locationUpdateTime: Long = 0,
 )
 
+/**
+ * 列表内的一条歌曲。[id] 是本条记录 id（= music.id），[listId] 指明所属列表，
+ * 因为歌曲按 `playlist_$listId.json` 分文件存放，导出备份时需要它还原归属。
+ */
 @Serializable
 data class PlaylistMusic(
     val id: String,
     val music: com.lingxu.music.core.model.MusicInfo,
     val sort: Int,
+    val listId: String = "",
 )
 
 class AppDatabase(private val context: Context) {

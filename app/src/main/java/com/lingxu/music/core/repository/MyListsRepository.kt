@@ -122,7 +122,7 @@ class MyListsRepository(private val db: AppDatabase) {
         val existing = db.getPlaylistMusics(listId)
         val items = musics.mapIndexed { index, music ->
             val old = existing.firstOrNull { it.id == music.id }
-            if (old != null) old.copy(sort = index) else PlaylistMusic(id = music.id, music = music, sort = index)
+            if (old != null) old.copy(sort = index, listId = listId) else PlaylistMusic(id = music.id, music = music, sort = index, listId = listId)
         }
         db.savePlaylistMusics(listId, items)
         persist(_lists.value.map { if (it.id == listId) it.copy(musics = musics.map { it.id }) else it })

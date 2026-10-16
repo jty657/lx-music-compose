@@ -7,13 +7,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.PlayMode
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
@@ -27,9 +35,32 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun SettingScreen(
     viewModel: SettingViewModel = viewModel(),
-    onExportConfig: () -> Unit = {},
-    onImportConfig: () -> Unit = {},
 ) {
+    val scope = rememberCoroutineScope()
+    var toast by remember { mutableStateOf<String?>(null) }
+
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            LxApp.app.backupRepository.export(uri)
+                .onSuccess { count -> toast = "已导出 $count 条" }
+                .onFailure { toast = "导出失败：${it.message}" }
+        }
+    }
+
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            LxApp.app.backupRepository.import(uri)
+                .onSuccess { count -> toast = "已恢复 $count 条" }
+                .onFailure { toast = "恢复失败：${it.message}" }
+        }
+    }
+
     val themeMode by viewModel.themeMode.collectAsState(initial = "system")
     val lang by viewModel.lang.collectAsState(initial = "system")
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
@@ -264,15 +295,23 @@ fun SettingScreen(
         ArrowPreference(
             title = "导出配置",
             summary = "把设置、收藏、我的列表导出为 JSON 文件",
-            onClick = onExportConfig,
+            onClick = { exportLauncher.launch(LxApp.app.backupRepository.defaultFileName()) },
         )
         ArrowPreference(
             title = "导入配置",
             summary = "从 JSON 文件恢复设置与列表",
-            onClick = onImportConfig,
+            onClick = { importLauncher.launch(arrayOf("application/json", "*/*")) },
         )
 
         Spacer(Modifier.size(24.dp))
+    }
+    if (toast != null) {
+        AlertDialog(
+            onDismissRequest = { toast = null },
+            title = { Text("备份") },
+            text = { Text(toast!!) },
+            confirmButton = { Button(onClick = { toast = null }) { Text("好") } },
+        )
     }
 }
 
