@@ -136,6 +136,74 @@ data class HotSearchWord(
     val num: Int = 0,
 )
 
+/** 歌单项（对应原版 ListInfoItem） */
+@Serializable
+data class SongListInfo(
+    val id: String,
+    val name: String,
+    val author: String = "",
+    val img: String? = null,
+    val playCount: String? = null,
+    val total: String? = null,
+    val desc: String? = null,
+    val source: String,
+)
+
+/** 歌单列表分页结果（对应原版 ListInfo） */
+@Serializable
+data class SongListPage(
+    val list: List<SongListInfo> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val limit: Int = 30,
+    val maxPage: Int = 1,
+    val source: String = "",
+    val tagId: String = "",
+    val sortId: String = "",
+)
+
+/** 歌单标签组（对应原版 TagInfoTypeItem） */
+@Serializable
+data class SongListTagGroup(
+    val name: String,
+    val list: List<SongListTag> = emptyList(),
+)
+
+/** 歌单标签（对应原版 TagInfoItem） */
+@Serializable
+data class SongListTag(
+    val id: String,
+    val name: String,
+    val parentId: String = "",
+    val parentName: String = "",
+    val source: String,
+)
+
+/** 歌单标签信息（对应原版 TagInfo） */
+@Serializable
+data class SongListTagInfo(
+    val tags: List<SongListTagGroup> = emptyList(),
+    val hotTag: List<SongListTag> = emptyList(),
+    val source: String,
+)
+
+/** 歌单详情（对应原版 ListDetailInfo） */
+@Serializable
+data class SongListDetail(
+    val list: List<MusicInfo> = emptyList(),
+    val source: String,
+    val total: Int = 0,
+    val page: Int = 1,
+    val limit: Int = 30,
+    val maxPage: Int = 1,
+    val id: String = "",
+    val name: String = "",
+    val img: String? = null,
+    val desc: String? = null,
+    val author: String = "",
+    val playCount: String? = null,
+)
+
 /** 音源脚本信息（对应原版 UserApiInfo） */
 @Serializable
 data class ApiSourceInfo(

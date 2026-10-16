@@ -7,6 +7,12 @@ import com.lingxu.music.core.model.Board
 import com.lingxu.music.core.model.BoardDetail
 import com.lingxu.music.core.model.LyricInfo
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.core.model.SongListDetail
+import com.lingxu.music.core.model.SongListInfo
+import com.lingxu.music.core.model.SongListPage
+import com.lingxu.music.core.model.SongListTag
+import com.lingxu.music.core.model.SongListTagGroup
+import com.lingxu.music.core.model.SongListTagInfo
 import com.lingxu.music.core.request.HttpClient
 import com.whl.quickjs.android.QuickJSLoader
 import com.whl.quickjs.wrapper.JSArray
@@ -243,6 +249,83 @@ class BuiltinSdkBridge(context: Context) {
         val raw = callJSFunction(fn, arrayOf(bangId, page))
         parseBoardDetail(raw, source, bangId)
     }
+
+    // ================= 歌单 =================
+
+    /** 歌单排序选项（对齐原版 songlist sortList） */
+    fun getSongListSorts(source: String): List<Pair<String, String>> = when (source) {
+        "kw", "tx" -> listOf("推荐" to "5", "最热" to "6", "最新" to "7", "热藏" to "3", "飙升" to "8")
+        "kg", "mg" -> listOf("推荐" to "recommend", "最热" to "hot", "最新" to "new", "热藏" to "hot_collect", "飙升" to "rise")
+        "wy" -> listOf("推荐" to "hot", "最新" to "new")
+        else -> emptyList()
+    }
+
+    /** 歌单标签（各源统一走 songList.getTags） */
+    suspend fun getSongListTags(source: String): SongListTagInfo = withSdkThread {
+        val songList = getSongListModule(source)
+            ?: return@withSdkThread SongListTagInfo(source = source)
+        val fn = songList.getJSFunction("getTags") ?: return@withSdkThread SongListTagInfo(source = source)
+        val raw = callJSFunction(fn, arrayOf())
+        parseSongListTags(awaitPromise(asPromise(raw)), source)
+    }
+
+    /** 歌单列表 */
+    suspend fun getSongList(source: String, sortId: String, tagId: String, page: Int): SongListPage =
+        withSdkThread {
+            val songList = getSongListModule(source)
+                ?: return@withSdkThread SongListPage(source = source)
+            val fn = songList.getJSFunction("getList") ?: return@withSdkThread SongListPage(source = source)
+            val raw = callJSFunction(fn, arrayOf(sortId, tagId, page))
+            parseSongListPage(awaitPromise(asPromise(raw)), source, sortId, tagId)
+        }
+
+    /** 歌单详情（歌单内歌曲） */
+    suspend fun getSongListDetail(source: String, id: String, page: Int): SongListDetail =
+        withSdkThread {
+            val songList = getSongListModule(source)
+                ?: return@withSdkThread SongListDetail(source = source)
+            val fn = songList.getJSFunction("getListDetail") ?: return@withSdkThread SongListDetail(source = source)
+            val raw = callJSFunction(fn, arrayOf(id, page))
+            parseSongListDetail(awaitPromise(asPromise(raw)), source, id)
+        }
+
+    /** 搜索歌单（对齐原版 core/search/songlist.ts） */
+    suspend fun searchSongList(text: String, page: Int, source: String, limit: Int = 18): SongListPage =
+        withSdkThread {
+            val songList = getSongListModule(source)
+                ?: return@withSdkThread SongListPage(source = source)
+            val fn = songList.getJSFunction("search") ?: return@withSdkThread SongListPage(source = source)
+            val raw = callJSFunction(fn, arrayOf(text, page, limit))
+            parseSongListPage(awaitPromise(asPromise(raw)), source, "", "")
+        }
+
+    /** 歌单搜索聚合（all = 并发各源） */
+    suspend fun searchSongListAll(text: String, page: Int, limit: Int = 15): SongListPage {
+        val sources = listOf("kw", "kg", "tx", "wy", "mg")
+        val results = sources.map { s ->
+            runCatching { searchSongList(text, page, s, limit) }
+                .getOrElse { SongListPage(source = s) }
+        }
+        return SongListPage(
+            list = results.flatMap { it.list }.distinctBy { "${it.source}_${it.id}" },
+            total = results.sumOf { it.total },
+            page = page,
+            limit = limit,
+            maxPage = results.maxOf { it.maxPage },
+            source = "all",
+        )
+    }
+
+    /**
+     * 归一化 SDK 返回值：SDK 多数方法返回 { promise } 或直接返回 Promise/thenable
+     */
+    private fun asPromise(raw: Any?): JSObject {
+        val obj = raw as? JSObject ?: throw IllegalStateException("invalid sdk response")
+        return obj.getJSObject("promise") ?: obj
+    }
+
+    private fun getSongListModule(source: String): JSObject? =
+        getModule(source)?.getJSObject("songList")
 
     // ================= 热搜 =================
 
@@ -547,6 +630,121 @@ class BuiltinSdkBridge(context: Context) {
             id = "${source}__$bangId",
             name = obj.getString("name") ?: "",
             list = musics,
+        )
+    }
+
+    private fun parseSongListTags(raw: Any?, source: String): SongListTagInfo {
+        val obj = raw as? JSObject ?: return SongListTagInfo(source = source)
+        val groups = mutableListOf<SongListTagGroup>()
+        (obj.getJSObject("tags") as? JSArray)?.let { arr ->
+            val len = jsContext?.let { it.length(arr) } ?: 0
+            for (i in 0 until len) {
+                val g = jsContext?.get(arr, i) as? JSObject ?: continue
+                val tags = mutableListOf<SongListTag>()
+                (g.getJSObject("list") as? JSArray)?.let { tagArr ->
+                    val tl = jsContext?.length(tagArr) ?: 0
+                    for (j in 0 until tl) {
+                        val t = jsContext?.get(tagArr, j) as? JSObject ?: continue
+                        tags.add(
+                            SongListTag(
+                                id = t.getString("id") ?: continue,
+                                name = t.getString("name") ?: "",
+                                parentId = t.getString("parent_id") ?: "",
+                                parentName = t.getString("parent_name") ?: "",
+                                source = t.getString("source") ?: source,
+                            ),
+                        )
+                    }
+                }
+                groups.add(SongListTagGroup(name = g.getString("name") ?: "", list = tags))
+            }
+        }
+        val hot = mutableListOf<SongListTag>()
+        (obj.getJSObject("hotTag") as? JSArray)?.let { arr ->
+            val len = jsContext?.let { it.length(arr) } ?: 0
+            for (i in 0 until len) {
+                val t = jsContext?.get(arr, i) as? JSObject ?: continue
+                hot.add(
+                    SongListTag(
+                        id = t.getString("id") ?: continue,
+                        name = t.getString("name") ?: "",
+                        parentId = t.getString("parent_id") ?: "",
+                        parentName = t.getString("parent_name") ?: "",
+                        source = t.getString("source") ?: source,
+                    ),
+                )
+            }
+        }
+        return SongListTagInfo(tags = groups, hotTag = hot, source = source)
+    }
+
+    private fun parseSongListPage(
+        raw: Any?,
+        source: String,
+        sortId: String,
+        tagId: String,
+    ): SongListPage {
+        val obj = raw as? JSObject ?: return SongListPage(source = source)
+        val items = mutableListOf<SongListInfo>()
+        (obj.getJSObject("list") as? JSArray)?.let { arr ->
+            val len = jsContext?.let { it.length(arr) } ?: 0
+            for (i in 0 until len) {
+                val item = jsContext?.get(arr, i) as? JSObject ?: continue
+                val id = item.getString("id") ?: continue
+                items.add(
+                    SongListInfo(
+                        id = id,
+                        name = item.getString("name") ?: "",
+                        author = item.getString("author") ?: "",
+                        img = item.getString("img"),
+                        playCount = item.getString("play_count"),
+                        total = item.getString("total"),
+                        desc = item.getString("desc"),
+                        source = item.getString("source") ?: source,
+                    ),
+                )
+            }
+        }
+        val total = obj.getIntProperty("total") ?: items.size
+        val limit = obj.getIntProperty("limit") ?: 30
+        return SongListPage(
+            list = items,
+            total = total,
+            page = obj.getIntProperty("page") ?: 1,
+            limit = limit,
+            maxPage = if (limit > 0) ((total + limit - 1) / limit).coerceAtLeast(1) else 1,
+            source = source,
+            tagId = tagId,
+            sortId = sortId,
+        )
+    }
+
+    private fun parseSongListDetail(raw: Any?, source: String, id: String): SongListDetail {
+        val obj = raw as? JSObject ?: return SongListDetail(source = source)
+        val musics = mutableListOf<MusicInfo>()
+        (obj.getJSObject("list") as? JSArray)?.let { arr ->
+            val len = jsContext?.let { it.length(arr) } ?: 0
+            for (i in 0 until len) {
+                val item = jsContext?.get(arr, i) as? JSObject ?: continue
+                musics.add(jsMusicInfoToModel(item, source))
+            }
+        }
+        val total = obj.getIntProperty("total") ?: musics.size
+        val limit = obj.getIntProperty("limit") ?: 30
+        val info = obj.getJSObject("info")
+        return SongListDetail(
+            list = musics,
+            source = source,
+            total = total,
+            page = obj.getIntProperty("page") ?: 1,
+            limit = limit,
+            maxPage = if (limit > 0) ((total + limit - 1) / limit).coerceAtLeast(1) else 1,
+            id = id,
+            name = info?.getString("name") ?: obj.getString("name") ?: "",
+            img = info?.getString("img") ?: obj.getString("img"),
+            desc = info?.getString("desc") ?: obj.getString("desc"),
+            author = info?.getString("author") ?: "",
+            playCount = info?.getString("play_count") ?: obj.getString("play_count"),
         )
     }
 

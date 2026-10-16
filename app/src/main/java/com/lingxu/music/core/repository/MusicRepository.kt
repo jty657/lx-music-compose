@@ -100,6 +100,29 @@ class MusicRepository(
 
     suspend fun getHotSearch(source: String) = sdk.getHotSearch(source)
 
+    // ================= 歌单 =================
+
+    /** 歌单排序选项（原版 songlistState.sortList） */
+    fun getSongListSorts(source: String) = sdk.getSongListSorts(source)
+
+    /** 歌单标签 */
+    suspend fun getSongListTags(source: String) = sdk.getSongListTags(source)
+
+    /** 歌单列表 */
+    suspend fun getSongList(source: String, sortId: String, tagId: String, page: Int) =
+        sdk.getSongList(source, sortId, tagId, page)
+
+    /** 歌单详情（歌单内歌曲） */
+    suspend fun getSongListDetail(source: String, id: String, page: Int) =
+        sdk.getSongListDetail(source, id, page)
+
+    /** 搜索歌单（单源） */
+    suspend fun searchSongList(text: String, page: Int, source: String, limit: Int = 18) =
+        sdk.searchSongList(text, page, source, limit)
+
+    /** 搜索歌单（聚合，对齐原版 core/search/songlist.ts） */
+    suspend fun searchSongListAll(text: String, page: Int) = sdk.searchSongListAll(text, page)
+
     // ================= 歌词 =================
 
     suspend fun getLyricInfo(musicInfo: MusicInfo, allowToggleSource: Boolean = true): LyricInfo {
