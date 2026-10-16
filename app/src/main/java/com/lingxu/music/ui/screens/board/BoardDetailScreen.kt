@@ -153,11 +153,8 @@ class BoardDetailViewModel : ViewModel() {
     fun play(queue: List<MusicInfo>, music: MusicInfo) {
         viewModelScope.launch {
             runCatching {
-                val url = LxApp.app.musicRepository.getMusicUrl(music)
                 val index = queue.indexOfFirst { it.id == music.id }.coerceAtLeast(0)
-                val resolved = queue.map { info ->
-                    if (info.id == music.id) info.copy(meta = info.meta.copy(filePath = url)) else info
-                }
+                val resolved = queue.map { info -> LxApp.app.playerRepository.resolvePlayInfo(info) }
                 LxApp.app.playerRepository.playQueue(resolved, index)
             }
         }

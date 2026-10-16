@@ -1,0 +1,260 @@
+package com.lingxu.music.ui.screens.mylist
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.lingxu.music.LxApp
+import com.lingxu.music.core.db.Playlist
+import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.ui.navigation.LocalNavigator
+import com.lingxu.music.ui.navigation.Screen
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Favorites
+import top.yukonga.miuix.kmp.icon.extended.Play
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
+
+/** 我的列表：本地歌单管理（新建/重命名/删除/排序）与歌单内歌曲 */
+@Composable
+fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
+    val navigator = LocalNavigator.current
+    val lists by viewModel.lists.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    var showCreate by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var renaming by remember { mutableStateOf<Playlist?>(null) }
+    var openList by remember { mutableStateOf<String?>(null) }
+    var musics by remember { mutableStateOf<List<MusicInfo>>(emptyList()) }
+
+    Column(Modifier.fillMaxSize().padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                MiuixIcons.Back,
+                contentDescription = "返回",
+                modifier = Modifier
+                    .size(28.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        onClick = {
+                            if (openList != null) {
+                                openList = null
+                                musics = emptyList()
+                            } else navigator.pop()
+                        }
+                    ),
+            )
+            Text(
+                openList?.let { id -> lists.firstOrNull { it.id == id }?.name } ?: "我的列表",
+                fontSize = MiuixTheme.textStyles.title1.fontSize,
+                modifier = Modifier.weight(1f).padding(start = 12.dp),
+            )
+            if (openList == null) {
+                Button(onClick = { showCreate = true }) { Text("新建") }
+            }
+        }
+        Spacer(Modifier.size(8.dp))
+
+        if (openList == null) {
+            if (lists.isEmpty()) {
+                Text(
+                    "还没有列表，点右上角「新建」或去歌单广场收藏",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+                return@Column
+            }
+            LazyColumn(Modifier.weight(1f)) {
+                items(lists, key = { it.id }) { list ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        pressFeedbackType = PressFeedbackType.Sink,
+                        onClick = {
+                            openList = list.id
+                            viewModel.loadMusics(list.id) { musics = it }
+                        },
+                        onLongPress = { renaming = list },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+                            Icon(
+                                if (list.sourceListId != null) MiuixIcons.Favorites else MiuixIcons.Play,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                            )
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                Text(list.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                                Text(
+                                    if (list.sourceListId != null) "在线列表 · ${list.source}" else "本地列表",
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                )
+                            }
+                            Icon(
+                                MiuixIcons.Delete,
+                                contentDescription = "删除",
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                        onClick = { scope.launch { viewModel.remove(list.id) } },
+                                    ),
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            val id = openList!!
+            if (musics.isEmpty()) {
+                Text(
+                    "这个列表还没有歌曲",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+            }
+            LazyColumn(Modifier.weight(1f)) {
+                items(musics, key = { it.id }) { music ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        pressFeedbackType = PressFeedbackType.Sink,
+                        onClick = { viewModel.play(musics, music) },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+                            Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                Text(music.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                                Text(
+                                    music.singer,
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                )
+                            }
+                            Icon(
+                                MiuixIcons.Delete,
+                                contentDescription = "移除",
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                        onClick = { scope.launch { viewModel.removeMusic(id, music.id); musics = musics.filterNot { it.id == music.id } } },
+                                    ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCreate) {
+        AlertDialog(
+            onDismissRequest = { showCreate = false; newName = "" },
+            title = { Text("新建列表") },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    placeholder = { Text("列表名称") },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (newName.isNotBlank()) {
+                        viewModel.create(newName.trim())
+                        newName = ""
+                    }
+                    showCreate = false
+                }) { Text("创建") }
+            },
+            dismissButton = { Button(onClick = { showCreate = false(); newName = "" }) { Text("取消") } },
+        )
+    }
+
+    renaming?.let { list ->
+        var name by remember(list.id) { mutableStateOf(list.name) }
+        AlertDialog(
+            onDismissRequest = { renaming = null },
+            title = { Text("重命名") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (name.isNotBlank()) viewModel.rename(list.id, name.trim())
+                    renaming = null
+                }) { Text("保存") }
+            },
+            dismissButton = { Button(onClick = { renaming = null }) { Text("取消") } },
+        )
+    }
+}
+
+class MyListsViewModel : ViewModel() {
+    val lists = LxApp.app.myListsRepository.lists
+
+    fun loadMusics(listId: String, onResult: (List<MusicInfo>) -> Unit) {
+        viewModelScope.launch { runCatching { LxApp.app.myListsRepository.getMusics(listId) }.onSuccess(onResult) }
+    }
+
+    fun create(name: String) {
+        viewModelScope.launch { runCatching { LxApp.app.myListsRepository.create(name) } }
+    }
+
+    fun rename(id: String, name: String) {
+        viewModelScope.launch { runCatching { LxApp.app.myListsRepository.rename(id, name) } }
+    }
+
+    fun remove(id: String) {
+        viewModelScope.launch { runCatching { LxApp.app.myListsRepository.remove(id) } }
+    }
+
+    fun removeMusic(listId: String, musicId: String) {
+        viewModelScope.launch { runCatching { LxApp.app.myListsRepository.removeMusics(listId, listOf(musicId)) } }
+    }
+
+    fun play(queue: List<MusicInfo>, music: MusicInfo) {
+        viewModelScope.launch {
+            runCatching {
+                val index = queue.indexOfFirst { it.id == music.id }.coerceAtLeast(0)
+                val resolved = queue.map { info -> LxApp.app.playerRepository.resolvePlayInfo(info) }
+                LxApp.app.playerRepository.playQueue(resolved, index)
+            }
+        }
+    }
+}

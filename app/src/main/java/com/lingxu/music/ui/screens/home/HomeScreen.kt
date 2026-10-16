@@ -32,6 +32,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     val boards = viewModel.boards
     val hotSearch = viewModel.hotSearch
+    val selectedSource = viewModel.selectedSource
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口
         Card(
@@ -48,6 +49,47 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                         fontSize = MiuixTheme.textStyles.body2.fontSize,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     )
+                }
+            }
+        }
+
+        Spacer(Modifier.size(8.dp))
+
+        // 我的列表 / 歌单广场入口
+        Row(Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.weight(1f),
+                pressFeedbackType = PressFeedbackType.Sink,
+                onClick = { navigator.push(Screen.MyLists) },
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
+                    IconWrap(MiuixIcons.Layers)
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text("我的列表", fontSize = MiuixTheme.textStyles.main.fontSize)
+                        Text(
+                            "本地歌单与收藏",
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.size(8.dp))
+            Card(
+                modifier = Modifier.weight(1f),
+                pressFeedbackType = PressFeedbackType.Sink,
+                onClick = { navigator.push(Screen.SongList(selectedSource)) },
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
+                    IconWrap(MiuixIcons.Layers)
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text("歌单广场", fontSize = MiuixTheme.textStyles.main.fontSize)
+                        Text(
+                            "平台歌单",
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
                 }
             }
         }

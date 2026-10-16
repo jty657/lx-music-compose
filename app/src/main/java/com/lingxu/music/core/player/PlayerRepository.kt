@@ -105,6 +105,12 @@ class PlayerRepository(context: Context) {
     /** 封面加载器（由 App 注入） */
     var coverLoader: (suspend (MusicInfo) -> String?)? = null
 
+    /**
+     * 播放信息加载器：拿到可播放的 URL 后填回 meta.filePath（由 App 注入）。
+     * 播放前调用，避免各处重复写 getMusicUrl + copy 逻辑。
+     */
+    var playInfoLoader: (suspend (MusicInfo) -> MusicInfo)? = null
+
     /** 播放模式持久化回调（由 App 注入） */
     var onPlayModeChange: ((String) -> Unit)? = null
 
@@ -184,6 +190,15 @@ class PlayerRepository(context: Context) {
 
     /** 播放单曲（替换整个队列） */
     fun playSingle(musicInfo: MusicInfo) = playQueue(listOf(musicInfo), 0)
+
+    /**
+     * 解析播放信息：为队列中每首歌取可播放 URL 并写回 meta.filePath（由 App 注入 playInfoLoader）。
+     * 取不到的歌曲保持原样，播放器会自然报错而不是崩溃。
+     */
+    suspend fun resolvePlayInfo(musicInfo: MusicInfo): MusicInfo {
+        val loader = playInfoLoader ?: return musicInfo
+        return runCatching { loader(musicInfo) }.getOrDefault(musicInfo)
+    }
 
     /** 追加到队列 */
     fun addToQueue(musicInfo: MusicInfo) {

@@ -35,6 +35,9 @@ import com.lingxu.music.ui.navigation.rememberNavigator
 import com.lingxu.music.ui.screens.favorite.FavoriteScreen
 import com.lingxu.music.ui.screens.board.BoardDetailScreen
 import com.lingxu.music.ui.screens.home.HomeScreen
+import com.lingxu.music.ui.screens.mylist.MyListsScreen
+import com.lingxu.music.ui.screens.songlist.SongListDetailScreen
+import com.lingxu.music.ui.screens.songlist.SongListScreen
 import com.lingxu.music.ui.screens.player.PlayerScreen
 import com.lingxu.music.ui.screens.search.SearchScreen
 import com.lingxu.music.ui.screens.setting.SettingScreen
@@ -128,6 +131,13 @@ private fun MainScaffold(
                     bangId = current.bangId,
                     name = current.name,
                 )
+                is Screen.SongList -> SongListScreen(source = current.source)
+                is Screen.SongListDetail -> com.lingxu.music.ui.screens.songlist.SongListDetailScreen(
+                    source = current.source,
+                    id = current.id,
+                    name = current.name,
+                )
+                is Screen.MyLists -> MyListsScreen()
             }
         }
     }

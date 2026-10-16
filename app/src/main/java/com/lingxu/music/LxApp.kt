@@ -29,6 +29,8 @@ class LxApp : Application() {
         private set
     lateinit var favoritesRepository: FavoritesRepository
         private set
+    lateinit var myListsRepository: MyListsRepository
+        private set
 
     /** 当前音源能力收集协程（切换音源时重建，避免协程泄漏） */
     private var capabilitiesJob: kotlinx.coroutines.Job? = null
@@ -48,6 +50,7 @@ class LxApp : Application() {
         sdkBridge = BuiltinSdkBridge(this)
         apiSourceRepository = ApiSourceRepository(database)
         favoritesRepository = FavoritesRepository(database)
+        myListsRepository = MyListsRepository(database)
         musicRepository = MusicRepository(sdkBridge, engineManager, settings)
         playerRepository = PlayerRepository.get(this)
         // 注入歌词加载器（播放器切歌时自动拉歌词，含翻译）
@@ -61,6 +64,10 @@ class LxApp : Application() {
         // 注入封面加载器
         playerRepository.coverLoader = { musicInfo ->
             runCatching { musicRepository.getPicUrl(musicInfo) }.getOrNull()
+        }
+        playerRepository.playInfoLoader = { musicInfo ->
+            val url = runCatching { musicRepository.getMusicUrl(musicInfo) }.getOrNull()
+            if (url != null) musicInfo.copy(meta = musicInfo.meta.copy(filePath = url)) else musicInfo
         }
 
         // 初始化内置 SDK
