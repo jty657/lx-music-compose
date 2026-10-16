@@ -117,6 +117,16 @@ class MyListsRepository(private val db: AppDatabase) {
     suspend fun getMusics(listId: String): List<MusicInfo> =
         db.getPlaylistMusics(listId).sortedBy { it.sort }.map { it.music }
 
+    /**
+     * 覆盖写入在线列表的同步结果并刷新更新时间（对应原版 core/syncSourceList.ts）
+     */
+    suspend fun overwriteOnlineMusics(listId: String, musics: List<MusicInfo>): Int {
+        if (musics.isEmpty()) return 0
+        saveMusics(listId, musics)
+        persist(_lists.value.map { if (it.id == listId) it.copy(locationUpdateTime = System.currentTimeMillis()) else it })
+        return musics.size
+    }
+
     suspend fun saveMusics(listId: String, musics: List<MusicInfo>) {
         ensureLoaded()
         val existing = db.getPlaylistMusics(listId)

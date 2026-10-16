@@ -68,6 +68,10 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     var moveTargets by remember { mutableStateOf(false) }
     // 列表内排序 / 去重
     var showSort by remember { mutableStateOf(false) }
+    // 在线列表同步（进度弹窗）
+    var showSync by remember { mutableStateOf(false) }
+    var syncCount by remember { mutableStateOf(0) }
+    var toast by remember { mutableStateOf<String?>(null) }
 
     val shownMusics = remember(musics, keyword) {
         if (keyword.isBlank()) musics
@@ -305,8 +309,34 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
         )
         GlassDialog(onDismissRequest = { showSort = false }) {
             Column(Modifier.padding(horizontal = 4.dp)) {
-                Text("列表排序", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Text("列表操作", fontSize = MiuixTheme.textStyles.title1.fontSize)
                 Spacer(Modifier.size(12.dp))
+                val currentList = lists.firstOrNull { it.id == openList }
+                if (currentList?.sourceListId != null) {
+                    Text(
+                        "同步到最新",
+                        color = MiuixTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val target = currentList
+                                showSort = false
+                                showSync = true
+                                viewModel.syncList(
+                                    target,
+                                    onProgress = { syncCount = it },
+                                    onDone = {
+                                        showSync = false
+                                        syncCount = 0
+                                        toast = it
+                                        viewModel.loadMusics(target.id) { musics = it }
+                                    },
+                                )
+                            }
+                            .padding(vertical = 10.dp),
+                    )
+                    Spacer(Modifier.size(4.dp))
+                }
                 options.forEach { opt ->
                     Text(
                         opt.label,
@@ -345,6 +375,28 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         }
                         .padding(vertical = 10.dp),
                 )
+            }
+        }
+    }
+
+    if (showSync) {
+        GlassDialog(onDismissRequest = {}) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("正在同步", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text("已拉取 $syncCount 首…")
+            }
+        }
+    }
+
+    if (toast != null) {
+        GlassDialog(onDismissRequest = { toast = null }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text(toast!!, fontSize = MiuixTheme.textStyles.body1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { toast = null }) { Text("好") }
+                }
             }
         }
     }
@@ -465,6 +517,43 @@ class MyListsViewModel : ViewModel() {
     /** 覆盖写入整个列表（排序/去重后使用） */
     fun setMusics(listId: String, musics: List<MusicInfo>) {
         viewModelScope.launch { runCatching { LxApp.app.myListsRepository.saveMusics(listId, musics) } }
+    }
+
+    /**
+     * 同步在线列表（对应原版 core/syncSourceList.ts）：逐页拉全远端后覆盖本地。
+     * @param onProgress 已拉取数量
+     * @param onDone 完成回调（结果描述）
+     */
+    fun syncList(list: Playlist, onProgress: (Int) -> Unit, onDone: (String) -> Unit) {
+        viewModelScope.launch {
+            val source = list.source
+            val sourceListId = list.sourceListId
+            if (source == null || sourceListId == null) {
+                onDone("该列表不是在线列表")
+                return@launch
+            }
+            runCatching {
+                val collected = mutableListOf<MusicInfo>()
+                var page = 1
+                while (page <= 100) {
+                    val items = if (sourceListId.startsWith("board__")) {
+                        val bangId = sourceListId.removePrefix("board__").substringAfter("__", "")
+                        LxApp.app.musicRepository.getBoardList(source, bangId, page)
+                    } else {
+                        LxApp.app.musicRepository.getSongListDetail(source, sourceListId, page)
+                    }
+                    val listData = items.list
+                    if (listData.isEmpty()) break
+                    collected += listData.filterNot { m -> collected.any { it.id == m.id } }
+                    onProgress(collected.size)
+                    // 返回数量少于页码预期时视为到底
+                    if (listData.size < 10) break
+                    page += 1
+                }
+                LxApp.app.myListsRepository.overwriteOnlineMusics(list.id, collected)
+            }.onSuccess { onDone("同步完成") }
+                .onFailure { onDone("同步失败：${it.message}") }
+        }
     }
 
     /** 把若干首歌从 fromId 移到 toId */
