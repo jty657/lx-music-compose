@@ -35,6 +35,7 @@ import com.lingxu.music.core.request.HttpClient
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card

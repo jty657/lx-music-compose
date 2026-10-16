@@ -21,6 +21,18 @@ BASE = ROOT / "app/src/main/java"
 
 LAYOUT_SYMBOLS = {"Spacer", "Column", "Row", "Box"}
 
+# Compose 扩展函数：用了就必须 import（云端编译才报）
+COMPOSE_EXTENSIONS = {
+    "collectAsState": "androidx.compose.runtime.collectAsState",
+    "clickable": "androidx.compose.foundation.clickable",
+    "combinedClickable": "androidx.compose.foundation.combinedClickable",
+    "verticalScroll": "androidx.compose.foundation.verticalScroll",
+    "rememberScrollState": "androidx.compose.foundation.rememberScrollState",
+    "asImageBitmap": "androidx.compose.ui.graphics.asImageBitmap",
+    "dp": "androidx.compose.ui.unit.dp",
+    "sp": "androidx.compose.ui.unit.sp",
+}
+
 # 项目自有类型：用了简化名就必须 import（云端编译才报，坑过多次）
 PROJECT_SYMBOLS = {
     "LxApp": "com.lingxu.music.LxApp",
@@ -71,9 +83,15 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
 
     # 3b) 项目自有类型用了简化名必须 import
     for sym, fqcn in PROJECT_SYMBOLS.items():
-        # 出现 `LxApp.app` / `SourceConst.` 之类用法
         if re.search(r"(?<![\w.])" + sym + r"\s*\.", s) and f"import {fqcn}\n" not in s:
             issues.append(f"{rel} 使用了 {sym} 但未 import {fqcn}")
+
+    # 3c) Compose 扩展函数必须 import
+    for name, fqcn in COMPOSE_EXTENSIONS.items():
+        # .collectAsState( / .dp / .sp 这类用法
+        if re.search(r"\." + name + r"\s*[( \n]", s) or re.search(r"\d+\." + name + r"\b", s) or re.search(r"\." + name + r"\b", s):
+            if f"import {fqcn}\n" not in s:
+                issues.append(f"{rel} 使用了 .{name} 但未 import {fqcn}")
 
     # 4) 括号平衡
     if s.count("{") != s.count("}"):
