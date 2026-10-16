@@ -7,6 +7,7 @@ import com.lingxu.music.core.engine.ScriptEngineManager
 import com.lingxu.music.core.player.PlayerRepository
 import com.lingxu.music.core.repository.ApiSourceRepository
 import com.lingxu.music.core.repository.FavoritesRepository
+import com.lingxu.music.core.repository.MyListsRepository
 import com.lingxu.music.core.repository.MusicRepository
 import com.lingxu.music.core.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
