@@ -223,45 +223,46 @@ class BuiltinSdkBridge(context: Context) {
                 total = results.sumOf { it.total },
             )
         }
-        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
-        val musicSearch = module.getJSObject("musicSearch") ?: throw IllegalStateException("musicSearch not found")
-        val fn = musicSearch.getJSFunction("search")
-        val raw = callJSFunction(fn, arrayOf(text, page, limit))
-        return parseSearchResult(raw, source)
+        return withSdkThread {
+            val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+            val musicSearch = module.getJSObject("musicSearch") ?: throw IllegalStateException("musicSearch not found")
+            val fn = musicSearch.getJSFunction("search")
+            val raw = callJSFunction(fn, arrayOf(text, page, limit))
+            parseSearchResult(raw, source)
+        }
     }
 
     // ================= 榜单 =================
 
-    suspend fun getBoardsList(source: String): List<Board> {
-        val module = getModule(source) ?: return emptyList()
-        val leaderboard = module.getJSObject("leaderboard") ?: return emptyList()
-        val fn = leaderboard.getJSFunction("getBoards") ?: return emptyList()
+    suspend fun getBoardsList(source: String): List<Board> = withSdkThread {
+        val module = getModule(source) ?: return@withSdkThread emptyList()
+        val leaderboard = module.getJSObject("leaderboard") ?: return@withSdkThread emptyList()
+        val fn = leaderboard.getJSFunction("getBoards") ?: return@withSdkThread emptyList()
         val raw = callJSFunction(fn, arrayOf())
-        // raw = { list: [...], ... } 按原版 Board 结构
-        return parseBoards(raw, source)
+        parseBoards(raw, source)
     }
 
-    suspend fun getBoardList(source: String, bangId: String, page: Int): BoardDetail {
-        val module = getModule(source) ?: return BoardDetail("${source}__$bangId", "")
-        val leaderboard = module.getJSObject("leaderboard") ?: return BoardDetail("${source}__$bangId", "")
-        val fn = leaderboard.getJSFunction("getList") ?: return BoardDetail("${source}__$bangId", "")
+    suspend fun getBoardList(source: String, bangId: String, page: Int): BoardDetail = withSdkThread {
+        val module = getModule(source) ?: return@withSdkThread BoardDetail("${source}__$bangId", "")
+        val leaderboard = module.getJSObject("leaderboard") ?: return@withSdkThread BoardDetail("${source}__$bangId", "")
+        val fn = leaderboard.getJSFunction("getList") ?: return@withSdkThread BoardDetail("${source}__$bangId", "")
         val raw = callJSFunction(fn, arrayOf(bangId, page))
-        return parseBoardDetail(raw, source, bangId)
+        parseBoardDetail(raw, source, bangId)
     }
 
     // ================= 热搜 =================
 
-    suspend fun getHotSearch(source: String): List<String> {
-        val module = getModule(source) ?: return emptyList()
-        val hotSearch = module.getJSObject("hotSearch") ?: return emptyList()
-        val fn = hotSearch.getJSFunction("getList") ?: return emptyList()
+    suspend fun getHotSearch(source: String): List<String> = withSdkThread {
+        val module = getModule(source) ?: return@withSdkThread emptyList()
+        val hotSearch = module.getJSObject("hotSearch") ?: return@withSdkThread emptyList()
+        val fn = hotSearch.getJSFunction("getList") ?: return@withSdkThread emptyList()
         val raw = callJSFunction(fn, arrayOf())
-        return parseHotSearch(raw, source)
+        parseHotSearch(raw, source)
     }
 
     // ================= 歌词 =================
 
-    suspend fun getLyric(source: String, oldInfo: JsonObject): LyricInfo {
+    suspend fun getLyric(source: String, oldInfo: JsonObject): LyricInfo = withSdkThread {
         val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
         val fn = module.getJSFunction("getLyric")
         val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
@@ -270,20 +271,19 @@ class BuiltinSdkBridge(context: Context) {
         val promise = jsObj.getJSObject("promise") ?: throw IllegalStateException("lyric promise missing")
         val result = awaitPromise(promise) as? JSObject
             ?: throw IllegalStateException("lyric failed")
-        return parseLyric(result)
+        parseLyric(result)
     }
 
     // ================= 封面 =================
 
-    suspend fun getPic(source: String, oldInfo: JsonObject): String {
+    suspend fun getPic(source: String, oldInfo: JsonObject): String = withSdkThread {
         val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
         val fn = module.getJSFunction("getPic")
         val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
         // 返回 url 字符串或 Promise
-        return when (raw) {
+        when (raw) {
             is String -> raw
             else -> {
-                // 有些源返回 { promise } 或 Promise
                 val jsObj = raw as? JSObject
                 val promise = jsObj?.getJSObject("promise") ?: jsObj
                 awaitPromise(promise as JSObject)?.toString() ?: throw IllegalStateException("pic failed")
@@ -293,7 +293,7 @@ class BuiltinSdkBridge(context: Context) {
 
     // ================= 歌曲 URL（内置源无 api-list 时走 global.lx.apis） =================
 
-    suspend fun getMusicUrl(source: String, oldInfo: JsonObject, type: String): String {
+    suspend fun getMusicUrl(source: String, oldInfo: JsonObject, type: String): String = withSdkThread {
         val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
         val fn = module.getJSFunction("getMusicUrl")
         val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject(), type))
@@ -303,8 +303,7 @@ class BuiltinSdkBridge(context: Context) {
             ?: throw IllegalStateException("Api is not found")
         val result = awaitPromise(promise) as? JSObject
             ?: throw IllegalStateException("music url failed")
-        val url = result.getString("url") ?: throw IllegalStateException("invalid url")
-        return url
+        result.getString("url") ?: throw IllegalStateException("invalid url")
     }
 
     /** 音质协商（对应原版 getMusicType）：从 preference 向下取可用的音质 */
@@ -336,6 +335,18 @@ class BuiltinSdkBridge(context: Context) {
         executor.execute(block)
     }
 
+    /** 在 SDK 线程执行并挂起等待结果 */
+    private suspend fun <T> withSdkThread(block: () -> T): T =
+        suspendCancellableCoroutine { cont ->
+            executor.execute {
+                val result = runCatching { block() }
+                if (cont.isActive) {
+                    result.onSuccess { cont.resume(it) }
+                        .onFailure { cont.resumeWith(Result.failure(it)) }
+                }
+            }
+        }
+
     private fun callJSFunction(fn: com.whl.quickjs.wrapper.JSFunction, args: Array<Any?>): Any? {
         return fn.call(*args)
     }
@@ -343,21 +354,27 @@ class BuiltinSdkBridge(context: Context) {
     private suspend fun <T> withSdkContext(block: () -> T): T =
         withContext(Dispatchers.IO) { block() }
 
-    /** 等待 JS Promise（QuickJS wrapper 支持 Promise 直接转换） */
+    /** 等待 JS Promise（在 SDK 线程注册回调） */
     private suspend fun awaitPromise(promise: JSObject): Any? =
         withTimeoutOrNull(TIMEOUT_MS) {
             suspendCancellableCoroutine { cont ->
-                val then = promise.getJSFunction("then")
-                if (then != null) {
-                    then.call(
-                        { args: Array<Any?> -> cont.resume(args.getOrNull(0)) },
-                        { args: Array<Any?> ->
-                            val err = args.getOrNull(0)
-                            cont.resumeWith(Result.failure(Exception(err?.toString() ?: "promise rejected")))
-                        },
-                    )
-                } else {
-                    cont.resume(promise)
+                executor.execute {
+                    val then = promise.getJSFunction("then")
+                    if (then != null) {
+                        then.call(
+                            { args: Array<Any?> ->
+                                if (cont.isActive) cont.resume(args.getOrNull(0))
+                            },
+                            { args: Array<Any?> ->
+                                if (cont.isActive) {
+                                    val err = args.getOrNull(0)
+                                    cont.resumeWith(Result.failure(Exception(err?.toString() ?: "promise rejected")))
+                                }
+                            },
+                        )
+                    } else {
+                        if (cont.isActive) cont.resume(promise)
+                    }
                 }
             }
         } ?: throw IllegalStateException("promise timeout")
