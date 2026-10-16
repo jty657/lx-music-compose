@@ -103,6 +103,15 @@ class LxApp : Application() {
             appScope.launch {
                 settings.isHandleAudioFocus.collect { playerRepository.setHandleAudioFocus(it) }
             }
+            // 倍速与音量
+            playerRepository.setPlaybackRate(settings.playbackRate.first())
+            playerRepository.setVolume(settings.volume.first())
+            appScope.launch {
+                settings.playbackRate.collect { playerRepository.setPlaybackRate(it) }
+            }
+            appScope.launch {
+                settings.volume.collect { playerRepository.setVolume(it) }
+            }
             // 如果是用户音源，加载脚本
             if (apiSource.startsWith("user_api")) {
                 loadUserApi(apiSource)

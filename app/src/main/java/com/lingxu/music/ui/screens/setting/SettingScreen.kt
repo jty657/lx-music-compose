@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.lingxu.music.ui.components.GlassDialog
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -75,6 +76,12 @@ fun SettingScreen(
     val startupAutoPlay by viewModel.startupAutoPlay.collectAsState(initial = false)
     val isSavePlayTime by viewModel.isSavePlayTime.collectAsState(initial = false)
     val isHandleAudioFocus by viewModel.isHandleAudioFocus.collectAsState(initial = true)
+    val playbackRate by viewModel.playbackRate.collectAsState(initial = 1f)
+    val volume by viewModel.volume.collectAsState(initial = 1f)
+    val timeoutExitPlayed by viewModel.timeoutExitPlayed.collectAsState(initial = true)
+    val playState by LxApp.app.playerRepository.state.collectAsState()
+    val timeoutRemaining = playState.timeoutExitRemaining
+    var showTimeoutExit by remember { mutableStateOf(false) }
 
     val showLyricTranslation by viewModel.showLyricTranslation.collectAsState(initial = true)
     val showLyricRoma by viewModel.showLyricRoma.collectAsState(initial = false)
@@ -182,6 +189,35 @@ fun SettingScreen(
             summary = "来电或其它 App 播放时自动暂停",
             checked = isHandleAudioFocus,
             onCheckedChange = { viewModel.setIsHandleAudioFocus(it) },
+        )
+        SliderPreference(
+            title = "播放倍速",
+            summary = "${(playbackRate * 100).toInt()}%",
+            value = playbackRate,
+            valueRange = 0.5f..3f,
+            onValueChange = { viewModel.setPlaybackRateAndApply(it) },
+        )
+        SliderPreference(
+            title = "音量",
+            summary = "${(volume * 100).toInt()}%",
+            value = volume,
+            valueRange = 0f..1f,
+            onValueChange = { viewModel.setVolumeAndApply(it) },
+        )
+        ArrowPreference(
+            title = "定时停止播放",
+            summary = if (timeoutRemaining > 0) {
+                "剩余 ${timeoutRemaining / 60}分${timeoutRemaining % 60}秒"
+            } else {
+                "未开启"
+            },
+            onClick = { showTimeoutExit = true },
+        )
+        SwitchPreference(
+            title = "播完当前歌曲再停",
+            summary = "定时到点后等当前歌曲播完再停止",
+            checked = timeoutExitPlayed,
+            onCheckedChange = { viewModel.setTimeoutExitPlayed(it) },
         )
 
         Spacer(Modifier.size(12.dp))
@@ -317,6 +353,40 @@ fun SettingScreen(
                 Spacer(Modifier.size(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Button(onClick = { toast = null }) { Text("好") }
+                }
+            }
+        }
+    }
+    if (showTimeoutExit) {
+        GlassDialog(onDismissRequest = { showTimeoutExit = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("定时停止播放", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                listOf(15, 30, 45, 60, 90, 120).forEach { min ->
+                    Text(
+                        "$min 分钟",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.setTimeoutExit(min)
+                                showTimeoutExit = false
+                            }
+                            .padding(vertical = 10.dp),
+                    )
+                }
+                if (timeoutRemaining > 0) {
+                    Spacer(Modifier.size(8.dp))
+                    Text(
+                        "取消定时",
+                        color = MiuixTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.setTimeoutExit(0)
+                                showTimeoutExit = false
+                            }
+                            .padding(vertical = 10.dp),
+                    )
                 }
             }
         }

@@ -67,6 +67,8 @@ data class PlayState(
     val coverUrl: String? = null,
     val loading: Boolean = false,
     val error: String? = null,
+    /** 定时停止播放剩余秒数，-1 表示未开启 */
+    val timeoutExitRemaining: Int = -1,
 ) {
     /** 当前应高亮的歌词行下标 */
     val currentLyricIndex: Int
@@ -111,6 +113,61 @@ class PlayerRepository(context: Context) {
                 .build(),
             enabled,
         )
+    }
+
+    /** 播放倍速（设置项 player.playbackRate） */
+    fun setPlaybackRate(rate: Float) {
+        player.setPlaybackSpeed(rate.coerceIn(0.5f, 3f))
+    }
+
+    /** 音量（设置项 player.volume），1f 为原始音量 */
+    fun setVolume(volume: Float) {
+        player.volume = volume.coerceIn(0f, 1f)
+    }
+
+    // ============ 定时停止播放（对应原版 core/player/timeoutExit.ts）============
+
+    private var timeoutJob: Job? = null
+
+    /** 是否正在等待当前歌曲播完再停 */
+    private var pendingTimeoutStop = false
+
+    /**
+     * 启动定时停止播放。
+     * @param minutes 倒计时分钟数，<=0 表示取消
+     * @param waitForSongEnd 为 true 且正在播放时，等当前歌曲播完再停（原 timeoutExitPlayed）
+     */
+    fun startTimeoutExit(minutes: Int, waitForSongEnd: Boolean) {
+        timeoutJob?.cancel()
+        pendingTimeoutStop = false
+        if (minutes <= 0) {
+            _state.update { it.copy(timeoutExitRemaining = -1) }
+            return
+        }
+        _state.update { it.copy(timeoutExitRemaining = minutes * 60) }
+        timeoutJob = scope.launch {
+            var remaining = minutes * 60
+            while (remaining > 0) {
+                delay(1000)
+                remaining -= 1
+                _state.update { it.copy(timeoutExitRemaining = remaining) }
+            }
+            if (waitForSongEnd && _state.value.isPlaying) {
+                // 等待当前歌曲播完：置标志，切歌时再停
+                pendingTimeoutStop = true
+                _state.update { it.copy(timeoutExitRemaining = -1) }
+            } else {
+                player.pause()
+                _state.update { it.copy(timeoutExitRemaining = -1) }
+            }
+        }
+    }
+
+    fun cancelTimeoutExit() {
+        timeoutJob?.cancel()
+        timeoutJob = null
+        pendingTimeoutStop = false
+        _state.update { it.copy(timeoutExitRemaining = -1) }
     }
 
     /** 持久化回调（由 App 注入）：切歌/暂停时保存，供启动时恢复 */
@@ -179,6 +236,11 @@ class PlayerRepository(context: Context) {
 
             /** 切歌时同步当前曲目与下标（手动、自动、循环、随机都走这里） */
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                // 定时停止：等当前歌曲播完再停模式下，切歌即暂停
+                if (pendingTimeoutStop && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                    pendingTimeoutStop = false
+                    player.pause()
+                }
                 val index = player.currentMediaItemIndex
                 val current = _state.value.queue.getOrNull(index)
                 _state.update {

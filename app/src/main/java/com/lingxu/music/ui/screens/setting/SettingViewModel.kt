@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lingxu.music.LxApp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -55,6 +56,11 @@ class SettingViewModel : ViewModel() {
     val blurEnabled: StateFlow<Boolean> = state(settings.blurEnabled, true)
     val blurRadius: StateFlow<Float> = state(settings.blurRadius, 24f)
 
+    // ============ 播放增强 ============
+    val playbackRate: StateFlow<Float> = state(settings.playbackRate, 1f)
+    val volume: StateFlow<Float> = state(settings.volume, 1f)
+    val timeoutExitPlayed: StateFlow<Boolean> = state(settings.timeoutExitPlayed, true)
+
     // ============ 自定义音源 ============
     val userApiLog: StateFlow<Boolean> = state(settings.enableUserApiLog, false)
 
@@ -78,6 +84,27 @@ class SettingViewModel : ViewModel() {
     fun setStartupAutoPlay(value: Boolean) = launch { settings.setStartupAutoPlay(value) }
     fun setIsSavePlayTime(value: Boolean) = launch { settings.setIsSavePlayTime(value) }
     fun setIsHandleAudioFocus(value: Boolean) = launch { settings.setIsHandleAudioFocus(value) }
+    fun setPlaybackRate(value: Float) = launch { settings.setPlaybackRate(value.coerceIn(0.5f, 3f)) }
+    fun setVolume(value: Float) = launch { settings.setVolume(value.coerceIn(0f, 1f)) }
+    fun setPlaybackRateAndApply(value: Float) = launch {
+        settings.setPlaybackRate(value.coerceIn(0.5f, 3f))
+        LxApp.app.playerRepository.setPlaybackRate(value.coerceIn(0.5f, 3f))
+    }
+    fun setVolumeAndApply(value: Float) = launch {
+        settings.setVolume(value.coerceIn(0f, 1f))
+        LxApp.app.playerRepository.setVolume(value.coerceIn(0f, 1f))
+    }
+
+    fun setTimeoutExit(minutes: Int) = launch {
+        settings.setTimeoutExitMinutes(minutes)
+        LxApp.app.playerRepository.startTimeoutExit(minutes, settings.timeoutExitPlayed.first())
+    }
+
+    fun setTimeoutExitPlayed(value: Boolean) = launch {
+        settings.setTimeoutExitPlayed(value)
+        val current = settings.timeoutExitMinutes.first()
+        if (current > 0) LxApp.app.playerRepository.startTimeoutExit(current, value)
+    }
 
     fun setShowLyricTranslation(value: Boolean) = launch { settings.setShowLyricTranslation(value) }
     fun setShowLyricRoma(value: Boolean) = launch { settings.setShowLyricRoma(value) }

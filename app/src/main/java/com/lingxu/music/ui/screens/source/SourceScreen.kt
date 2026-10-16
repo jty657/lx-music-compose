@@ -110,7 +110,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                         viewModel.switchSource(api.id,
 )
                     },
-                    onLongPress = {
+                    onLongClick = {
                         deletingId = api.id
                     },
                 ) {

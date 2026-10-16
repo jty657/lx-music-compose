@@ -34,6 +34,11 @@ class SettingsRepository(private val context: Context) {
         val KEY_STARTUP_AUTO_PLAY = booleanPreferencesKey("player.startupAutoPlay")
         val KEY_IS_SAVE_PLAY_TIME = booleanPreferencesKey("player.isSavePlayTime")
         val KEY_IS_HANDLE_AUDIO_FOCUS = booleanPreferencesKey("player.isHandleAudioFocus")
+        val KEY_PLAYBACK_RATE = floatPreferencesKey("player.playbackRate")
+        val KEY_VOLUME = floatPreferencesKey("player.volume")
+        // 定时退出（对应原版 player.timeoutExit / timeoutExitPlayed）
+        val KEY_TIMEOUT_EXIT_MINUTES = androidx.datastore.preferences.core.intPreferencesKey("player.timeoutExit")
+        val KEY_TIMEOUT_EXIT_PLAYED = booleanPreferencesKey("player.timeoutExitPlayed")
         // playDetail
         val KEY_LYRIC_ALIGN = stringPreferencesKey("playDetail.style.align")
         val KEY_LYRIC_FONT_SIZE = floatPreferencesKey("playDetail.style.lrcFontSize")
@@ -57,6 +62,8 @@ class SettingsRepository(private val context: Context) {
         const val ALIGN_LEFT = "left"
         const val ADD_LOCATION_TOP = "top"
         const val ADD_LOCATION_BOTTOM = "bottom"
+        /** 定时退出：0 表示未开启 */
+        const val TIMEOUT_EXIT_OFF = 0
     }
 
     // ================= common =================
@@ -77,6 +84,10 @@ class SettingsRepository(private val context: Context) {
     val startupAutoPlay: Flow<Boolean> = context.dataStore.data.map { it[KEY_STARTUP_AUTO_PLAY] ?: false }
     val isSavePlayTime: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SAVE_PLAY_TIME] ?: false }
     val isHandleAudioFocus: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_HANDLE_AUDIO_FOCUS] ?: true }
+    val playbackRate: Flow<Float> = context.dataStore.data.map { it[KEY_PLAYBACK_RATE] ?: 1f }
+    val volume: Flow<Float> = context.dataStore.data.map { it[KEY_VOLUME] ?: 1f }
+    val timeoutExitMinutes: Flow<Int> = context.dataStore.data.map { it[KEY_TIMEOUT_EXIT_MINUTES] ?: 0 }
+    val timeoutExitPlayed: Flow<Boolean> = context.dataStore.data.map { it[KEY_TIMEOUT_EXIT_PLAYED] ?: true }
 
     // ================= playDetail =================
 
@@ -122,6 +133,10 @@ class SettingsRepository(private val context: Context) {
     suspend fun setStartupAutoPlay(value: Boolean) = context.dataStore.edit { it[KEY_STARTUP_AUTO_PLAY] = value }
     suspend fun setIsSavePlayTime(value: Boolean) = context.dataStore.edit { it[KEY_IS_SAVE_PLAY_TIME] = value }
     suspend fun setIsHandleAudioFocus(value: Boolean) = context.dataStore.edit { it[KEY_IS_HANDLE_AUDIO_FOCUS] = value }
+    suspend fun setPlaybackRate(value: Float) = context.dataStore.edit { it[KEY_PLAYBACK_RATE] = value }
+    suspend fun setVolume(value: Float) = context.dataStore.edit { it[KEY_VOLUME] = value }
+    suspend fun setTimeoutExitMinutes(value: Int) = context.dataStore.edit { it[KEY_TIMEOUT_EXIT_MINUTES] = value }
+    suspend fun setTimeoutExitPlayed(value: Boolean) = context.dataStore.edit { it[KEY_TIMEOUT_EXIT_PLAYED] = value }
 
     suspend fun setLyricAlign(value: String) = context.dataStore.edit { it[KEY_LYRIC_ALIGN] = value }
     suspend fun setLyricFontSize(value: Float) = context.dataStore.edit { it[KEY_LYRIC_FONT_SIZE] = value }
