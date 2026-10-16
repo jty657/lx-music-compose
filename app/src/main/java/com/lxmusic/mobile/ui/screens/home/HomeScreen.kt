@@ -23,8 +23,8 @@ import com.lxmusic.mobile.ui.navigation.Screen
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Leaderboard
-import top.yukonga.miuix.kmp.icon.extended.Source
+import top.yukonga.miuix.kmp.icon.extended.Music
+import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
@@ -44,7 +44,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             onClick = { navigator.push(Screen.Source) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
-                IconWrap(MiuixIcons.Source)
+                IconWrap(MiuixIcons.Layers)
                 Column(Modifier.padding(start = 12.dp)) {
                     Text("音源管理", fontSize = MiuixTheme.textStyles.main.fontSize)
                     Text(
@@ -71,7 +71,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                        IconWrap(MiuixIcons.Leaderboard)
+                        IconWrap(MiuixIcons.Music)
                         Text(board.name, modifier = Modifier.padding(start = 12.dp))
                     }
                 }

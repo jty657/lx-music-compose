@@ -26,8 +26,8 @@ jobs:
           mkdir -p "$ANDROID_HOME/licenses"
           echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
           echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
-          # android-37 属于 preview 通道（--channel=3）
-          sdkmanager --channel=3 --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+          # API 37 的包名是 platforms;android-37.0（channel-0）
+          sdkmanager --channel=0 --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
 
       - name: Grant execute permission for gradlew

@@ -1,24 +1,28 @@
 package com.lxmusic.mobile.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kyant.backdrop.BackdropEffectScope
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.drawBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.vibrancy
 import com.lxmusic.mobile.LxApp
 import com.lxmusic.mobile.ui.navigation.LocalNavigator
 import com.lxmusic.mobile.ui.navigation.Navigator
@@ -30,20 +34,13 @@ import com.lxmusic.mobile.ui.screens.search.SearchScreen
 import com.lxmusic.mobile.ui.screens.setting.SettingScreen
 import com.lxmusic.mobile.ui.screens.source.SourceScreen
 import com.lxmusic.mobile.ui.theme.LxTheme
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.drawBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.vibrancy
-import kotlinx.coroutines.flow.map
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Search
+import top.yukonga.miuix.kmp.icon.extended.Settings
 
 @Composable
 fun AppRoot(viewModel: MainViewModel = viewModel()) {
@@ -66,7 +63,7 @@ fun AppRoot(viewModel: MainViewModel = viewModel()) {
                     modifier = Modifier.layerBackdrop(backdrop),
                 )
 
-                // 液态玻璃悬浮层：底部导航 + 播放条
+                // 液态玻璃悬浮层：底部导航
                 if (blurEnabled) {
                     GlassBottomBar(
                         backdrop = backdrop,
@@ -108,7 +105,7 @@ private fun MainScaffold(
 
 @Composable
 private fun GlassBottomBar(
-    backdrop: Any,
+    backdrop: LayerBackdrop,
     blurRadius: Float,
     navigator: Navigator,
 ) {
@@ -123,7 +120,6 @@ private fun GlassBottomBar(
             .align(Alignment.BottomCenter)
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp)
-            .clip(RoundedCornerShape(28.dp))
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { RoundedCornerShape(28.dp) },

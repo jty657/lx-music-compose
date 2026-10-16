@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +42,7 @@ import top.yukonga.miuix.kmp.basic.TextField
 fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     val scope = rememberCoroutineScope()
-    var searchText by remember { mutableStateOf("") }
+    val textFieldState = remember { TextFieldState() }
     val sources = listOf("all") + SourceConst.ONLINE
     var selectedSource by remember { mutableStateOf("all") }
 
@@ -56,17 +57,18 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             TextField(
-                value = searchText,
-                onValueChange = { searchText = it },
-                placeholder = "搜索歌曲、歌手",
+                state = textFieldState,
+                label = "搜索歌曲、歌手",
+                useLabelAsPlaceholder = true,
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.size(8.dp))
             Button(
                 onClick = {
-                    if (searchText.isNotBlank()) {
+                    val text = textFieldState.text.toString()
+                    if (text.isNotBlank()) {
                         scope.launch {
-                            viewModel.search(searchText, selectedSource)
+                            viewModel.search(text, selectedSource)
                         }
                     }
                 },

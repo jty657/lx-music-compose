@@ -23,10 +23,10 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Pause
-import top.yukonga.miuix.kmp.icon.extended.SkipNext
-import top.yukonga.miuix.kmp.icon.extended.SkipPrevious
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** 播放页：封面、歌词、控制按钮 */
@@ -86,14 +86,14 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(vertical = 12.dp),
         ) {
-            IconButtonWrap(MiuixIcons.SkipPrevious, onClick = { viewModel.prev() })
+            IconButtonWrap(MiuixIcons.Back, onClick = { viewModel.prev() })
             Spacer(Modifier.size(16.dp))
             IconButtonWrap(
                 if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
                 onClick = { viewModel.togglePlay() },
             )
             Spacer(Modifier.size(16.dp))
-            IconButtonWrap(MiuixIcons.SkipNext, onClick = { viewModel.next() })
+            IconButtonWrap(MiuixIcons.Forward, onClick = { viewModel.next() })
         }
 
         // 播放模式
