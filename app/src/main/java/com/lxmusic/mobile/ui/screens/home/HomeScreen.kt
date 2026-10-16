@@ -90,7 +90,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         pressFeedbackType = PressFeedbackType.Sink,
                         onClick = {
-                            viewModel.loadBoard(board)
+                            val (source, bangId, name) = viewModel.boardTarget(board)
+                            navigator.push(Screen.BoardList(source, bangId, name))
                         },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {

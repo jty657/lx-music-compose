@@ -32,6 +32,7 @@ import com.lxmusic.mobile.ui.navigation.Navigator
 import com.lxmusic.mobile.ui.navigation.Screen
 import com.lxmusic.mobile.ui.navigation.rememberNavigator
 import com.lxmusic.mobile.ui.screens.favorite.FavoriteScreen
+import com.lxmusic.mobile.ui.screens.board.BoardDetailScreen
 import com.lxmusic.mobile.ui.screens.home.HomeScreen
 import com.lxmusic.mobile.ui.screens.player.PlayerScreen
 import com.lxmusic.mobile.ui.screens.search.SearchScreen
@@ -111,7 +112,11 @@ private fun MainScaffold(
                 is Screen.Setting -> SettingScreen()
                 is Screen.Player -> PlayerScreen()
                 is Screen.Favorite -> FavoriteScreen()
-                is Screen.BoardList -> HomeScreen()
+                is Screen.BoardList -> BoardDetailScreen(
+                    source = current.source,
+                    bangId = current.bangId,
+                    name = current.name,
+                )
             }
         }
     }

@@ -158,13 +158,24 @@ private fun LyricView(state: com.lxmusic.mobile.core.player.PlayState, modifier:
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         state.lyricLines.forEachIndexed { index, line ->
-            Text(
-                line.text,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                color = if (index == currentIndex) MiuixTheme.colorScheme.primary
-                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(vertical = 4.dp),
-            )
+            ) {
+                Text(
+                    line.text,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = if (index == currentIndex) MiuixTheme.colorScheme.primary
+                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                line.translation?.let { tr ->
+                    Text(
+                        tr,
+                        fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                }
+            }
         }
     }
 }

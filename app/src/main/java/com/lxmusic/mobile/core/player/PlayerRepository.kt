@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.lxmusic.mobile.core.model.LyricInfo
 import com.lxmusic.mobile.core.model.MusicInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,8 +43,12 @@ object PlayMode {
     }
 }
 
-/** 歌词行 */
-data class LyricLine(val timeMs: Long, val text: String)
+/** 歌词行（translation 为翻译歌词，同时间点合并） */
+data class LyricLine(
+    val timeMs: Long,
+    val text: String,
+    val translation: String? = null,
+)
 
 /** 播放状态 */
 data class PlayState(
@@ -93,7 +98,10 @@ class PlayerRepository(context: Context) {
     private var lyricJob: Job? = null
 
     /** 歌词加载器（由 App 注入，避免 core 层反向依赖） */
-    var lyricLoader: (suspend (MusicInfo) -> String?)? = null
+    var lyricLoader: (suspend (MusicInfo) -> LyricInfo?)? = null
+
+    /** 播放模式持久化回调（由 App 注入） */
+    var onPlayModeChange: ((String) -> Unit)? = null
 
     init {
         player.addListener(object : Player.Listener {
@@ -194,7 +202,18 @@ class PlayerRepository(context: Context) {
         _state.update { it.copy(positionMs = positionMs) }
     }
 
+    /** 切换播放模式并持久化 */
     fun setPlayMode(mode: String) {
+        applyPlayMode(mode)
+        onPlayModeChange?.invoke(mode)
+    }
+
+    /** 启动时恢复已保存的播放模式（不触发持久化） */
+    fun restorePlayMode(mode: String) {
+        applyPlayMode(mode)
+    }
+
+    private fun applyPlayMode(mode: String) {
         _state.update { it.copy(playMode = mode) }
         when (mode) {
             PlayMode.SINGLE_LOOP -> player.repeatMode = Player.REPEAT_MODE_ONE
@@ -218,15 +237,15 @@ class PlayerRepository(context: Context) {
         player.release()
     }
 
-    /** 加载当前歌曲歌词 */
+    /** 加载当前歌曲歌词（含翻译/逐字，与原版 player.isShowLyricTranslation 一致） */
     private fun loadLyric(musicInfo: MusicInfo) {
         val loader = lyricLoader ?: return
         lyricJob?.cancel()
         lyricJob = scope.launch {
-            val lyric = runCatching { loader(musicInfo) }.getOrNull().orEmpty()
+            val info = runCatching { loader(musicInfo) }.getOrNull()
             // 若期间已切歌则丢弃结果
             if (_state.value.current?.id != musicInfo.id) return@launch
-            _state.update { it.copy(lyricLines = LrcParser.parse(lyric)) }
+            _state.update { it.copy(lyricLines = LrcParser.parse(info)) }
         }
     }
 

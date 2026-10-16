@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lxmusic.mobile.LxApp
 import com.lxmusic.mobile.core.model.Board
+import com.lxmusic.mobile.core.model.SourceConst
 import kotlinx.coroutines.launch
 
 class HomeViewModel : ViewModel() {
@@ -40,14 +41,7 @@ class HomeViewModel : ViewModel() {
             LxApp.app.apiSourceRepository.getAll().find { it.id == id }?.name
                 ?: "自定义音源"
         } else {
-            when (id) {
-                "kw" -> "酷我音乐"
-                "kg" -> "酷狗音乐"
-                "tx" -> "QQ音乐"
-                "wy" -> "网易音乐"
-                "mg" -> "咪咕音乐"
-                else -> id
-            }
+            SourceConst.displayName(id)
         }
     }
 
@@ -79,15 +73,9 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    fun loadBoard(board: Board) {
-        viewModelScope.launch {
-            val source = board.id.substringBefore("__")
-            runCatching {
-                val detail = LxApp.app.musicRepository.getBoardList(source, board.bangid, 1)
-                if (detail.list.isNotEmpty()) {
-                    LxApp.app.playerRepository.playQueue(detail.list, 0)
-                }
-            }
-        }
+    /** 点榜单：返回（源, bangId, 名称）供导航到详情页 */
+    fun boardTarget(board: Board): Triple<String, String, String> {
+        val source = board.id.substringBefore("__")
+        return Triple(source, board.bangid, board.name)
     }
 }

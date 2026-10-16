@@ -73,9 +73,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.12.2")
     implementation("androidx.core:core-ktx:1.17.0")
 
-    // 数据层
-    implementation("androidx.room:room-runtime:2.8.4")
-    implementation("androidx.room:room-ktx:2.8.4")
+    // 数据层（JSON 文件持久化，禁用 Room/KSP）
     implementation("androidx.datastore:datastore-preferences:1.1.7")
 
     // 网络与序列化

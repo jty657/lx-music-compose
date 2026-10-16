@@ -1,16 +1,31 @@
 package com.lxmusic.mobile.core.player
 
+import com.lxmusic.mobile.core.model.LyricInfo
+
 /** LRC 歌词解析（对应原版 utils/lrcTools.ts 的基础解析） */
 object LrcParser {
 
     /** 时间标签，如 [01:23.45] 或 [01:23.456] 或 [1:23] */
     private val TIME_TAG = Regex("\\[(\\d{1,3}):(\\d{1,2})(?:[.:](\\d{1,3}))?]")
 
-    /**
-     * 解析普通 LRC。多时间标签行会展开成多行。
-     * 返回按时间升序排列的歌词行；无有效时间标签时返回空列表。
-     */
-    fun parse(lrc: String?): List<LyricLine> {
+    /** 解析歌词信息：主歌词 + 翻译歌词（同时间点合并到 translation） */
+    fun parse(info: LyricInfo?): List<LyricLine> {
+        if (info == null) return emptyList()
+        val main = parseSingle(info.lyric)
+        if (main.isEmpty()) return emptyList()
+        val translations = if (info.tlyric.isNullOrBlank()) {
+            emptyMap()
+        } else {
+            parseSingle(info.tlyric).associate { it.timeMs to it.text }
+        }
+        if (translations.isEmpty()) return main
+        return main.map { line ->
+            line.copy(translation = translations[line.timeMs]?.takeIf { it != line.text })
+        }
+    }
+
+    /** 解析单段 LRC 文本；多时间标签行会展开成多行，返回按时间升序的列表 */
+    fun parseSingle(lrc: String?): List<LyricLine> {
         if (lrc.isNullOrBlank()) return emptyList()
         val lines = mutableListOf<LyricLine>()
         for (raw in lrc.split('\n', '\r')) {

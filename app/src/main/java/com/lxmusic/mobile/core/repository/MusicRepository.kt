@@ -102,10 +102,6 @@ class MusicRepository(
 
     // ================= 歌词 =================
 
-    /** 获取歌词文本（供播放器展示，失败时返回 null） */
-    suspend fun fetchLyricText(musicInfo: MusicInfo): String? =
-        runCatching { getLyricInfo(musicInfo).lyric }.getOrNull()
-
     suspend fun getLyricInfo(musicInfo: MusicInfo, allowToggleSource: Boolean = true): LyricInfo {
         if (SourceConst.isUserApi(currentUserApiId())) {
             // 用户音源处理 local 与各源歌词
@@ -157,10 +153,10 @@ class MusicRepository(
         onToggleSource: () -> Unit = {},
     ): String {
         if (musicInfo.source == SourceConst.LOCAL) {
-            // 本地歌曲：用户音源的 local 分支，type 为 null
+            // 本地歌曲：用户音源的 local 分支，type 为 null（原版 apis('local').getMusicUrl(info, null)）
             val oldInfo = musicInfo.toOldMusicInfo()
             return try {
-                engineManager.getMusicUrl(SourceConst.LOCAL, oldInfo, "128k")
+                engineManager.getMusicUrl(SourceConst.LOCAL, oldInfo, null)
             } catch (e: Exception) {
                 Log.e(TAG, "local music url failed: ${e.message}")
                 throw e

@@ -446,7 +446,7 @@ fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
         put("filePath", JsonPrimitive(meta.filePath ?: ""))
         put("ext", JsonPrimitive(meta.ext ?: ""))
         put("albumId", JsonPrimitive(""))
-        put("types", buildJsonObject {})
+        put("types", buildJsonArray {})
         put("_types", buildJsonObject {})
     } else {
         put("albumId", meta.albumId?.let { JsonPrimitive(it) } ?: JsonNull)
@@ -489,14 +489,15 @@ fun JsonObject.toNewMusicInfo(): MusicInfo {
     val songmid = get("songmid")?.jsonPrimitive?.content ?: ""
     val qualityList = mutableListOf<com.lxmusic.mobile.core.model.MusicQuality>()
     val qualityMap = mutableMapOf<String, com.lxmusic.mobile.core.model.QualitySize>()
-    (get("types") as? JsonObject)?.let { types ->
-        types.entries.forEach { (type, v) ->
-            val obj = v as? JsonObject
+    (get("types") as? JsonArray)?.let { types ->
+        types.forEach { v ->
+            val obj = v as? JsonObject ?: return@forEach
+            val type = obj.get("type")?.jsonPrimitive?.content ?: return@forEach
             qualityList.add(
                 com.lxmusic.mobile.core.model.MusicQuality(
                     type = type,
-                    size = obj?.get("size")?.jsonPrimitive?.content,
-                    hash = obj?.get("hash")?.jsonPrimitive?.content,
+                    size = obj.get("size")?.jsonPrimitive?.content,
+                    hash = obj.get("hash")?.jsonPrimitive?.content,
                 ),
             )
         }

@@ -29,6 +29,19 @@ object SourceConst {
     const val LOCAL = "local"
     val ONLINE = listOf(KW, KG, TX, WY, MG, XM)
     fun isUserApi(id: String) = id.startsWith("user_api")
+
+    /** 内置源中文名（对应原版 sourceNameType=alias） */
+    fun displayName(source: String): String = when (source) {
+        KW -> "酷我音乐"
+        KG -> "酷狗音乐"
+        TX -> "QQ音乐"
+        WY -> "网易音乐"
+        MG -> "咪咕音乐"
+        XM -> "虾米音乐"
+        LOCAL -> "本地音乐"
+        "all" -> "聚合搜索"
+        else -> source
+    }
 }
 
 /** 歌曲信息，与原版 LX.Music.MusicInfo 对齐 */

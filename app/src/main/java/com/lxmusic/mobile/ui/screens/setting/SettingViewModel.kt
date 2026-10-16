@@ -39,6 +39,21 @@ class SettingViewModel : ViewModel() {
         }
     }
 
+    val playMode: StateFlow<String> = LxApp.app.settings.playMode.let { flow ->
+        MutableStateFlow("listLoop").also { state ->
+            viewModelScope.launch { flow.collect { state.value = it } }
+        }
+    }
+
+    fun cyclePlayMode() {
+        viewModelScope.launch {
+            val current = playMode.value
+            val options = com.lxmusic.mobile.core.player.PlayMode.ALL
+            val next = options[(options.indexOf(current) + 1) % options.size]
+            LxApp.app.playerRepository.setPlayMode(next)
+        }
+    }
+
     fun cycleTheme() {
         viewModelScope.launch {
             val current = themeMode.value

@@ -217,13 +217,13 @@ class ScriptEngineManager(private val context: Context) {
         }
     }
 
-    /** 便捷方法：获取歌曲播放 URL（返回 url 字符串） */
-    suspend fun getMusicUrl(source: String, musicInfoJson: JsonObject, type: String): String {
+    /** 便捷方法：获取歌曲播放 URL（返回 url 字符串）；type 为 null 时对应原版 local 分支 */
+    suspend fun getMusicUrl(source: String, musicInfoJson: JsonObject, type: String?): String {
         val result = requestScriptApi(
             source,
             "musicUrl",
             buildJsonObject {
-                put("type", JsonPrimitive(type))
+                put("type", type?.let { JsonPrimitive(it) } ?: kotlinx.serialization.json.JsonNull)
                 put("musicInfo", musicInfoJson)
             },
         )

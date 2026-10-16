@@ -10,8 +10,14 @@ sealed class Screen(val route: String) {
     object Source : Screen("source")
     object Setting : Screen("setting")
     object Player : Screen("player")
-    object BoardList : Screen("boardList")
     object Favorite : Screen("favorite")
+
+    /** 榜单详情页（携带源/榜单 id/名称） */
+    data class BoardList(
+        val source: String,
+        val bangId: String,
+        val name: String,
+    ) : Screen("boardList")
 }
 
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("No navigator found") }

@@ -1,6 +1,7 @@
 package com.lxmusic.mobile
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -9,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.lxmusic.mobile.core.player.PlaybackService
 import com.lxmusic.mobile.ui.AppRoot
 
 class MainActivity : ComponentActivity() {
@@ -20,6 +22,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestNeededPermissions()
+        // 启动播放服务（MediaSession 接管播放，提供后台播放与媒体通知）
+        startService(Intent(this, PlaybackService::class.java))
         setContent {
             AppRoot()
         }

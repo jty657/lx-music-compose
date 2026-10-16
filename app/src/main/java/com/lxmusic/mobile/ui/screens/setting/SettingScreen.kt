@@ -28,6 +28,7 @@ fun SettingScreen(viewModel: SettingViewModel = viewModel()) {
     val blurEnabled by viewModel.blurEnabled.collectAsState(initial = true)
     val blurRadius by viewModel.blurRadius.collectAsState(initial = 24f)
     val userApiLog by viewModel.userApiLog.collectAsState(initial = false)
+    val playMode by viewModel.playMode.collectAsState(initial = "listLoop")
 
     Column(
         Modifier
@@ -57,6 +58,11 @@ fun SettingScreen(viewModel: SettingViewModel = viewModel()) {
             title = "播放音质",
             summary = quality,
             onClick = { viewModel.cycleQuality() },
+        )
+        ArrowPreference(
+            title = "播放模式",
+            summary = com.lxmusic.mobile.core.player.PlayMode.label(playMode),
+            onClick = { viewModel.cyclePlayMode() },
         )
 
         Spacer(Modifier.size(12.dp))

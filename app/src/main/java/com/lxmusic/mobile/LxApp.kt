@@ -12,6 +12,7 @@ import com.lxmusic.mobile.core.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class LxApp : Application() {
@@ -46,9 +47,13 @@ class LxApp : Application() {
         favoritesRepository = FavoritesRepository(database)
         musicRepository = MusicRepository(sdkBridge, engineManager, settings)
         playerRepository = PlayerRepository.get(this)
-        // 注入歌词加载器（播放器切歌时自动拉歌词）
+        // 注入歌词加载器（播放器切歌时自动拉歌词，含翻译）
         playerRepository.lyricLoader = { musicInfo ->
-            musicRepository.fetchLyricText(musicInfo)
+            musicRepository.getLyricInfo(musicInfo)
+        }
+        // 播放模式持久化
+        playerRepository.onPlayModeChange = { mode ->
+            appScope.launch { settings.setPlayMode(mode) }
         }
 
         // 初始化内置 SDK
@@ -57,6 +62,8 @@ class LxApp : Application() {
             sdkBridge.init(apiSource)
             musicRepository.setApiSource(apiSource)
             favoritesRepository.load()
+            // 恢复播放模式（原版 player.togglePlayMethod）
+            playerRepository.restorePlayMode(settings.playMode.first())
             // 如果是用户音源，加载脚本
             if (apiSource.startsWith("user_api")) {
                 loadUserApi(apiSource)

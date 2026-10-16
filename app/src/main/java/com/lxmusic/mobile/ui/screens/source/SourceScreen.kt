@@ -79,14 +79,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                     Text(
-                        when (source) {
-                            "kw" -> "酷我音乐"
-                            "kg" -> "酷狗音乐"
-                            "tx" -> "QQ音乐"
-                            "wy" -> "网易音乐"
-                            "mg" -> "咪咕音乐"
-                            else -> source
-                        },
+                        SourceConst.displayName(source),
                         modifier = Modifier.weight(1f),
                     )
                     if (currentSource == source) {

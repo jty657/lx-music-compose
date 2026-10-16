@@ -92,15 +92,7 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
                     onClick = { selectedSource = source },
                 ) {
                     Text(
-                        text = when (source) {
-                            "all" -> "聚合"
-                            "kw" -> "酷我"
-                            "kg" -> "酷狗"
-                            "tx" -> "QQ音乐"
-                            "wy" -> "网易"
-                            "mg" -> "咪咕"
-                            else -> source
-                        },
+                        text = SourceConst.displayName(source),
                         fontSize = MiuixTheme.textStyles.body2.fontSize,
                     )
                 }
