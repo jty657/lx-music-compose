@@ -1,9 +1,12 @@
 package com.lxmusic.mobile.ui.screens.player
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,10 +23,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxmusic.mobile.LxApp
 import com.lxmusic.mobile.core.player.PlayMode
+import com.lxmusic.mobile.core.request.HttpClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Slider
@@ -69,6 +78,12 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
         }
 
         Spacer(Modifier.size(12.dp))
+
+        // 封面
+        state.coverUrl?.let { url ->
+            AlbumCover(url, Modifier.fillMaxWidth(0.7f).aspectRatio(1f))
+            Spacer(Modifier.size(12.dp))
+        }
 
         // 歌词（滚动到当前行）
         LyricView(state, Modifier.weight(1f))
@@ -176,6 +191,44 @@ private fun LyricView(state: com.lxmusic.mobile.core.player.PlayState, modifier:
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * 专辑封面：用 OkHttp 拉取并缓存 Bitmap（不引入图片加载库）。
+ * 失败时显示占位色块。
+ */
+private val coverCache = java.util.concurrent.ConcurrentHashMap<String, android.graphics.Bitmap?>()
+
+@Composable
+private fun AlbumCover(url: String, modifier: Modifier = Modifier) {
+    var bitmap by remember { mutableStateOf(coverCache[url]) }
+
+    androidx.compose.runtime.LaunchedEffect(url) {
+        if (coverCache.containsKey(url)) {
+            bitmap = coverCache[url]
+            return@LaunchedEffect
+        }
+        val loaded = withContext(Dispatchers.IO) {
+            runCatching {
+                val bytes = HttpClient.instance.fetchSync(url).body as? ByteArray
+                bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+            }.getOrNull()
+        }
+        coverCache[url] = loaded
+        bitmap = loaded
+    }
+
+    Card(modifier = modifier) {
+        val bm = bitmap
+        if (bm != null) {
+            Image(
+                bitmap = bm.asImageBitmap(),
+                contentDescription = "专辑封面",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            )
         }
     }
 }

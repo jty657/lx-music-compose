@@ -387,7 +387,7 @@ class QuickJSEngine(
         pendingRequests.values.forEach { it.cancel() }
         pendingRequests.clear()
         timeoutHandler.removeCallbacksAndMessages(null)
-        scope.cancel()
+        scope.coroutineContext.cancelChildren()
     }
 
     fun isReady() = inited

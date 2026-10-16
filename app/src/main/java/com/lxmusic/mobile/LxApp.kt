@@ -29,6 +29,9 @@ class LxApp : Application() {
         private set
     lateinit var favoritesRepository: FavoritesRepository
         private set
+
+    /** 当前音源能力收集协程（切换音源时重建，避免协程泄漏） */
+    private var capabilitiesJob: kotlinx.coroutines.Job? = null
     lateinit var musicRepository: MusicRepository
         private set
     lateinit var playerRepository: PlayerRepository
@@ -55,6 +58,10 @@ class LxApp : Application() {
         playerRepository.onPlayModeChange = { mode ->
             appScope.launch { settings.setPlayMode(mode) }
         }
+        // 注入封面加载器
+        playerRepository.coverLoader = { musicInfo ->
+            runCatching { musicRepository.getPicUrl(musicInfo) }.getOrNull()
+        }
 
         // 初始化内置 SDK
         appScope.launch {
@@ -79,6 +86,7 @@ class LxApp : Application() {
             if (apiId.startsWith("user_api")) {
                 loadUserApi(apiId)
             } else {
+                capabilitiesJob?.cancel()
                 engineManager.destroyScript()
             }
         }
@@ -88,8 +96,8 @@ class LxApp : Application() {
         val info = apiSourceRepository.getAll().find { it.id == apiId } ?: return
         val script = apiSourceRepository.getScript(apiId) ?: return
         engineManager.loadScript(info, script)
-        // 引擎就绪后更新能力列表
-        appScope.launch {
+        capabilitiesJob?.cancel()
+        capabilitiesJob = appScope.launch {
             engineManager.capabilities.collect { caps ->
                 if (caps.isNotEmpty()) {
                     musicRepository.updateUserApiCapabilities(caps)

@@ -60,6 +60,7 @@ data class PlayState(
     val durationMs: Long = 0L,
     val playMode: String = PlayMode.LIST_LOOP,
     val lyricLines: List<LyricLine> = emptyList(),
+    val coverUrl: String? = null,
     val loading: Boolean = false,
     val error: String? = null,
 ) {
@@ -96,9 +97,13 @@ class PlayerRepository(context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var lyricJob: Job? = null
+    private var coverJob: Job? = null
 
     /** 歌词加载器（由 App 注入，避免 core 层反向依赖） */
     var lyricLoader: (suspend (MusicInfo) -> LyricInfo?)? = null
+
+    /** 封面加载器（由 App 注入） */
+    var coverLoader: (suspend (MusicInfo) -> String?)? = null
 
     /** 播放模式持久化回调（由 App 注入） */
     var onPlayModeChange: ((String) -> Unit)? = null
@@ -136,6 +141,7 @@ class PlayerRepository(context: Context) {
                     )
                 }
                 current?.let { loadLyric(it) }
+                current?.let { loadCover(it) }
             }
         })
 
@@ -227,6 +233,7 @@ class PlayerRepository(context: Context) {
         player.stop()
         player.clearMediaItems()
         lyricJob?.cancel()
+        coverJob?.cancel()
         _state.update {
             PlayState(playMode = it.playMode)
         }
@@ -246,6 +253,23 @@ class PlayerRepository(context: Context) {
             // 若期间已切歌则丢弃结果
             if (_state.value.current?.id != musicInfo.id) return@launch
             _state.update { it.copy(lyricLines = LrcParser.parse(info)) }
+        }
+    }
+
+    /** 加载当前歌曲封面（优先搜索结果的 meta.picUrl，否则经 coverLoader 获取） */
+    private fun loadCover(musicInfo: MusicInfo) {
+        coverJob?.cancel()
+        val url = musicInfo.meta.picUrl
+        if (url != null) {
+            _state.update { it.copy(coverUrl = url) }
+            return
+        }
+        val loader = coverLoader ?: return
+        coverJob = scope.launch {
+            val result = runCatching { loader(musicInfo) }.getOrNull()
+            // 若期间已切歌则丢弃结果
+            if (_state.value.current?.id != musicInfo.id) return@launch
+            _state.update { it.copy(coverUrl = result) }
         }
     }
 
