@@ -66,6 +66,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
     // 批量移动到其它列表
     var moveTargets by remember { mutableStateOf(false) }
+    // 列表内排序 / 去重
+    var showSort by remember { mutableStateOf(false) }
 
     val shownMusics = remember(musics, keyword) {
         if (keyword.isBlank()) musics
@@ -114,6 +116,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 if (openList == null) {
                     Button(onClick = { showCreate = true }) { Text("新建") }
                 } else {
+                    Button(onClick = { showSort = true }) { Text("排序") }
+                    Spacer(Modifier.size(8.dp))
                     Button(onClick = { if (selectMode) exitSelect() else selectMode = true }) {
                         Text(if (selectMode) "完成" else "多选")
                     }
@@ -287,6 +291,64 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
         }
     }
 
+    if (showSort) {
+        data class SortOption(val label: String, val key: String, val desc: Boolean)
+        val options = listOf(
+            SortOption("歌曲名 升序", "name", false),
+            SortOption("歌曲名 降序", "name", true),
+            SortOption("歌手 升序", "singer", false),
+            SortOption("歌手 降序", "singer", true),
+            SortOption("专辑 升序", "album", false),
+            SortOption("时长 升序", "interval", false),
+            SortOption("时长 降序", "interval", true),
+            SortOption("随机打乱", "random", false),
+        )
+        GlassDialog(onDismissRequest = { showSort = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("列表排序", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                options.forEach { opt ->
+                    Text(
+                        opt.label,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val sorted = when (opt.key) {
+                                    "name" -> musics.sortedBy { it.name }
+                                    "singer" -> musics.sortedBy { it.singer }
+                                    "album" -> musics.sortedBy { it.meta.albumName }
+                                    "interval" -> musics.sortedBy { it.interval ?: "" }
+                                    else -> musics.shuffled()
+                                }.let { if (opt.desc) it.reversed() else it }
+                                musics = sorted
+                                scope.launch { viewModel.setMusics(openList!!, sorted) }
+                                showSort = false
+                            }
+                            .padding(vertical = 10.dp),
+                    )
+                }
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    "去除重复歌曲",
+                    color = MiuixTheme.colorScheme.error,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            // 同名同歌手视为重复，保留首次出现
+                            val seen = mutableSetOf<String>()
+                            val deduped = musics.filter { seen.add("${it.name}\u0000${it.singer}") }
+                            if (deduped.size != musics.size) {
+                                musics = deduped
+                                scope.launch { viewModel.setMusics(openList!!, deduped) }
+                            }
+                            showSort = false
+                        }
+                        .padding(vertical = 10.dp),
+                )
+            }
+        }
+    }
+
     if (moveTargets) {
         val targetLists = lists.filter { it.id != openList }
         GlassDialog(onDismissRequest = { moveTargets = false }) {
@@ -398,6 +460,11 @@ class MyListsViewModel : ViewModel() {
 
     fun removeMusics(listId: String, musicIds: List<String>) {
         viewModelScope.launch { runCatching { LxApp.app.myListsRepository.removeMusics(listId, musicIds) } }
+    }
+
+    /** 覆盖写入整个列表（排序/去重后使用） */
+    fun setMusics(listId: String, musics: List<MusicInfo>) {
+        viewModelScope.launch { runCatching { LxApp.app.myListsRepository.saveMusics(listId, musics) } }
     }
 
     /** 把若干首歌从 fromId 移到 toId */
