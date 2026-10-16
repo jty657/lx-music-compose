@@ -12,3 +12,6 @@ app/build/
 # 分析临时文件与附件，不提交
 .aicode/
 anthropic-skills/
+
+# 交付产物不入库（本地保留）
+dist/
