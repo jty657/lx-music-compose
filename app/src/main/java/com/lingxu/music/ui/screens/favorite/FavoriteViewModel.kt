@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 class FavoriteViewModel : ViewModel() {
 
     private val repo = LxApp.app.favoritesRepository
-    private val musicRepo = LxApp.app.musicRepository
     private val playerRepo = LxApp.app.playerRepository
 
     val favorites: StateFlow<List<MusicInfo>> = repo.favorites
@@ -25,12 +24,33 @@ class FavoriteViewModel : ViewModel() {
         viewModelScope.launch {
             errorMessage = null
             runCatching {
-                val url = musicRepo.getMusicUrl(musicInfo)
-                val playInfo = musicInfo.copy(meta = musicInfo.meta.copy(filePath = url))
-                playerRepo.playSingle(playInfo)
+                val resolved = playerRepo.resolvePlayInfo(musicInfo)
+                playerRepo.playSingle(resolved)
             }.onFailure { e ->
                 errorMessage = "播放失败：${e.message}"
             }
+        }
+    }
+
+    /** 播放全部（替换整个队列） */
+    fun playAll(list: List<MusicInfo>) {
+        if (list.isEmpty()) return
+        viewModelScope.launch {
+            errorMessage = null
+            runCatching {
+                val resolved = list.map { playerRepo.resolvePlayInfo(it) }
+                playerRepo.playQueue(resolved, 0)
+            }.onFailure { e ->
+                errorMessage = "播放失败：${e.message}"
+            }
+        }
+    }
+
+    /** 加入「我的列表」（对应原版 addMusicLocationType） */
+    fun addToList(listId: String, musicInfo: MusicInfo) {
+        viewModelScope.launch {
+            runCatching { LxApp.app.myListsRepository.addMusics(listId, listOf(musicInfo)) }
+                .onFailure { errorMessage = "加入列表失败：${it.message}" }
         }
     }
 

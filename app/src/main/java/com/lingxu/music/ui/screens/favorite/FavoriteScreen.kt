@@ -1,6 +1,8 @@
 package com.lingxu.music.ui.screens.favorite
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,16 +12,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
@@ -34,6 +43,7 @@ import top.yukonga.miuix.kmp.utils.PressFeedbackType
 fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
     val favorites by viewModel.favorites.collectAsState()
     val scope = rememberCoroutineScope()
+    var addTarget by remember { mutableStateOf<MusicInfo?>(null) }
 
     Column(
         Modifier
@@ -61,6 +71,11 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
             return@Column
         }
 
+        Row {
+            Button(onClick = { viewModel.playAll(favorites) }) { Text("播放全部") }
+        }
+        Spacer(Modifier.size(8.dp))
+
         LazyColumn {
             items(favorites, key = { it.id }) { music ->
                 FavoriteCard(
@@ -71,20 +86,59 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                     onRemove = {
                         scope.launch { viewModel.remove(music.id) }
                     },
+                    onAddToList = { addTarget = music },
                 )
             }
         }
     }
+
+    addTarget?.let { music ->
+        var picked by remember(music.id) {
+            mutableStateOf(LxApp.app.myListsRepository.lists.value.firstOrNull()?.id)
+        }
+        AlertDialog(
+            onDismissRequest = { addTarget = null },
+            title = { Text("加入列表") },
+            text = {
+                val lists = LxApp.app.myListsRepository.lists.collectAsState().value
+                if (lists.isEmpty()) {
+                    Text("还没有列表，请先到「我的列表」新建")
+                } else {
+                    Column {
+                        lists.forEach { list ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { picked = list.id }
+                                    .padding(vertical = 6.dp),
+                            ) {
+                                RadioButton(selected = picked == list.id, onClick = { picked = list.id })
+                                Text(list.name, modifier = Modifier.padding(start = 8.dp))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    picked?.let { viewModel.addToList(it, music) }
+                    addTarget = null
+                }) { Text("加入") }
+            },
+            dismissButton = { Button(onClick = { addTarget = null }) { Text("取消") } },
+        )
+    }
 }
 
 @Composable
-private fun FavoriteCard(music: MusicInfo, onPlay: () -> Unit, onRemove: () -> Unit) {
+private fun FavoriteCard(music: MusicInfo, onPlay: () -> Unit, onRemove: () -> Unit, onAddToList: () -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .combinedClickable(onClick = onPlay, onLongClick = onAddToList),
         pressFeedbackType = PressFeedbackType.Sink,
-        onClick = onPlay,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
