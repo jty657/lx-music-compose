@@ -18,6 +18,21 @@ sealed class Screen(val route: String) {
         val bangId: String,
         val name: String,
     ) : Screen("boardList")
+
+    /** 歌单列表页（平台歌单广场） */
+    data class SongList(
+        val source: String,
+    ) : Screen("songList")
+
+    /** 歌单详情页（歌单内歌曲） */
+    data class SongListDetail(
+        val source: String,
+        val id: String,
+        val name: String,
+    ) : Screen("songListDetail")
+
+    /** 我的列表（本地歌单管理） */
+    object MyLists : Screen("myLists")
 }
 
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("No navigator found") }

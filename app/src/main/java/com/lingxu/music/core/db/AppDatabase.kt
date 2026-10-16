@@ -34,6 +34,10 @@ data class Playlist(
     val name: String,
     val createTime: Long,
     val musics: List<String> = emptyList(), // musicId 列表
+    /** 在线列表的来源（平台歌单/榜单 id，空表示纯本地列表） */
+    val source: String? = null,
+    val sourceListId: String? = null,
+    val locationUpdateTime: Long = 0,
 )
 
 @Serializable
@@ -160,6 +164,11 @@ class AppDatabase(private val context: Context) {
             java.io.File(dataDir, "playlist_$listId.json")
                 .writeText(JSON.encodeToString(musics))
         }
+
+    suspend fun deletePlaylistMusics(listId: String) = withContext(Dispatchers.IO) {
+        java.io.File(dataDir, "playlist_$listId.json").delete()
+        Unit
+    }
 
     private fun persistPlaylists(list: List<Playlist>) {
         java.io.File(dataDir, FILE_PLAYLIST).writeText(JSON.encodeToString(list))
