@@ -26,6 +26,7 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.lingxu.music.LxApp
 import com.lingxu.music.ui.navigation.LocalNavigator
@@ -62,8 +63,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun AppRoot() {
     val themeMode by LxApp.app.settings.theme.collectAsState(initial = "system")
-    val blurEnabled by LxApp.app.settings.blurEnabled.collectAsState(initial = true)
+    val blurSettingEnabled by LxApp.app.settings.blurEnabled.collectAsState(initial = true)
     val blurRadius by LxApp.app.settings.blurRadius.collectAsState(initial = 24f)
+    // RenderEffect 需 API 31+；低版本上 backdrop 的 blur 是静默 no-op，只会得到半透明色块，
+    // 因此这里直接降级为普通底栏，观感与「关闭模糊」一致
+    val renderEffectSupported = android.os.Build.VERSION.SDK_INT >= 31
+    val runtimeShaderSupported = android.os.Build.VERSION.SDK_INT >= 33
+    val blurEnabled = blurSettingEnabled && renderEffectSupported
 
     LxTheme(themeMode = themeMode) {
         val navigator = rememberNavigator()
@@ -89,7 +95,7 @@ fun AppRoot() {
                 ) {
                     MiniPlayerBar(navigator)
                     if (blurEnabled) {
-                        GlassBottomBar(backdrop, blurRadius, dark, navigator)
+                        GlassBottomBar(backdrop, blurRadius, dark, runtimeShaderSupported, navigator)
                     } else {
                         PlainBottomBar(navigator)
                     }
@@ -193,6 +199,7 @@ private fun GlassBottomBar(
     backdrop: LayerBackdrop,
     blurRadius: Float,
     dark: Boolean,
+    refraction: Boolean,
     navigator: Navigator,
 ) {
     Box(
@@ -204,6 +211,14 @@ private fun GlassBottomBar(
                 effects = {
                     vibrancy()
                     blur(blurRadius.dp.toPx())
+                    // lens 折射：仅 API 33+ 生效，且 shape 必须是圆角形状
+                    if (refraction) {
+                        lens(
+                            refractionHeight = 12.dp.toPx(),
+                            refractionAmount = 24.dp.toPx(),
+                            depthEffect = true,
+                        )
+                    }
                 },
                 onDrawSurface = {
                     drawRect(if (dark) Color.Black.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.45f))

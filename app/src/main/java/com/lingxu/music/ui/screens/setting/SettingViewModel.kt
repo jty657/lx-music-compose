@@ -7,84 +7,101 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * 设置页 ViewModel。分组对齐原版 screens/Home/Views/Setting/settings：
+ * Basic（基本）/ Player（播放）/ Lyric（歌词）/ Search（搜索）/ List（列表）/ Sync（同步备份）
+ */
 class SettingViewModel : ViewModel() {
 
-    val themeMode: StateFlow<String> = LxApp.app.settings.theme.let { flow ->
-        MutableStateFlow("system").also { state ->
-            viewModelScope.launch { flow.collect { state.value = it } }
+    private val settings get() = LxApp.app.settings
+
+    private fun <T> state(flow: kotlinx.coroutines.flow.Flow<T>, initial: T): StateFlow<T> =
+        MutableStateFlow(initial).also { s ->
+            viewModelScope.launch { flow.collect { s.value = it } }
         }
+
+    // ============ 基本 ============
+    val themeMode: StateFlow<String> = state(settings.theme, "system")
+    val lang: StateFlow<String> = state(settings.lang, "system")
+    val fontScale: StateFlow<Float> = state(settings.fontScale, 1f)
+    val shareType: StateFlow<String> = state(settings.shareType, "system")
+    val autoHidePlayBar: StateFlow<Boolean> = state(settings.autoHidePlayBar, true)
+
+    // ============ 播放 ============
+    val quality: StateFlow<String> = state(settings.quality, "128k")
+    val playMode: StateFlow<String> = state(settings.playMode, "listLoop")
+    val startupAutoPlay: StateFlow<Boolean> = state(settings.startupAutoPlay, false)
+    val isSavePlayTime: StateFlow<Boolean> = state(settings.isSavePlayTime, false)
+    val isHandleAudioFocus: StateFlow<Boolean> = state(settings.isHandleAudioFocus, true)
+
+    // ============ 歌词 ============
+    val showLyricTranslation: StateFlow<Boolean> = state(settings.showLyricTranslation, true)
+    val showLyricRoma: StateFlow<Boolean> = state(settings.showLyricRoma, false)
+    val lyricAlign: StateFlow<String> = state(settings.lyricAlign, "left")
+    val lyricFontSize: StateFlow<Float> = state(settings.lyricFontSize, 1f)
+    val isZoomActiveLrc: StateFlow<Boolean> = state(settings.isZoomActiveLrc, false)
+
+    // ============ 搜索 ============
+    val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, true)
+    val isShowHistorySearch: StateFlow<Boolean> = state(settings.isShowHistorySearch, true)
+
+    // ============ 列表 ============
+    val isShowSource: StateFlow<Boolean> = state(settings.isShowSource, true)
+    val isShowAlbumName: StateFlow<Boolean> = state(settings.isShowAlbumName, false)
+    val isShowInterval: StateFlow<Boolean> = state(settings.isShowInterval, true)
+    val addMusicLocation: StateFlow<String> = state(settings.addMusicLocation, "bottom")
+
+    // ============ 液态玻璃 ============
+    val blurEnabled: StateFlow<Boolean> = state(settings.blurEnabled, true)
+    val blurRadius: StateFlow<Float> = state(settings.blurRadius, 24f)
+
+    // ============ 自定义音源 ============
+    val userApiLog: StateFlow<Boolean> = state(settings.enableUserApiLog, false)
+
+    fun cycleTheme() = launch { settings.setTheme(next(themeMode.value, listOf("system", "light", "dark", "monet"))) }
+
+    fun cycleLang() = launch { settings.setLang(next(lang.value, listOf("system", "zh_cn", "zh_tw", "en"))) }
+
+    fun setFontScale(value: Float) = launch { settings.setFontScale(value.coerceIn(0.8f, 1.6f)) }
+
+    fun cycleShareType() = launch { settings.setShareType(next(shareType.value, listOf("system", "link", "text"))) }
+
+    fun setAutoHidePlayBar(value: Boolean) = launch { settings.setAutoHidePlayBar(value) }
+
+    fun cycleQuality() = launch { settings.setQuality(next(quality.value, listOf("128k", "192k", "320k", "flac", "flac24bit"))) }
+
+    fun cyclePlayMode() = launch {
+        val options = com.lingxu.music.core.player.PlayMode.ALL
+        settings.setPlayMode(next(playMode.value, options))
     }
 
-    val quality: StateFlow<String> = LxApp.app.settings.quality.let { flow ->
-        MutableStateFlow("128k").also { state ->
-            viewModelScope.launch { flow.collect { state.value = it } }
-        }
-    }
+    fun setStartupAutoPlay(value: Boolean) = launch { settings.setStartupAutoPlay(value) }
+    fun setIsSavePlayTime(value: Boolean) = launch { settings.setIsSavePlayTime(value) }
+    fun setIsHandleAudioFocus(value: Boolean) = launch { settings.setIsHandleAudioFocus(value) }
 
-    val blurEnabled: StateFlow<Boolean> = LxApp.app.settings.blurEnabled.let { flow ->
-        MutableStateFlow(true).also { state ->
-            viewModelScope.launch { flow.collect { state.value = it } }
-        }
-    }
+    fun setShowLyricTranslation(value: Boolean) = launch { settings.setShowLyricTranslation(value) }
+    fun setShowLyricRoma(value: Boolean) = launch { settings.setShowLyricRoma(value) }
+    fun cycleLyricAlign() = launch { settings.setLyricAlign(next(lyricAlign.value, listOf("left", "center"))) }
+    fun setLyricFontSize(value: Float) = launch { settings.setLyricFontSize(value.coerceIn(0.8f, 1.8f)) }
+    fun setIsZoomActiveLrc(value: Boolean) = launch { settings.setIsZoomActiveLrc(value) }
 
-    val blurRadius: StateFlow<Float> = LxApp.app.settings.blurRadius.let { flow ->
-        MutableStateFlow(24f).also { state ->
-            viewModelScope.launch { flow.collect { state.value = it } }
-        }
-    }
+    fun setIsShowHotSearch(value: Boolean) = launch { settings.setIsShowHotSearch(value) }
+    fun setIsShowHistorySearch(value: Boolean) = launch { settings.setIsShowHistorySearch(value) }
 
-    val userApiLog: StateFlow<Boolean> = LxApp.app.settings.enableUserApiLog.let { flow ->
-        MutableStateFlow(false).also { state ->
-            viewModelScope.launch { flow.collect { state.value = it } }
-        }
-    }
+    fun setIsShowSource(value: Boolean) = launch { settings.setIsShowSource(value) }
+    fun setIsShowAlbumName(value: Boolean) = launch { settings.setIsShowAlbumName(value) }
+    fun setIsShowInterval(value: Boolean) = launch { settings.setIsShowInterval(value) }
+    fun cycleAddMusicLocation() = launch { settings.setAddMusicLocation(next(addMusicLocation.value, listOf("bottom", "top"))) }
 
-    val playMode: StateFlow<String> = LxApp.app.settings.playMode.let { flow ->
-        MutableStateFlow("listLoop").also { state ->
-            viewModelScope.launch { flow.collect { state.value = it } }
-        }
-    }
+    fun setBlurEnabled(value: Boolean) = launch { settings.setBlurEnabled(value) }
+    fun setBlurRadius(value: Float) = launch { settings.setBlurRadius(value) }
 
-    fun cyclePlayMode() {
-        viewModelScope.launch {
-            val current = playMode.value
-            val options = com.lingxu.music.core.player.PlayMode.ALL
-            val next = options[(options.indexOf(current) + 1) % options.size]
-            LxApp.app.playerRepository.setPlayMode(next)
-        }
-    }
+    fun setUserApiLog(value: Boolean) = launch { settings.setEnableUserApiLog(value) }
 
-    fun cycleTheme() {
-        viewModelScope.launch {
-            val current = themeMode.value
-            val next = when (current) {
-                "system" -> "light"
-                "light" -> "dark"
-                "dark" -> "monet"
-                else -> "system"
-            }
-            LxApp.app.settings.setTheme(next)
-        }
-    }
+    private fun next(current: String, options: List<String>): String =
+        options[(options.indexOf(current) + 1) % options.size]
 
-    fun cycleQuality() {
-        viewModelScope.launch {
-            val current = quality.value
-            val options = listOf("128k", "192k", "320k", "flac", "flac24bit")
-            val next = options[(options.indexOf(current) + 1).coerceAtMost(options.size - 1)]
-            LxApp.app.settings.setQuality(next)
-        }
-    }
-
-    fun setBlurEnabled(enabled: Boolean) {
-        viewModelScope.launch { LxApp.app.settings.setBlurEnabled(enabled) }
-    }
-
-    fun setBlurRadius(radius: Float) {
-        viewModelScope.launch { LxApp.app.settings.setBlurRadius(radius) }
-    }
-
-    fun setUserApiLog(enabled: Boolean) {
-        viewModelScope.launch { LxApp.app.settings.setEnableUserApiLog(enabled) }
+    private fun launch(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
     }
 }
