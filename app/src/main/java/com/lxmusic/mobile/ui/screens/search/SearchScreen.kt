@@ -73,7 +73,7 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
                     }
                 },
             ) {
-                Icon(MiuixIcons.Search)
+                Icon(MiuixIcons.Search, contentDescription = "搜索")
             }
         }
 
@@ -137,7 +137,7 @@ private fun SearchResultCard(music: MusicInfo, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(8.dp),
         ) {
-            Icon(MiuixIcons.Play, modifier = Modifier.size(32.dp))
+            Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(32.dp))
             Column(Modifier.padding(start = 12.dp)) {
                 Text(music.name, fontSize = MiuixTheme.textStyles.main.fontSize)
                 Text(

@@ -262,7 +262,12 @@ class BuiltinSdkBridge(context: Context) {
         val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
         val fn = module.getJSFunction("getLyric")
         val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
-        return parseLyric(raw)
+        // 返回 { promise } 结构
+        val jsObj = raw as? JSObject ?: throw IllegalStateException("invalid lyric response")
+        val promise = jsObj.getJSObject("promise") ?: throw IllegalStateException("lyric promise missing")
+        val result = awaitPromise(promise) as? JSObject
+            ?: throw IllegalStateException("lyric failed")
+        return parseLyric(result)
     }
 
     // ================= 封面 =================

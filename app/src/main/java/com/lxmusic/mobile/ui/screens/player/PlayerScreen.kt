@@ -122,6 +122,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 private fun IconButtonWrap(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Icon(
         icon,
+        contentDescription = null,
         modifier = Modifier
             .size(40.dp)
             .clickable(

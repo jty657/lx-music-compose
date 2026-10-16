@@ -38,7 +38,7 @@ class ScriptEngineManager(private val context: Context) {
     private val _status = MutableStateFlow(ApiStatus(false, ""))
     val status: StateFlow<ApiStatus> = _status
 
-    private val _initDeferred = CompletableDeferred<Boolean>()
+    private var _initDeferred: CompletableDeferred<Boolean> = CompletableDeferred()
     private val _initInfo = MutableStateFlow<JsonObject?>(null)
 
     /** 当前音源声明的源能力：source -> actions/qualitys（对齐 global.lx.qualityList + apis） */
@@ -70,7 +70,7 @@ class ScriptEngineManager(private val context: Context) {
     fun loadScript(info: ApiSourceInfo, script: String) {
         destroyScript()
         currentApiId = info.id
-        _initDeferred.let { }
+        _initDeferred = CompletableDeferred()
         _status.value = ApiStatus(false, "initing")
         _capabilities.value = emptyMap()
 

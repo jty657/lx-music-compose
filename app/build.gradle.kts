@@ -53,7 +53,7 @@ dependencies {
     implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
     implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
     implementation("org.jetbrains.compose.ui:ui:1.11.1")
-    implementation("org.jetbrains.compose.material3:material3:1.11.1")
+    implementation("org.jetbrains.compose.material3:material3:1.9.0")
     implementation("org.jetbrains.compose.animation:animation:1.11.1")
 
     // Miuix 0.9.3 — HyperOS 风格卡片 / 偏好项 / 图标 / Navigation3 / 触感反馈

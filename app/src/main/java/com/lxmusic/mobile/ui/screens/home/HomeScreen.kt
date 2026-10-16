@@ -82,5 +82,5 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
 
 @Composable
 private fun IconWrap(icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    top.yukonga.miuix.kmp.basic.Icon(icon, modifier = Modifier.size(28.dp))
+    top.yukonga.miuix.kmp.basic.Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
 }
