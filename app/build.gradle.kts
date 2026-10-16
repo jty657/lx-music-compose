@@ -22,9 +22,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // 不混淆：无法本地真机验证，优先保证运行正确性
+            isMinifyEnabled = false
+            isShrinkResources = false
+            // 用 debug 签名，便于直接侧载安装
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false

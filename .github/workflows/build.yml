@@ -20,7 +20,6 @@ jobs:
 
       - name: Setup Android SDK
         run: |
-          # ubuntu-24.04 runner: cmdline-tools 已预装但 sdkmanager 不在 PATH
           export ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/cmdline-tools/16.0/bin:$PATH"
           mkdir -p "$ANDROID_HOME/licenses"
@@ -33,12 +32,18 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build release APK
+      - name: Build release APK (debug-signed)
         run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk out/lx-music-compose-1.0.0.apk
+          ls -la out/
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: lxmusic-compose-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: out/*.apk
           retention-days: 30
