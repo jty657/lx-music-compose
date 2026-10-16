@@ -199,7 +199,12 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                     showCreate = false
                 }) { Text("创建") }
             },
-            dismissButton = { Button(onClick = { showCreate = false(); newName = "" }) { Text("取消") } },
+            dismissButton = {
+                Button(onClick = {
+                    showCreate = false
+                    newName = ""
+                }) { Text("取消") }
+            },
         )
     }
 

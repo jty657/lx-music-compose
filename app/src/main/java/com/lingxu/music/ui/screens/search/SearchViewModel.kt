@@ -9,6 +9,9 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import kotlinx.coroutines.launch
 
+/** 搜索类型：音乐 / 歌单（对应原版 search.type） */
+enum class SearchType { MUSIC, SONGLIST }
+
 class SearchViewModel : ViewModel() {
 
     var results by mutableStateOf<List<MusicInfo>>(emptyList())
