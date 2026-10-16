@@ -24,8 +24,16 @@ class SearchViewModel : ViewModel() {
     var favoriteIds by mutableStateOf<Set<String>>(emptySet())
         private set
 
+    /** 搜索类型：音乐 / 歌单（对应原版 search.type） */
+    var searchType by mutableStateOf(SearchType.MUSIC)
+        private set
+
     /** 搜索历史（最近在前，最多 30 条） */
     var history by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    /** 歌单搜索结果 */
+    var songLists by mutableStateOf<List<com.lingxu.music.core.model.SongListInfo>>(emptyList())
         private set
 
     private var lastQuery: String = ""
@@ -50,19 +58,38 @@ class SearchViewModel : ViewModel() {
         viewModelScope.launch {
             loading = true
             errorMessage = null
-            runCatching {
-                LxApp.app.musicRepository.search(text, page, source)
-            }.onSuccess { list ->
-                results = list.distinctBy { it.id }
-                hasMore = list.isNotEmpty()
-                recordHistory(text)
-            }.onFailure { e ->
-                errorMessage = e.message
-                results = emptyList()
-                hasMore = false
+            when (searchType) {
+                SearchType.MUSIC -> runCatching {
+                    LxApp.app.musicRepository.search(text, page, source)
+                }.onSuccess { list ->
+                    results = list.distinctBy { it.id }
+                    songLists = emptyList()
+                    hasMore = list.isNotEmpty()
+                    recordHistory(text)
+                }.onFailure { e ->
+                    errorMessage = e.message
+                    results = emptyList()
+                    hasMore = false
+                }
+                SearchType.SONGLIST -> runCatching {
+                    LxApp.app.musicRepository.searchSongListAll(text, page)
+                }.onSuccess { pageResult ->
+                    songLists = pageResult.list.distinctBy { "${it.source}_${it.id}" }
+                    results = emptyList()
+                    hasMore = pageResult.list.isNotEmpty()
+                    recordHistory(text)
+                }.onFailure { e ->
+                    errorMessage = e.message
+                    songLists = emptyList()
+                    hasMore = false
+                }
             }
             loading = false
         }
+    }
+
+    fun setType(type: SearchType) {
+        searchType = type
     }
 
     private suspend fun recordHistory(text: String) {
@@ -80,6 +107,30 @@ class SearchViewModel : ViewModel() {
 
     /** 加载下一页 */
     fun loadMore() {
+        if (!hasMore) return
+        val nextPage = page + 1
+        viewModelScope.launch {
+            loading = true
+            when (searchType) {
+                SearchType.MUSIC -> runCatching {
+                    LxApp.app.musicRepository.search(lastQuery, nextPage, lastSource)
+                }.onSuccess { list ->
+                    results = (results + list).distinctBy { it.id }
+                    hasMore = list.isNotEmpty()
+                    page = nextPage
+                }.onFailure { hasMore = false }
+                SearchType.SONGLIST -> runCatching {
+                    LxApp.app.musicRepository.searchSongListAll(lastQuery, nextPage)
+                }.onSuccess { pageResult ->
+                    val merged = (songLists + pageResult.list).distinctBy { "${it.source}_${it.id}" }
+                    songLists = merged
+                    hasMore = pageResult.list.isNotEmpty()
+                    page = nextPage
+                }.onFailure { hasMore = false }
+            }
+            loading = false
+        }
+    }
         if (loading || !hasMore || lastQuery.isBlank()) return
         val nextPage = page + 1
         viewModelScope.launch {

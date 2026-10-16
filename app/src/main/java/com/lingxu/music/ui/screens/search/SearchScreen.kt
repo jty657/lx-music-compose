@@ -26,7 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.navigation.LocalNavigator
+import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -43,6 +46,7 @@ import top.yukonga.miuix.kmp.basic.TextField
 @Composable
 fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
     val scope = rememberCoroutineScope()
+    val navigator = LocalNavigator.current
     val textFieldState = remember { TextFieldState() }
     val sources = listOf("all") + SourceConst.ONLINE
     var selectedSource by rememberSaveable { mutableStateOf("all") }
@@ -99,6 +103,26 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
 
         Spacer(Modifier.height(8.dp))
 
+        // 搜索类型切换（对应原版 音乐/歌单）
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Button(onClick = { viewModel.setType(SearchType.MUSIC) }) {
+                Text(
+                    "音乐",
+                    color = if (viewModel.searchType == SearchType.MUSIC) MiuixTheme.colorScheme.primary
+                    else MiuixTheme.colorScheme.onSurface,
+                )
+            }
+            Button(onClick = { viewModel.setType(SearchType.SONGLIST) }) {
+                Text(
+                    "歌单",
+                    color = if (viewModel.searchType == SearchType.SONGLIST) MiuixTheme.colorScheme.primary
+                    else MiuixTheme.colorScheme.onSurface,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
         // 错误提示
         viewModel.errorMessage?.let { err ->
             Text(
@@ -110,7 +134,7 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
         }
 
         // 搜索历史（无结果且输入为空时展示）
-        if (viewModel.results.isEmpty() && viewModel.history.isNotEmpty()) {
+        if (viewModel.results.isEmpty() && viewModel.songLists.isEmpty() && viewModel.history.isNotEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("搜索历史", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Spacer(Modifier.weight(1f))
@@ -142,6 +166,43 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
 
         // 结果列表
         val results = viewModel.results
+        val songLists = viewModel.songLists
+        if (songLists.isNotEmpty()) {
+            LazyColumn(Modifier.weight(1f)) {
+                items(songLists, key = { "${it.source}_${it.id}" }) { item ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        pressFeedbackType = top.yukonga.miuix.kmp.utils.PressFeedbackType.Sink,
+                        onClick = {
+                            navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
+                        },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+                            Icon(MiuixIcons.Favorites, contentDescription = null, modifier = Modifier.size(28.dp))
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                Text(item.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                                Text(
+                                    "${item.author} · ${SourceConst.displayName(item.source)}",
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (viewModel.hasMore) {
+                    item(key = "__load_more__") {
+                        Button(
+                            onClick = { viewModel.loadMore() },
+                            enabled = !viewModel.loading,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        ) { Text(if (viewModel.loading) "加载中…" else "加载更多") }
+                    }
+                }
+            }
+            return@Column
+        }
+
         LazyColumn {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
