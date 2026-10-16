@@ -321,7 +321,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
 
 /** 列表清单（未进入某个列表时） */
 @Composable
-private fun ListOfLists(
+private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
     lists: List<Playlist>,
     onOpen: (Playlist) -> Unit,
     onRename: (Playlist) -> Unit,
