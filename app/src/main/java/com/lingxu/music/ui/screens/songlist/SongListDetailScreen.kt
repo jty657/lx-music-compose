@@ -33,6 +33,7 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Play
@@ -53,6 +54,12 @@ fun SongListDetailScreen(
     var hasMore by remember { mutableStateOf(true) }
     var page by remember { mutableStateOf(1) }
     var error by remember { mutableStateOf<String?>(null) }
+    val searchState = remember { androidx.compose.foundation.text.input.TextFieldState() }
+    val keyword = searchState.text.toString()
+    val shownMusic = if (keyword.isBlank()) musicList
+    else musicList.filter {
+        it.name.contains(keyword, ignoreCase = true) || it.singer.contains(keyword, ignoreCase = true)
+    }
 
     fun load(next: Int) {
         if (loading) return
@@ -105,12 +112,22 @@ fun SongListDetailScreen(
 
         Spacer(Modifier.size(8.dp))
 
+        if (musicList.isNotEmpty()) {
+            TextField(
+                state = searchState,
+                label = "在此歌单内搜索",
+                useLabelAsPlaceholder = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.size(8.dp))
+        }
+
         error?.let {
             Text(it, color = MiuixTheme.colorScheme.error, fontSize = MiuixTheme.textStyles.body2.fontSize)
         }
 
         LazyColumn(Modifier.weight(1f)) {
-            items(musicList, key = { it.id }) { music ->
+            items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     onClick = { viewModel.play(musicList, music) },
