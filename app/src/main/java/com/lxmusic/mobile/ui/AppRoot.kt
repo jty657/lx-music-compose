@@ -99,11 +99,14 @@ private fun MainScaffold(
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { padding ->
         val current = navigator.backStack.last()
+        val playState by LxApp.app.playerRepository.state.collectAsState()
+        // 底部留白：导航栏 + （有歌曲时的）迷你播放条
+        val bottomInset = if (playState.current != null) 132.dp else 76.dp
         Box(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(bottom = 132.dp),
+                .padding(bottom = bottomInset),
         ) {
             when (current) {
                 is Screen.Home -> HomeScreen()

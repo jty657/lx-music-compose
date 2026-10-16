@@ -24,6 +24,10 @@ class SearchViewModel : ViewModel() {
     var favoriteIds by mutableStateOf<Set<String>>(emptySet())
         private set
 
+    /** 搜索历史（最近在前，最多 30 条） */
+    var history by mutableStateOf<List<String>>(emptyList())
+        private set
+
     private var lastQuery: String = ""
     private var lastSource: String = "all"
     private var page: Int = 1
@@ -33,6 +37,9 @@ class SearchViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             LxApp.app.favoritesRepository.favoriteIds.collect { favoriteIds = it }
+        }
+        viewModelScope.launch {
+            history = LxApp.app.database.loadSearchHistory()
         }
     }
 
@@ -48,12 +55,26 @@ class SearchViewModel : ViewModel() {
             }.onSuccess { list ->
                 results = list
                 hasMore = list.isNotEmpty()
+                recordHistory(text)
             }.onFailure { e ->
                 errorMessage = e.message
                 results = emptyList()
                 hasMore = false
             }
             loading = false
+        }
+    }
+
+    private suspend fun recordHistory(text: String) {
+        val next = (listOf(text) + history.filterNot { it == text }).take(30)
+        history = next
+        LxApp.app.database.saveSearchHistory(next)
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            history = emptyList()
+            LxApp.app.database.saveSearchHistory(emptyList())
         }
     }
 

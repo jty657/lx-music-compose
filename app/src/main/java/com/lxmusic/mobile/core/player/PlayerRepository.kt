@@ -287,10 +287,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        mediaSession?.run {
-            player.release()
-            release()
-        }
+        // player 由 PlayerRepository 单例持有，这里只释放 MediaSession
+        mediaSession?.release()
         mediaSession = null
         super.onDestroy()
     }

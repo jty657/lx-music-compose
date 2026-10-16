@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.lxmusic.mobile.LxApp
 import com.lxmusic.mobile.core.model.MusicInfo
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card

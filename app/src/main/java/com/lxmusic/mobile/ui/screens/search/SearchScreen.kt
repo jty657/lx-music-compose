@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.lxmusic.mobile.LxApp
 import com.lxmusic.mobile.core.model.MusicInfo
 import com.lxmusic.mobile.core.model.SourceConst
 import com.lxmusic.mobile.ui.navigation.LocalNavigator
@@ -97,6 +97,37 @@ fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
                     )
                 }
             }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // 搜索历史（无结果且输入为空时展示）
+        if (viewModel.results.isEmpty() && viewModel.history.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("搜索历史", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "清空",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { viewModel.clearHistory() },
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            viewModel.history.forEach { word ->
+                Text(
+                    word,
+                    fontSize = MiuixTheme.textStyles.body1.fontSize,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            textFieldState.setTextAndPlaceCursorAtEnd(word)
+                            scope.launch { viewModel.search(word, selectedSource) }
+                        }
+                        .padding(vertical = 6.dp),
+                )
+            }
+            return@Column
         }
 
         Spacer(Modifier.height(8.dp))

@@ -50,6 +50,7 @@ class AppDatabase(private val context: Context) {
         private const val FILE_API_SOURCE_LIST = "api_source_list.json"
         private const val FILE_PLAYLIST = "playlist.json"
         private const val FILE_FAVORITES = "favorites.json"
+        private const val FILE_SEARCH_HISTORY = "search_history.json"
 
         fun build(context: Context): AppDatabase = AppDatabase(context)
     }
@@ -180,6 +181,19 @@ class AppDatabase(private val context: Context) {
         withContext(Dispatchers.IO) {
             java.io.File(dataDir, FILE_FAVORITES).writeText(JSON.encodeToString(list))
         }
+
+    // ============ 搜索历史 ============
+
+    suspend fun loadSearchHistory(): List<String> = withContext(Dispatchers.IO) {
+        val file = java.io.File(dataDir, FILE_SEARCH_HISTORY)
+        if (file.exists()) {
+            runCatching { JSON.decodeFromString<List<String>>(file.readText()) }.getOrElse { emptyList() }
+        } else emptyList()
+    }
+
+    suspend fun saveSearchHistory(list: List<String>) = withContext(Dispatchers.IO) {
+        java.io.File(dataDir, FILE_SEARCH_HISTORY).writeText(JSON.encodeToString(list))
+    }
 
     fun toInfo(meta: ApiSourceMeta): ApiSourceInfo = ApiSourceInfo(
         id = meta.id,
