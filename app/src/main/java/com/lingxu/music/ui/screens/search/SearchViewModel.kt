@@ -131,25 +131,6 @@ class SearchViewModel : ViewModel() {
             loading = false
         }
     }
-        if (loading || !hasMore || lastQuery.isBlank()) return
-        val nextPage = page + 1
-        viewModelScope.launch {
-            loading = true
-            runCatching {
-                LxApp.app.musicRepository.search(lastQuery, nextPage, lastSource)
-            }.onSuccess { list ->
-                if (list.isEmpty()) {
-                    hasMore = false
-                } else {
-                    // 按 id 去重追加
-                    val existing = results.map { it.id }.toSet()
-                    results = results + list.filterNot { it.id in existing }
-                    page = nextPage
-                }
-            }
-            loading = false
-        }
-    }
 
     fun toggleFavorite(music: MusicInfo) {
         viewModelScope.launch {
