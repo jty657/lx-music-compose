@@ -1,0 +1,616 @@
+package com.lxmusic.mobile.core.engine
+
+import android.content.Context
+import android.util.Log
+import com.lxmusic.mobile.core.crypto.CryptoUtils
+import com.lxmusic.mobile.core.model.Board
+import com.lxmusic.mobile.core.model.BoardDetail
+import com.lxmusic.mobile.core.model.HotSearchWord
+import com.lxmusic.mobile.core.model.LyricInfo
+import com.lxmusic.mobile.core.model.MusicInfo
+import com.lxmusic.mobile.core.request.HttpClient
+import com.lxmusic.mobile.core.request.ScriptRequestOptions
+import com.whl.quickjs.android.QuickJSLoader
+import com.whl.quickjs.wrapper.JSArray
+import com.whl.quickjs.wrapper.JSCallFunction
+import com.whl.quickjs.wrapper.JSFunction
+import com.whl.quickjs.wrapper.JSObject
+import com.whl.quickjs.wrapper.QuickJSContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import java.util.concurrent.Executors
+import kotlin.coroutines.resume
+
+/**
+ * 内置官方音源 SDK（kw/kg/tx/wy/mg）桥接器。
+ * 在 QuickJS 上下文中执行打包好的 music-sdk.bundle.js（原版 src/utils/musicSdk 的 esbuild 产物），
+ * 通过 __lxNative 提供 md5/aes/rsa/btoa 等原生能力（替代原版 react-native-quick-md5 等 RN 模块）。
+ *
+ * 与原版一致：内置 SDK 负责 search/lyric/pic/leaderboard/hotSearch/getMusicUrl；
+ * 其中 getMusicUrl 当全局 apiSource 为 user_api_xxx 时走 global.lx.apis（由外部注入）。
+ */
+class BuiltinSdkBridge(context: Context) {
+
+    companion object {
+        private const val TAG = "BuiltinSdkBridge"
+        private const val TIMEOUT_MS = 20_000L
+
+        @Volatile
+        private var loaderInited = false
+    }
+
+    private val sdkBundle: String = context.assets.open("engine/music-sdk.bundle.js").use {
+        it.readBytes().toString(Charsets.UTF_8)
+    }
+
+    /** 单线程执行器：QuickJSContext 同线程要求 */
+    private val executor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "BuiltinSDK").apply { isDaemon = true }
+    }
+
+    private var jsContext: QuickJSContext? = null
+    private var sdkObject: JSObject? = null
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    /** 当前全局 apiSource（user_api_xxx 时 SDK 的 apis() 会走 global.lx.apis） */
+    @Volatile
+    var currentApiSource: String = ""
+
+    /** 初始化 SDK 上下文 */
+    fun init(apiSource: String) {
+        currentApiSource = apiSource
+        runOnSdkThread {
+            try {
+                synchronized(Companion) {
+                    if (!loaderInited) {
+                        QuickJSLoader.init()
+                        loaderInited = true
+                    }
+                }
+                val context = QuickJSContext.create()
+                jsContext = context
+                val global = context.getGlobalObject()
+
+                // 注入 native 能力（SDK 桩函数通过 __lxNative 调用）
+                val nativeObj = context.createNewJSObject()
+                nativeObj.setProperty("md5") { args: Array<Any?> ->
+                    runCatching { CryptoUtils.md5(args[0] as String) }.getOrElse { "" }
+                }
+                nativeObj.setProperty("btoa") { args: Array<Any?> ->
+                    runCatching {
+                        CryptoUtils.str2b64(args[0] as String)
+                    }.getOrElse { "" }
+                }
+                nativeObj.setProperty("aesEncrypt") { args: Array<Any?> ->
+                    runCatching {
+                        CryptoUtils.aesEncrypt(
+                            args[0] as String,
+                            args[1] as String,
+                            args[2] as String,
+                            args[3] as String,
+                        )
+                    }.getOrElse { "" }
+                }
+                nativeObj.setProperty("aesDecrypt") { args: Array<Any?> ->
+                    runCatching {
+                        CryptoUtils.aesDecrypt(
+                            args[0] as String,
+                            args[1] as String,
+                            args[2] as String,
+                            args[3] as String,
+                        )
+                    }.getOrElse { "" }
+                }
+                nativeObj.setProperty("rsaEncrypt") { args: Array<Any?> ->
+                    runCatching {
+                        CryptoUtils.rsaEncrypt(args[0] as String, args[1] as String, args[2] as String)
+                    }.getOrElse { "" }
+                }
+                nativeObj.setProperty("sha1") { args: Array<Any?> ->
+                    runCatching { CryptoUtils.sha1(args[0] as String) }.getOrElse { "" }
+                }
+                global.setProperty("__lxNative", nativeObj)
+
+                // 注入 global.lx（SDK 的 api-source.js 用 global.lx.apis）
+                val lxObj = context.createNewJSObject()
+                lxObj.setProperty("qualityList", context.createNewJSObject())
+                lxObj.setProperty("apis", context.createNewJSObject())
+                lxObj.setProperty("env", "mobile")
+                lxObj.setProperty("version", "2.0.0")
+                global.setProperty("lx", lxObj)
+
+                // 注入 global.__lxApiSource（setting-state 桩读取）
+                global.setProperty("__lxApiSource", currentApiSource)
+
+                // 注入全局 fetch（SDK request.js 用 global.fetch）
+                global.setProperty("fetch") { args: Array<Any?> ->
+                    val url = args[0] as String
+                    val options = args.getOrNull(1) as? JSObject
+                    createDeferredFetch(context, url, options)
+                }
+                // AbortController 桩（fetch 的 signal 参数需要）
+                global.setProperty("AbortController") { _: Array<Any?> ->
+                    val ctrl = context.createNewJSObject()
+                    ctrl.setProperty("signal", context.createNewJSObject())
+                    ctrl.setProperty("abort") { _: Array<Any?> -> null }
+                    ctrl
+                }
+
+                // 执行 SDK bundle
+                context.evaluate(sdkBundle, "music-sdk.bundle.js")
+                val lxMusicSdk = global.getJSObject("LXMusicSDK")
+                sdkObject = lxMusicSdk?.getJSObject("default") ?: lxMusicSdk
+                Log.i(TAG, "SDK loaded: ${sdkObject != null}")
+            } catch (e: Exception) {
+                Log.e(TAG, "SDK init failed: ${e.message}", e)
+                jsContext = null
+                sdkObject = null
+            }
+        }
+    }
+
+    /** 更新当前音源（user_api 切换时 SDK 行为变化） */
+    fun setApiSource(apiSource: String) {
+        currentApiSource = apiSource
+        runOnSdkThread {
+            jsContext?.getGlobalObject()?.setProperty("__lxApiSource", apiSource)
+            // global.lx.apis 由外部注入用户音源的适配层
+        }
+    }
+
+    /** 注入用户音源适配层（对应原版 init/userApi/index.ts 中的 apis 包装） */
+    fun injectUserApis(apis: Map<String, JSObject>) {
+        runOnSdkThread {
+            val context = jsContext ?: return@runOnSdkThread
+            val lxObj = context.getGlobalObject().getJSObject("lx") ?: return@runOnSdkThread
+            val apisObj = lxObj.getJSObject("apis") ?: return@runOnSdkThread
+            apis.forEach { (source, api) -> apisObj.setProperty(source, api) }
+        }
+    }
+
+    fun isReady(): Boolean = sdkObject != null
+
+    fun destroy() {
+        runOnSdkThread {
+            jsContext?.destroy()
+            jsContext = null
+            sdkObject = null
+        }
+        executor.shutdown()
+    }
+
+    // ================= 搜索 =================
+
+    /** 搜索（对应原版 musicSdk[source].musicSearch.search） */
+    suspend fun search(
+        text: String,
+        page: Int,
+        source: String,
+        limit: Int = 30,
+    ): SearchResult {
+        if (source == "all") {
+            // 并发搜索全部内置源
+            val sources = listOf("kw", "kg", "tx", "wy", "mg")
+            val results = sources.map { s ->
+                runCatching { search(text, page, s, limit) }
+                    .getOrElse {
+                        SearchResult(1, limit, s, emptyList(), 0)
+                    }
+            }
+            val merged = results.flatMap { it.list }
+            return SearchResult(
+                allPage = results.maxOf { it.allPage },
+                limit = limit,
+                source = "all",
+                list = merged,
+                total = results.sumOf { it.total },
+            )
+        }
+        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+        val musicSearch = module.getJSObject("musicSearch") ?: throw IllegalStateException("musicSearch not found")
+        val fn = musicSearch.getJSFunction("search")
+        val raw = callJSFunction(fn, arrayOf(text, page, limit))
+        return parseSearchResult(raw, source)
+    }
+
+    // ================= 榜单 =================
+
+    suspend fun getBoardsList(source: String): List<Board> {
+        val module = getModule(source) ?: return emptyList()
+        val leaderboard = module.getJSObject("leaderboard") ?: return emptyList()
+        val fn = leaderboard.getJSFunction("getBoards") ?: return emptyList()
+        val raw = callJSFunction(fn, arrayOf())
+        // raw = { list: [...], ... } 按原版 Board 结构
+        return parseBoards(raw, source)
+    }
+
+    suspend fun getBoardList(source: String, bangId: String, page: Int): BoardDetail {
+        val module = getModule(source) ?: return BoardDetail("${source}__$bangId", "")
+        val leaderboard = module.getJSObject("leaderboard") ?: return BoardDetail("${source}__$bangId", "")
+        val fn = leaderboard.getJSFunction("getList") ?: return BoardDetail("${source}__$bangId", "")
+        val raw = callJSFunction(fn, arrayOf(bangId, page))
+        return parseBoardDetail(raw, source, bangId)
+    }
+
+    // ================= 热搜 =================
+
+    suspend fun getHotSearch(source: String): List<String> {
+        val module = getModule(source) ?: return emptyList()
+        val hotSearch = module.getJSObject("hotSearch") ?: return emptyList()
+        val fn = hotSearch.getJSFunction("getList") ?: return emptyList()
+        val raw = callJSFunction(fn, arrayOf())
+        return parseHotSearch(raw, source)
+    }
+
+    // ================= 歌词 =================
+
+    suspend fun getLyric(source: String, oldInfo: JsonObject): LyricInfo {
+        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+        val fn = module.getJSFunction("getLyric")
+        val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
+        return parseLyric(raw)
+    }
+
+    // ================= 封面 =================
+
+    suspend fun getPic(source: String, oldInfo: JsonObject): String {
+        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+        val fn = module.getJSFunction("getPic")
+        val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))
+        // 返回 url 字符串或 Promise
+        return when (raw) {
+            is String -> raw
+            else -> {
+                // 有些源返回 { promise } 或 Promise
+                val jsObj = raw as? JSObject
+                val promise = jsObj?.getJSObject("promise") ?: jsObj
+                awaitPromise(promise as JSObject)?.toString() ?: throw IllegalStateException("pic failed")
+            }
+        }
+    }
+
+    // ================= 歌曲 URL（内置源无 api-list 时走 global.lx.apis） =================
+
+    suspend fun getMusicUrl(source: String, oldInfo: JsonObject, type: String): String {
+        val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
+        val fn = module.getJSFunction("getMusicUrl")
+        val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject(), type))
+        // 返回 { promise } 或 { canceleFn, promise }
+        val jsObj = raw as? JSObject ?: throw IllegalStateException("invalid response")
+        val promise = jsObj.getJSObject("promise") as? JSObject
+            ?: throw IllegalStateException("Api is not found")
+        val result = awaitPromise(promise) as? JSObject
+            ?: throw IllegalStateException("music url failed")
+        val url = result.getString("url") ?: throw IllegalStateException("invalid url")
+        return url
+    }
+
+    /** 音质协商（对应原版 getMusicType）：从 preference 向下取可用的音质 */
+    fun negotiateQuality(musicInfo: MusicInfo, preferQuality: String, qualityList: List<String>): String {
+        if (qualityList.isEmpty()) return "128k"
+        var type = preferQuality
+        if (!qualityList.contains(type)) type = qualityList.last()
+        val rangeType = listOf("flac24bit", "flac", "wav", "ape", "320k", "192k", "128k")
+            .dropWhile { it != type }
+        for (t in rangeType) {
+            if (musicInfo._qualitys.containsKey(t)) return t
+        }
+        return "128k"
+    }
+
+    // ================= 内部实现 =================
+
+    data class SearchResult(
+        val allPage: Int,
+        val limit: Int,
+        val source: String,
+        val list: List<MusicInfo>,
+        val total: Int,
+    )
+
+    private fun getModule(source: String): JSObject? = sdkObject?.getJSObject(source)
+
+    private fun runOnSdkThread(block: () -> Unit) {
+        executor.execute(block)
+    }
+
+    private fun callJSFunction(fn: com.whl.quickjs.wrapper.JSFunction, args: Array<Any?>): Any? {
+        return fn.call(*args)
+    }
+
+    private suspend fun <T> withSdkContext(block: () -> T): T =
+        withContext(Dispatchers.IO) { block() }
+
+    /** 等待 JS Promise（QuickJS wrapper 支持 Promise 直接转换） */
+    private suspend fun awaitPromise(promise: JSObject): Any? =
+        withTimeoutOrNull(TIMEOUT_MS) {
+            suspendCancellableCoroutine { cont ->
+                val then = promise.getJSFunction("then")
+                if (then != null) {
+                    then.call(
+                        { args: Array<Any?> -> cont.resume(args.getOrNull(0)) },
+                        { args: Array<Any?> ->
+                            val err = args.getOrNull(0)
+                            cont.resumeWith(Result.failure(Exception(err?.toString() ?: "promise rejected")))
+                        },
+                    )
+                } else {
+                    cont.resume(promise)
+                }
+            }
+        } ?: throw IllegalStateException("promise timeout")
+
+    /** 把 JSON 对象转为 JS 对象传入 SDK */
+    private fun JsonObject.toJsObject(): JSObject {
+        val context = jsContext ?: throw IllegalStateException("SDK not ready")
+        val obj = context.createNewJSObject()
+        entries.forEach { (k, v) ->
+            when (v) {
+                is JsonNull -> Unit
+                is JsonPrimitive -> {
+                    if (v.isString) obj.setProperty(k, v.content)
+                    else if (v.booleanOrNull != null) obj.setProperty(k, v.booleanOrNull)
+                    else if (v.intOrNull != null) obj.setProperty(k, v.intOrNull)
+                    else if (v.doubleOrNull != null) obj.setProperty(k, v.doubleOrNull)
+                }
+                is JsonArray -> {
+                    val arr = context.createNewJSArray()
+                    v.forEachIndexed { i, el ->
+                        jsonElementToJava(el, context)?.let { context.set(arr, it, i) }
+                    }
+                    obj.setProperty(k, arr)
+                }
+                is JsonObject -> obj.setProperty(k, v.toJsObject())
+            }
+        }
+        return obj
+    }
+
+    private fun jsonElementToJava(el: JsonElement, context: QuickJSContext): Any? = when (el) {
+        is JsonNull -> null
+        is JsonPrimitive -> when {
+            el.isString -> el.content
+            el.booleanOrNull != null -> el.booleanOrNull
+            el.intOrNull != null -> el.intOrNull
+            el.doubleOrNull != null -> el.doubleOrNull
+            else -> el.content
+        }
+        is JsonArray -> el.map { jsonElementToJava(it, context) }
+        is JsonObject -> el.toJsObject()
+    }
+
+    private fun parseSearchResult(raw: Any?, source: String): SearchResult {
+        val obj = raw as? JSObject ?: return SearchResult(1, 30, source, emptyList(), 0)
+        val context = jsContext ?: return SearchResult(1, 30, source, emptyList(), 0)
+        val allPage = obj.getIntProperty("allPage") ?: 1
+        val limit = obj.getIntProperty("limit") ?: 30
+        val total = obj.getIntProperty("total") ?: 0
+        val listObj = obj.getJSObject("list")
+        val list = mutableListOf<MusicInfo>()
+        if (listObj != null && listObj is JSArray) {
+            val len = context.length(listObj)
+            for (i in 0 until len) {
+                val item = context.get(listObj, i) as? JSObject ?: continue
+                list.add(jsMusicInfoToModel(item, source))
+            }
+        }
+        return SearchResult(allPage, limit, source, list, total)
+    }
+
+    private fun jsMusicInfoToModel(obj: JSObject, fallbackSource: String): MusicInfo {
+        val source = obj.getString("source") ?: fallbackSource
+        val songmid = obj.getString("songmid") ?: obj.getString("id") ?: ""
+        val context = jsContext ?: throw IllegalStateException("SDK not ready")
+        val types = mutableListOf<com.lxmusic.mobile.core.model.MusicQuality>()
+        val _types = mutableMapOf<String, com.lxmusic.mobile.core.model.QualitySize>()
+        val typesObj = obj.getJSObject("types")
+        val qualitysObj = obj.getJSObject("_types")
+        // types 是数组，_types 是 map
+        if (typesObj != null && typesObj is JSArray) {
+            val len = context.length(typesObj)
+            for (i in 0 until len) {
+                val t = context.get(typesObj, i) as? JSObject ?: continue
+                val type = t.getString("type") ?: continue
+                types.add(
+                    com.lxmusic.mobile.core.model.MusicQuality(
+                        type = type,
+                        size = t.getString("size"),
+                        hash = t.getString("hash"),
+                    ),
+                )
+            }
+        }
+        if (qualitysObj != null) {
+            val names = context.getOwnPropertyNames(qualitysObj)
+            when (names) {
+                is Array<*> -> names.forEach { n ->
+                    val name = n.toString()
+                    val v = qualitysObj.getJSObject(name) ?: return@forEach
+                    _types[name] = com.lxmusic.mobile.core.model.QualitySize(
+                        size = v.getString("size"),
+                        hash = v.getString("hash"),
+                    )
+                }
+                is JSArray -> {
+                    val len = context.length(names)
+                    for (i in 0 until len) {
+                        val name = (context.get(names, i) as? String) ?: continue
+                        val v = qualitysObj.getJSObject(name) ?: continue
+                        _types[name] = com.lxmusic.mobile.core.model.QualitySize(
+                            size = v.getString("size"),
+                            hash = v.getString("hash"),
+                        )
+                    }
+                }
+            }
+        }
+        return MusicInfo(
+            id = "${source}_$songmid",
+            name = obj.getString("name") ?: "",
+            singer = obj.getString("singer") ?: "",
+            source = source,
+            interval = obj.getString("interval"),
+            meta = com.lxmusic.mobile.core.model.MusicMeta(
+                songId = songmid,
+                albumName = obj.getString("albumName") ?: "",
+                picUrl = obj.getString("img")?.ifEmpty { null },
+                albumId = obj.getString("albumId"),
+            ),
+            qualitys = types,
+            _qualitys = _types,
+            hash = obj.getString("hash"),
+            strMediaMid = obj.getString("strMediaMid"),
+            copyrightId = obj.getString("copyrightId"),
+            lrcUrl = obj.getString("lrcUrl"),
+            mrcUrl = obj.getString("mrcUrl"),
+            trcUrl = obj.getString("trcUrl"),
+        )
+    }
+
+    private fun parseBoards(raw: Any?, source: String): List<Board> {
+        val obj = raw as? JSObject ?: return emptyList()
+        val context = jsContext ?: return emptyList()
+        val list = obj.getJSObject("list") as? JSArray ?: return emptyList()
+        val boards = mutableListOf<Board>()
+        val len = context.length(list)
+        for (i in 0 until len) {
+            val item = context.get(list, i) as? JSObject ?: continue
+            boards.add(
+                Board(
+                    id = "${source}__${item.getString("id") ?: item.getString("bangid") ?: ""}",
+                    name = item.getString("name") ?: "",
+                    bangid = item.getString("bangid") ?: item.getString("id") ?: "",
+                ),
+            )
+        }
+        return boards
+    }
+
+    private fun parseBoardDetail(raw: Any?, source: String, bangId: String): BoardDetail {
+        val obj = raw as? JSObject ?: return BoardDetail("${source}__$bangId", "")
+        val context = jsContext ?: return BoardDetail("${source}__$bangId", "")
+        val list = obj.getJSObject("list") as? JSArray
+        val musics = mutableListOf<MusicInfo>()
+        if (list != null) {
+            val len = context.length(list)
+            for (i in 0 until len) {
+                val item = context.get(list, i) as? JSObject ?: continue
+                musics.add(jsMusicInfoToModel(item, source))
+            }
+        }
+        return BoardDetail(
+            id = "${source}__$bangId",
+            name = obj.getString("name") ?: "",
+            list = musics,
+        )
+    }
+
+    private fun parseHotSearch(raw: Any?, source: String): List<String> {
+        val obj = raw as? JSObject ?: return emptyList()
+        val context = jsContext ?: return emptyList()
+        val list = obj.getJSObject("list") as? JSArray ?: return emptyList()
+        val words = mutableListOf<String>()
+        val len = context.length(list)
+        for (i in 0 until len) {
+            val item = context.get(list, i) as? JSObject ?: continue
+            item.getString("text")?.let { words.add(it) }
+            item.getString("name")?.let { words.add(it) }
+        }
+        return words.distinct()
+    }
+
+    private fun parseLyric(raw: Any?): LyricInfo {
+        val obj = raw as? JSObject ?: throw IllegalStateException("invalid lyric response")
+        val lyric = obj.getString("lyric") ?: throw IllegalStateException("invalid lyric")
+        return LyricInfo(
+            lyric = lyric,
+            tlyric = obj.getString("tlyric"),
+            rlyric = obj.getString("rlyric"),
+            lxlyric = obj.getString("lxlyric"),
+        )
+    }
+
+    /** 创建 fetch Promise 桥接（SDK 内 httpFetch 用） */
+    private fun createDeferredFetch(context: QuickJSContext, url: String, options: JSObject?): JSObject {
+        // 手动构造 Promise 对象（QuickJS wrapper 无内置 Promise 构造函数桥）
+        // 方案：直接返回 thenable 对象 —— JS 侧 await 会等 then 回调
+        val promiseObj = context.createNewJSObject()
+        val thenCallbacks = mutableListOf<Pair<com.whl.quickjs.wrapper.JSCallFunction, com.whl.quickjs.wrapper.JSCallFunction?>>()
+        promiseObj.setProperty("then") { args: Array<Any?> ->
+            val onFulfilled = args.getOrNull(0) as? com.whl.quickjs.wrapper.JSCallFunction
+            val onRejected = args.getOrNull(1) as? com.whl.quickjs.wrapper.JSCallFunction
+            thenCallbacks.add(onFulfilled to onRejected)
+            promiseObj
+        }
+        promiseObj.setProperty("catch") { args: Array<Any?> ->
+            promiseObj
+        }
+
+        // 在 IO 线程执行 fetch，完成后回调
+        Thread {
+            try {
+                val method = options?.getString("method") ?: "get"
+                val headersObj = options?.getJSObject("headers")
+                val headers = mutableMapOf<String, String>()
+                if (headersObj != null) {
+                    val names = context.getOwnPropertyNames(headersObj) as? Array<*>
+                    names?.forEach { n ->
+                        headersObj.getString(n.toString())?.let { headers[n.toString()] = it }
+                    }
+                }
+                val bodyStr = options?.getString("body")
+                val resp = HttpClient.instance.fetchSync(url, method, headers, bodyStr)
+                // 构造 Response 对象
+                val respObj = context.createNewJSObject()
+                respObj.setProperty("status", resp.statusCode)
+                respObj.setProperty("statusCode", resp.statusCode)
+                respObj.setProperty("statusText", resp.statusMessage)
+                respObj.setProperty("ok", resp.statusCode in 200..299)
+                val headersOut = context.createNewJSObject()
+                resp.headers.forEach { (k, v) -> headersOut.setProperty(k, v) }
+                respObj.setProperty("headers", headersOut)
+                respObj.setProperty("url", url)
+                respObj.setProperty("body", resp.body as? String ?: "")
+                // 提供 text() 与 json()
+                respObj.setProperty("text") { _: Array<Any?> ->
+                    resp.body as? String ?: ""
+                }
+                respObj.setProperty("json") { _: Array<Any?> ->
+                    val body = resp.body as? String ?: "null"
+                    runCatching { context.parseJSON(body) }.getOrNull() ?: runCatching {
+                        context.evaluate("($body)").let { it }
+                    }.getOrNull()
+                }
+                // 触发 then 回调（在主 SDK 线程执行）
+                executor.execute {
+                    thenCallbacks.forEach { (onFulfilled, _) ->
+                        onFulfilled?.call(respObj)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "fetch failed: ${e.message}")
+                executor.execute {
+                    thenCallbacks.forEach { (_, onRejected) ->
+                        onRejected?.call(e.message ?: "fetch failed")
+                    }
+                }
+            }
+        }.start()
+
+        return promiseObj
+    }
+}

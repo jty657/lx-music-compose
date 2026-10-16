@@ -1,0 +1,14 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+app/build/
+
+# 分析临时文件与附件，不提交
+.aicode/
+anthropic-skills/
