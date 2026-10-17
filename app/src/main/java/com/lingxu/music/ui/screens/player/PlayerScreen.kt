@@ -422,6 +422,13 @@ private fun PlayerMoreSettings(
                 }
                 Button(onClick = { onTimeout(0); onDismiss() }) { Text("关闭") }
             }
+            Spacer(Modifier.size(12.dp))
+            // 「添加到播放队列」此前没有任何入口（PlayerRepository.addToQueue 无调用方）
+            val playerState by LxApp.app.playerRepository.state.collectAsState()
+            Button(onClick = {
+                playerState.current?.let { LxApp.app.playerRepository.addToQueue(it) }
+                onDismiss()
+            }) { Text("加入播放队列") }
         }
     }
 }

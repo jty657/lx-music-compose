@@ -474,10 +474,12 @@ class PlayerRepository(context: Context) {
         return runCatching { loader(musicInfo) }.getOrDefault(musicInfo)
     }
 
-    /** 追加到队列 */
+    /** 追加到队列（新加入的项可能还没解析 URL，后台补上） */
     fun addToQueue(musicInfo: MusicInfo) {
-        _state.update { it.copy(queue = it.queue + musicInfo) }
+        val next = _state.value.queue + musicInfo
+        _state.update { it.copy(queue = next) }
         player.addMediaItem(musicInfo.toMediaItem())
+        ensureResolved(next.lastIndex)
     }
 
     fun togglePlay() {
