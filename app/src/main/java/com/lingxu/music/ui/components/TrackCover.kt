@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -137,6 +138,12 @@ fun TrackCover(
     }
     val bitmap = rememberCoverBitmap(url, targetPx)
     val image = remember(bitmap) { bitmap?.asImageBitmap() }
+    // 图片就绪后淡入，避免占位色块直接硬切成图
+    val alpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (image != null) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(180),
+        label = "coverAlpha",
+    )
     Box(
         modifier
             .size(size)
@@ -147,7 +154,7 @@ fun TrackCover(
             Image(
                 bitmap = image,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
                 contentScale = ContentScale.Crop,
             )
         }

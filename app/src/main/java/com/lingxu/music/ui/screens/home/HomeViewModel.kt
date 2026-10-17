@@ -21,6 +21,12 @@ class HomeViewModel : ViewModel() {
     var selectedSource by mutableStateOf("kw")
         private set
 
+    var loading by mutableStateOf(false)
+        private set
+
+    var error by mutableStateOf<String?>(null)
+        private set
+
     private var sourceLabelText by mutableStateOf("酷我音乐")
 
     init {
@@ -59,15 +65,20 @@ class HomeViewModel : ViewModel() {
 
     fun loadBoards() {
         viewModelScope.launch {
+            loading = true
+            error = null
             // 榜单用当前内置源（用户音源不提供榜单）
             val source = if (selectedSource.startsWith("user_api")) "kw" else selectedSource
             runCatching {
                 LxApp.app.musicRepository.getBoardsList(source)
             }.onSuccess { list ->
                 boards = list
+                error = null
             }.onFailure {
                 boards = emptyList()
+                error = it.message ?: "加载失败"
             }
+            loading = false
         }
     }
 
