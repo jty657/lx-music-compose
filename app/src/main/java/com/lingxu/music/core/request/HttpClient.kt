@@ -100,10 +100,13 @@ class HttpClient {
         body: String? = null,
     ): ScriptResponse {
         val builder = Request.Builder().url(url)
-        (defaultHeaders + headers).forEach { (k, v) -> builder.header(k, v) }
+        val merged = defaultHeaders + headers
+        merged.forEach { (k, v) -> if (!k.equals("Content-Type", ignoreCase = true)) builder.header(k, v) }
         val m = method.lowercase()
         val requestBody = if (m == "post" && body != null) {
-            body.toRequestBody("application/json".toMediaType())
+            val contentType = merged.entries.firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
+                ?: "application/json"
+            body.toRequestBody(contentType.toMediaType())
         } else null
         builder.method(m.uppercase(), requestBody)
         client.newCall(builder.build()).execute().use { resp ->

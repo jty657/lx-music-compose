@@ -25,11 +25,15 @@ object CryptoUtils {
 
     fun md5(str: String): String = md5(str.toByteArray(Charsets.UTF_8))
 
-    /** AES 加密，mode 为 "AES/CBC/PKCS7Padding" 或 "AES/ECB/NoPadding"（传 "AES"） */
+    /**
+     * AES 加密。mode 直接透传给 [Cipher.getInstance]（与原版 AES.java 一致）：
+     * "AES/CBC/PKCS7Padding" 或 "AES"——注意 Java 里 `Cipher.getInstance("AES")` 实际是
+     * AES/ECB/PKCS5Padding，并非 NoPadding（曾因此把网易 eapi 的 params 加密错，搜索返回空）。
+     */
     fun aesEncrypt(dataB64: String, keyB64: String, ivB64: String, mode: String): String {
         val data = b642buf(dataB64)
         val key = b642buf(keyB64)
-        val cipher = Cipher.getInstance(if (mode == "AES") "AES/ECB/NoPadding" else mode)
+        val cipher = Cipher.getInstance(mode)
         val spec = SecretKeySpec(key, "AES")
         if (ivB64.isEmpty()) {
             cipher.init(Cipher.ENCRYPT_MODE, spec)
@@ -43,11 +47,11 @@ object CryptoUtils {
         return android.util.Base64.encodeToString(out, android.util.Base64.NO_WRAP)
     }
 
-    /** AES 解密（供内置 SDK 使用） */
+    /** AES 解密，mode 同样透传给 [Cipher.getInstance] */
     fun aesDecrypt(dataB64: String, keyB64: String, ivB64: String, mode: String): String {
         val data = b642buf(dataB64)
         val key = b642buf(keyB64)
-        val cipher = Cipher.getInstance(if (mode == "AES") "AES/ECB/NoPadding" else mode)
+        val cipher = Cipher.getInstance(mode)
         val spec = SecretKeySpec(key, "AES")
         if (ivB64.isEmpty()) {
             cipher.init(Cipher.DECRYPT_MODE, spec)

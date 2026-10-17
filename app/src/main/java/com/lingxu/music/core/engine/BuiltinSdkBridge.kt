@@ -16,7 +16,6 @@ import com.lingxu.music.core.model.SongListTagInfo
 import com.lingxu.music.core.request.HttpClient
 import com.whl.quickjs.android.QuickJSLoader
 import com.whl.quickjs.wrapper.JSArray
-import com.whl.quickjs.wrapper.JSCallFunction
 import com.whl.quickjs.wrapper.JSFunction
 import com.whl.quickjs.wrapper.JSObject
 import com.whl.quickjs.wrapper.QuickJSContext
@@ -50,6 +49,54 @@ class BuiltinSdkBridge(context: Context) {
     companion object {
         private const val TAG = "BuiltinSdkBridge"
         private const val TIMEOUT_MS = 20_000L
+
+        /**
+         * JS 侧 fetch 包装：原生桥只回传 id 与结果，避免把 JS 函数作为参数持到原生侧
+         * （JS 函数传到 Java 会被包成 JSFunction，不是 JSCallFunction，无法事后调用）。
+         * resp.text()/json()/blob() 都是引擎原生 Promise。
+         */
+        private val fetchShim = """
+            globalThis.__lxFetchCbs = {};
+            globalThis.__lxFetchSeq = 0;
+            globalThis.__lxFetchDone = function (id, ok, status, statusText, text, headersJson) {
+              var cb = __lxFetchCbs[id];
+              if (!cb) return;
+              delete __lxFetchCbs[id];
+              cb(ok, status, statusText, text, headersJson);
+            };
+            globalThis.fetch = function (url, options) {
+              options = options || {};
+              var o = {
+                method: options.method || 'get',
+                headers: options.headers || {},
+                body: options.body == null ? null : String(options.body)
+              };
+              return new Promise(function (resolve, reject) {
+                var id = ++__lxFetchSeq;
+                __lxFetchCbs[id] = function (ok, status, statusText, text, headersJson) {
+                  if (!ok) { reject(new Error(status || 'fetch failed')); return; }
+                  var map = {};
+                  try { map = JSON.parse(headersJson || '{}'); } catch (e) {}
+                  resolve({
+                    status: status,
+                    statusCode: status,
+                    statusText: statusText || '',
+                    ok: status >= 200 && status < 300,
+                    url: url,
+                    body: text,
+                    headers: { map: map },
+                    text: function () { return Promise.resolve(text); },
+                    json: function () {
+                      try { return Promise.resolve(JSON.parse(text)); }
+                      catch (e) { return Promise.reject(e); }
+                    },
+                    blob: function () { return Promise.resolve(text); }
+                  });
+                };
+                __lxFetch(id, url, JSON.stringify(o));
+              });
+            };
+        """.trimIndent()
 
         @Volatile
         private var loaderInited = false
@@ -156,12 +203,15 @@ class BuiltinSdkBridge(context: Context) {
                 // 注入 global.__lxApiSource（setting-state 桩读取）
                 global.setProperty("__lxApiSource", currentApiSource)
 
-                // 注入全局 fetch（SDK request.js 用 global.fetch）
-                global.setProperty("fetch") { args: Array<Any?> ->
-                    val url = args[0] as String
-                    val options = args.getOrNull(1) as? JSObject
-                    createDeferredFetch(context, url, options)
-                }
+                // process 桩：SDK 需要签名的请求（如 tx）会读 process.versions.app，缺失会导致该源整源失败
+                val processObj = context.createNewJSObject()
+                val processVersions = context.createNewJSObject()
+                processVersions.setProperty("app", "1.9.1")
+                processObj.setProperty("versions", processVersions)
+                processObj.setProperty("env", context.createNewJSObject())
+                processObj.setProperty("platform", "android")
+                global.setProperty("process", processObj)
+
                 // AbortController 桩（fetch 的 signal 参数需要）
                 global.setProperty("AbortController") { _: Array<Any?> ->
                     val ctrl = context.createNewJSObject()
@@ -169,6 +219,17 @@ class BuiltinSdkBridge(context: Context) {
                     ctrl.setProperty("abort") { _: Array<Any?> -> null }
                     ctrl
                 }
+                // 原生 HTTP 桥 + JS 侧用引擎原生 Promise 包装。
+                // SDK 的 request.js 会对 global.fetch(...).then(...) 做多级链式，自造 thenable 语义不完整，
+                // 这里在 JS 里包裹成真 Promise，resp.text()/json()/blob() 也都是真 Promise。
+                global.setProperty("__lxFetch") { args: Array<Any?> ->
+                    val id = (args.getOrNull(0) as? Number)?.toInt()
+                    val url = args.getOrNull(1) as? String
+                    val optionsJson = args.getOrNull(2) as? String ?: "{}"
+                    if (id != null && url != null) startFetch(id, url, optionsJson)
+                    null
+                }
+                context.evaluate(fetchShim, "lx-fetch-shim.js")
 
                 // 执行 Buffer polyfill（必须早于 SDK bundle）
                 context.evaluate(bufferPolyfill, "buffer-polyfill.js")
@@ -243,31 +304,38 @@ class BuiltinSdkBridge(context: Context) {
                 total = results.sumOf { it.total },
             )
         }
-        return withSdkThread {
+        val promise = withSdkThread {
             val module = getModule(source) ?: throw IllegalStateException("source not found: $source")
             val musicSearch = module.getJSObject("musicSearch") ?: throw IllegalStateException("musicSearch not found")
             val fn = musicSearch.getJSFunction("search")
-            val raw = callJSFunction(fn, arrayOf(text, page, limit))
-            parseSearchResult(raw, source)
+            asPromise(callJSFunction(fn, arrayOf(text, page, limit)))
         }
+        val result = awaitPromise(promise)
+        return withSdkThread { parseSearchResult(result, source) }
     }
 
     // ================= 榜单 =================
 
-    suspend fun getBoardsList(source: String): List<Board> = withSdkThread {
-        val module = getModule(source) ?: return@withSdkThread emptyList()
-        val leaderboard = module.getJSObject("leaderboard") ?: return@withSdkThread emptyList()
-        val fn = leaderboard.getJSFunction("getBoards") ?: return@withSdkThread emptyList()
-        val raw = callJSFunction(fn, arrayOf())
-        parseBoards(raw, source)
+    suspend fun getBoardsList(source: String): List<Board> {
+        val promise = withSdkThread {
+            val module = getModule(source) ?: return@withSdkThread null
+            val leaderboard = module.getJSObject("leaderboard") ?: return@withSdkThread null
+            val fn = leaderboard.getJSFunction("getBoards") ?: return@withSdkThread null
+            asPromise(callJSFunction(fn, arrayOf()))
+        } ?: return emptyList()
+        val result = awaitPromise(promise)
+        return withSdkThread { parseBoards(result, source) }
     }
 
-    suspend fun getBoardList(source: String, bangId: String, page: Int): BoardDetail = withSdkThread {
-        val module = getModule(source) ?: return@withSdkThread BoardDetail("${source}__$bangId", "")
-        val leaderboard = module.getJSObject("leaderboard") ?: return@withSdkThread BoardDetail("${source}__$bangId", "")
-        val fn = leaderboard.getJSFunction("getList") ?: return@withSdkThread BoardDetail("${source}__$bangId", "")
-        val raw = callJSFunction(fn, arrayOf(bangId, page))
-        parseBoardDetail(raw, source, bangId)
+    suspend fun getBoardList(source: String, bangId: String, page: Int): BoardDetail {
+        val promise = withSdkThread {
+            val module = getModule(source) ?: return@withSdkThread null
+            val leaderboard = module.getJSObject("leaderboard") ?: return@withSdkThread null
+            val fn = leaderboard.getJSFunction("getList") ?: return@withSdkThread null
+            asPromise(callJSFunction(fn, arrayOf(bangId, page)))
+        } ?: return BoardDetail("${source}__$bangId", "")
+        val result = awaitPromise(promise)
+        return withSdkThread { parseBoardDetail(result, source, bangId) }
     }
 
     // ================= 歌单 =================
@@ -350,12 +418,15 @@ class BuiltinSdkBridge(context: Context) {
 
     // ================= 热搜 =================
 
-    suspend fun getHotSearch(source: String): List<String> = withSdkThread {
-        val module = getModule(source) ?: return@withSdkThread emptyList()
-        val hotSearch = module.getJSObject("hotSearch") ?: return@withSdkThread emptyList()
-        val fn = hotSearch.getJSFunction("getList") ?: return@withSdkThread emptyList()
-        val raw = callJSFunction(fn, arrayOf())
-        parseHotSearch(raw, source)
+    suspend fun getHotSearch(source: String): List<String> {
+        val promise = withSdkThread {
+            val module = getModule(source) ?: return@withSdkThread null
+            val hotSearch = module.getJSObject("hotSearch") ?: return@withSdkThread null
+            val fn = hotSearch.getJSFunction("getList") ?: return@withSdkThread null
+            asPromise(callJSFunction(fn, arrayOf()))
+        } ?: return emptyList()
+        val result = awaitPromise(promise)
+        return withSdkThread { parseHotSearch(result, source) }
     }
 
     // ================= 歌词 =================
@@ -795,90 +866,44 @@ class BuiltinSdkBridge(context: Context) {
     }
 
     /**
-     * 构造一个已 resolve 的 thenable：SDK 的 fetchData 会对 text()/blob()/json() 的返回值调 .then()
-     * QuickJS wrapper 无 Promise 构造函数桥，直接返回带 then/catch 的对象即可被 await
+     * 在独立线程执行原生 HTTP，完成后回到 SDK 线程调 JS 侧的 __lxFetchDone（按 id 查找回调，
+     * 不跨线程持 JS 函数引用）。
      */
-    private fun resolvedPromise(context: QuickJSContext, value: Any?): JSObject {
-        val obj = context.createNewJSObject()
-        obj.setProperty("then", JSCallFunction { args ->
-            (args.getOrNull(0) as? JSCallFunction)?.call(value)
-            obj
-        })
-        obj.setProperty("catch", JSCallFunction { obj })
-        return obj
-    }
-
-    /** 创建 fetch Promise 桥接（SDK 内 httpFetch 用） */
-    private fun createDeferredFetch(context: QuickJSContext, url: String, options: JSObject?): JSObject {
-        // 手动构造 Promise 对象（QuickJS wrapper 无内置 Promise 构造函数桥）
-        // 方案：直接返回 thenable 对象 —— JS 侧 await 会等 then 回调
-        val promiseObj = context.createNewJSObject()
-        val thenCallbacks = mutableListOf<Pair<JSCallFunction?, JSCallFunction?>>()
-        promiseObj.setProperty("then") { args: Array<Any?> ->
-            val onFulfilled = args.getOrNull(0) as? JSCallFunction
-            val onRejected = args.getOrNull(1) as? JSCallFunction
-            thenCallbacks.add(onFulfilled to onRejected)
-            promiseObj
-        }
-        promiseObj.setProperty("catch") { args: Array<Any?> ->
-            promiseObj
-        }
-
-        // 在 IO 线程执行 fetch，完成后回调
+    private fun startFetch(id: Int, url: String, optionsJson: String) {
         Thread {
             try {
-                val method = options?.getString("method") ?: "get"
-                val headersObj = options?.getJSObject("headers")
-                val headers = mutableMapOf<String, String>()
-                if (headersObj != null) {
-                    val names = context.getOwnPropertyNames(headersObj) as? Array<*>
-                    names?.forEach { n ->
-                        headersObj.getString(n.toString())?.let { headers[n.toString()] = it }
-                    }
-                }
-                val bodyStr = options?.getString("body")
-                val resp = HttpClient.instance.fetchSync(url, method, headers, bodyStr)
-                // 构造 Response 对象；text()/blob()/json() 必须返回可 then 的 Promise
-                val respObj = context.createNewJSObject()
-                respObj.setProperty("status", resp.statusCode)
-                respObj.setProperty("statusCode", resp.statusCode)
-                respObj.setProperty("statusText", resp.statusMessage)
-                respObj.setProperty("ok", resp.statusCode in 200..299)
-                // SDK 的 request.js 读 resp.headers.map
-                val mapObj = context.createNewJSObject()
-                resp.headers.forEach { (k, v) -> mapObj.setProperty(k, v) }
-                val headersOut = context.createNewJSObject()
-                headersOut.setProperty("map", mapObj)
-                respObj.setProperty("headers", headersOut)
-                respObj.setProperty("url", url)
-
-                val textFn = JSCallFunction {
-                    resolvedPromise(context, resp.body as? String ?: "")
-                }
-                respObj.setProperty("text", textFn)
-                respObj.setProperty("blob", textFn)
-                respObj.setProperty("json", JSCallFunction {
-                    val body = resp.body as? String ?: "null"
-                    val parsed = runCatching { context.evaluate("($body)") }.getOrNull()
-                        ?: runCatching { context.evaluate("JSON.parse(${Json.encodeToString(body)})") }.getOrNull()
-                    resolvedPromise(context, parsed)
-                })
-                // 触发 then 回调（在主 SDK 线程执行）
-                executor.execute {
-                    thenCallbacks.forEach { (onFulfilled, _) ->
-                        onFulfilled?.call(respObj)
-                    }
-                }
+                val opt = json.parseToJsonElement(optionsJson) as? JsonObject ?: JsonObject(emptyMap())
+                val method = (opt["method"] as? JsonPrimitive)?.content ?: "get"
+                val headers = (opt["headers"] as? JsonObject)?.entries?.mapNotNull { (k, v) ->
+                    (v as? JsonPrimitive)?.content?.let { k to it }
+                }?.toMap() ?: emptyMap()
+                val body = (opt["body"] as? JsonPrimitive)?.content
+                val resp = HttpClient.instance.fetchSync(url, method, headers, body)
+                val text = resp.body as? String ?: ""
+                val headersJson = buildJsonObject {
+                    resp.headers.forEach { (k, v) -> put(k, JsonPrimitive(v)) }
+                }.toString()
+                val status = resp.statusCode
+                val statusText = resp.statusMessage
+                executor.execute { callFetchDone(id, true, status, statusText, text, headersJson) }
             } catch (e: Exception) {
                 Log.e(TAG, "fetch failed: ${e.message}")
-                executor.execute {
-                    thenCallbacks.forEach { (_, onRejected) ->
-                        onRejected?.call(e.message ?: "fetch failed")
-                    }
-                }
+                val msg = e.message ?: "fetch failed"
+                executor.execute { callFetchDone(id, false, msg, "", "", "{}") }
             }
-        }.start()
+        }.apply { isDaemon = true }.start()
+    }
 
-        return promiseObj
+    /** 回到 SDK 线程调用 JS 侧 __lxFetchDone（在 SDK 线程执行） */
+    private fun callFetchDone(
+        id: Int,
+        ok: Boolean,
+        status: Any?,
+        statusText: Any?,
+        text: Any?,
+        headersJson: Any?,
+    ) {
+        val fn = jsContext?.getGlobalObject()?.getJSFunction("__lxFetchDone") ?: return
+        fn.call(id, ok, status, statusText, text, headersJson)
     }
 }
