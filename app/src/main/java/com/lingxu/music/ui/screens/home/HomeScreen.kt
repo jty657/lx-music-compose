@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -39,6 +40,9 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val boards = viewModel.boards
     val hotSearch = viewModel.hotSearch
     val selectedSource = viewModel.selectedSource
+    // 在设置/音源页切了音源后，首页的榜单/热搜也随之刷新
+    val apiSource by LxApp.app.settings.apiSource.collectAsState(initial = "")
+    LaunchedEffect(apiSource) { viewModel.refresh() }
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口
         GlassSurface(

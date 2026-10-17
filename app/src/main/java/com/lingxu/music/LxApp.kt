@@ -112,6 +112,11 @@ class LxApp : Application() {
             }
             // 音频焦点处理开关
             playerRepository.setHandleAudioFocus(settings.isHandleAudioFocus.first())
+            // 「记录自定义源日志」开关
+            engineManager.scriptLogEnabled = settings.enableUserApiLog.first()
+            appScope.launch {
+                settings.enableUserApiLog.collect { engineManager.scriptLogEnabled = it }
+            }
             appScope.launch {
                 settings.isHandleAudioFocus.collect { playerRepository.setHandleAudioFocus(it) }
             }

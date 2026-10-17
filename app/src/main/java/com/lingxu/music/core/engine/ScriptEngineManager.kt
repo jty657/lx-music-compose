@@ -34,6 +34,10 @@ class ScriptEngineManager(private val context: Context) {
     // 会被 JS 线程与主线程同时读写（守卫比对、Failed 状态回传），加 @Volatile
     @Volatile
     private var engine: QuickJSEngine? = null
+
+    /** 设置项 player.enableUserApiLog：是否把自定义音源的日志打到 logcat */
+    @Volatile
+    var scriptLogEnabled: Boolean = true
     private var currentApiId: String? = null
 
     /** 音源初始化状态（对齐原版 setUserApiStatus） */
@@ -115,7 +119,8 @@ class ScriptEngineManager(private val context: Context) {
                             )
                         }
                         is ScriptAction.Log -> {
-                            Log.d(TAG, "[${action.level}] ${action.message}")
+                            // 设置项「记录自定义源日志」：之前该开关没有任何消费方，永远不生效
+                            if (scriptLogEnabled) Log.d(TAG, "[${action.level}] ${action.message}")
                         }
                         is ScriptAction.ShowUpdateAlert -> {
                             Log.i(TAG, "script update alert: ${action.log}")

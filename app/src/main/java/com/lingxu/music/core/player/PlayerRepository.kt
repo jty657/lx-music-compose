@@ -441,6 +441,30 @@ class PlayerRepository(context: Context) {
     /** 播放单曲（替换整个队列） */
     fun playSingle(musicInfo: MusicInfo) = playQueue(listOf(musicInfo), 0)
 
+    /** 队列内移动位置（上移/下移排序） */
+    fun moveInQueue(from: Int, to: Int) {
+        val state = _state.value
+        if (from !in state.queue.indices || to !in state.queue.indices || from == to) return
+        val list = state.queue.toMutableList()
+        val item = list.removeAt(from)
+        list.add(to, item)
+        val newCurrent = when {
+            state.queueIndex == from -> to
+            from < state.queueIndex && to >= state.queueIndex -> state.queueIndex - 1
+            from > state.queueIndex && to <= state.queueIndex -> state.queueIndex + 1
+            else -> state.queueIndex
+        }
+        _state.update { it.copy(queue = list, queueIndex = newCurrent) }
+        // 同步播放器列表；用当前播放位置重建，避免正在放的歌回到 0 秒
+        runCatching {
+            val position = player.currentPosition.coerceAtLeast(0L)
+            val playWhenReady = player.playWhenReady
+            player.setMediaItems(list.map { it.toMediaItem() }, newCurrent, position)
+            player.prepare()
+            player.playWhenReady = playWhenReady
+        }
+    }
+
     /**
      * 解析播放信息：为队列中每首歌取可播放 URL 并写回 meta.filePath（由 App 注入 playInfoLoader）。
      * 取不到的歌曲保持原样，播放器会自然报错而不是崩溃。

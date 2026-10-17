@@ -13,7 +13,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +48,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     val state by LxApp.app.playerRepository.state.collectAsState()
     val queue = state.queue
     val currentIndex = state.queueIndex
+    var showClearConfirm by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
@@ -66,6 +69,17 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
                 modifier = Modifier.padding(start = 12.dp),
             )
+            Spacer(Modifier.weight(1f))
+            if (queue.isNotEmpty()) {
+                Text(
+                    "清空",
+                    fontSize = MiuixTheme.textStyles.body1.fontSize,
+                    color = MiuixTheme.colorScheme.error,
+                    modifier = Modifier
+                        .clickable { showClearConfirm = true }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
         }
         }
         Column(
@@ -116,6 +130,27 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "↑",
+                                fontSize = MiuixTheme.textStyles.body1.fontSize,
+                                color = if (index > 0) MiuixTheme.colorScheme.primary
+                                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                modifier = Modifier
+                                    .clickable(enabled = index > 0) { viewModel.moveUp(index) }
+                                    .padding(horizontal = 8.dp),
+                            )
+                            Text(
+                                "↓",
+                                fontSize = MiuixTheme.textStyles.body1.fontSize,
+                                color = if (index < queue.lastIndex) MiuixTheme.colorScheme.primary
+                                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                modifier = Modifier
+                                    .clickable(enabled = index < queue.lastIndex) { viewModel.moveDown(index) }
+                                    .padding(horizontal = 8.dp),
+                            )
+                        }
+                        Spacer(Modifier.size(4.dp))
                         Icon(
                             MiuixIcons.Delete,
                             contentDescription = "移除",
@@ -127,6 +162,28 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                 }
             }
         }
+        }
+
+        if (showClearConfirm) {
+            com.lingxu.music.ui.components.GlassDialog(onDismissRequest = { showClearConfirm = false }) {
+                Column(Modifier.padding(horizontal = 4.dp)) {
+                    Text("清空播放队列", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                    Spacer(Modifier.size(12.dp))
+                    Text("将停止播放并清空当前队列", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Spacer(Modifier.size(16.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                    ) {
+                        top.yukonga.miuix.kmp.basic.Button(onClick = { showClearConfirm = false }) { Text("取消") }
+                        Spacer(Modifier.size(8.dp))
+                        top.yukonga.miuix.kmp.basic.Button(onClick = {
+                            viewModel.clearQueue()
+                            showClearConfirm = false
+                        }) { Text("清空") }
+                    }
+                }
+            }
         }
     }
 }
@@ -141,6 +198,20 @@ class PlayQueueViewModel : ViewModel() {
     fun removeAt(index: Int) {
         viewModelScope.launch {
             runCatching { LxApp.app.playerRepository.removeFromQueue(index) }
+        }
+    }
+
+    fun moveUp(index: Int) {
+        LxApp.app.playerRepository.moveInQueue(index, index - 1)
+    }
+
+    fun moveDown(index: Int) {
+        LxApp.app.playerRepository.moveInQueue(index, index + 1)
+    }
+
+    fun clearQueue() {
+        viewModelScope.launch {
+            runCatching { LxApp.app.playerRepository.clear() }
         }
     }
 }

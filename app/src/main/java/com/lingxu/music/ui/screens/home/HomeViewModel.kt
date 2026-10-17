@@ -32,6 +32,18 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    /** 切换音源后刷新（HomeViewModel 挂在 Activity 的 store 上，init 只跑一次） */
+    fun refresh() {
+        viewModelScope.launch {
+            val current = runCatching { LxApp.app.settings.currentApiSource() }.getOrDefault(selectedSource)
+            if (current == selectedSource) return@launch
+            selectedSource = current
+            refreshSourceLabel()
+            loadBoards()
+            loadHotSearch()
+        }
+    }
+
     /** 当前音源显示名（内置源用中文名，自定义源用脚本名） */
     fun sourceLabel(): String = sourceLabelText
 

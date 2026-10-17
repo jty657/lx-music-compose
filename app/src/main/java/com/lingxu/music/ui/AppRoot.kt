@@ -1,10 +1,15 @@
 package com.lingxu.music.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -171,26 +176,36 @@ private fun MainScaffold(
                 .padding(padding)
                 .padding(bottom = bottomInset),
         ) {
-            when (current) {
-                is Screen.Home -> HomeScreen()
-                is Screen.Search -> SearchScreen(initialKeyword = current.keyword)
-                is Screen.Source -> SourceScreen()
-                is Screen.Setting -> SettingScreen()
-                is Screen.Player -> PlayerScreen()
-                is Screen.Favorite -> FavoriteScreen()
-                is Screen.BoardList -> BoardDetailScreen(
-                    source = current.source,
-                    bangId = current.bangId,
-                    name = current.name,
-                )
-                is Screen.SongList -> SongListScreen(source = current.source)
-                is Screen.SongListDetail -> com.lingxu.music.ui.screens.songlist.SongListDetailScreen(
-                    source = current.source,
-                    id = current.id,
-                    name = current.name,
-                )
-                is Screen.MyLists -> MyListsScreen()
-                is Screen.PlayQueue -> com.lingxu.music.ui.screens.playqueue.PlayQueueScreen()
+            // 页面切换加一点位移+淡入，避免硬切换
+            AnimatedContent(
+                targetState = current,
+                transitionSpec = {
+                    (fadeIn(tween(160)) + slideInHorizontally { it / 16 }) togetherWith
+                        (fadeOut(tween(120)) + slideOutHorizontally { -it / 16 })
+                },
+                label = "screen",
+            ) { screen ->
+                when (screen) {
+                    is Screen.Home -> HomeScreen()
+                    is Screen.Search -> SearchScreen(initialKeyword = screen.keyword)
+                    is Screen.Source -> SourceScreen()
+                    is Screen.Setting -> SettingScreen()
+                    is Screen.Player -> PlayerScreen()
+                    is Screen.Favorite -> FavoriteScreen()
+                    is Screen.BoardList -> BoardDetailScreen(
+                        source = screen.source,
+                        bangId = screen.bangId,
+                        name = screen.name,
+                    )
+                    is Screen.SongList -> SongListScreen(source = screen.source)
+                    is Screen.SongListDetail -> com.lingxu.music.ui.screens.songlist.SongListDetailScreen(
+                        source = screen.source,
+                        id = screen.id,
+                        name = screen.name,
+                    )
+                    is Screen.MyLists -> MyListsScreen()
+                    is Screen.PlayQueue -> com.lingxu.music.ui.screens.playqueue.PlayQueueScreen()
+                }
             }
         }
     }

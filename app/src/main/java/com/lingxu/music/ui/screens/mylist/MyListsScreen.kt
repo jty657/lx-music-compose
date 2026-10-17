@@ -70,6 +70,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     var showSort by remember { mutableStateOf(false) }
     // 在线列表同步（进度弹窗）
     var showSync by remember { mutableStateOf(false) }
+    // 列表内歌曲加载的代次（丢弃过期回调）
+    var listLoadToken by remember { mutableStateOf(0) }
     var syncCount by remember { mutableStateOf(0) }
     var toast by remember { mutableStateOf<String?>(null) }
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
@@ -179,7 +181,11 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 onOpen = { list ->
                     openList = list.id
                     searchState.setTextAndPlaceCursorAtEnd("")
-                    viewModel.loadMusics(list.id) { musics = it }
+                    // 代次：快速返回再进另一个列表时，先发的响应会被丢弃，避免显示上一个列表的歌
+                    val token = ++listLoadToken
+                    viewModel.loadMusics(list.id) { loaded ->
+                        if (token == listLoadToken) musics = loaded
+                    }
                 },
                 onRename = { renaming = it },
                 onDelete = { scope.launch { viewModel.remove(it.id) } },
@@ -436,11 +442,26 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     }
 
     if (showSync) {
-        GlassDialog(onDismissRequest = {}) {
+        GlassDialog(onDismissRequest = {
+            // 弱网下逐页拉取可能很久，必须能让用户取消（否则连返回键都被 Dialog 吃掉）
+            viewModel.cancelSync()
+            showSync = false
+            syncCount = 0
+            toast = "已取消同步"
+        }) {
             Column(Modifier.padding(horizontal = 4.dp)) {
                 Text("正在同步", fontSize = MiuixTheme.textStyles.title1.fontSize)
                 Spacer(Modifier.size(12.dp))
                 Text("已拉取 $syncCount 首…")
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = {
+                        viewModel.cancelSync()
+                        showSync = false
+                        syncCount = 0
+                        toast = "已取消同步"
+                    }) { Text("取消同步") }
+                }
             }
         }
     }
@@ -550,6 +571,14 @@ class MyListsViewModel : ViewModel() {
         viewModelScope.launch { runCatching { LxApp.app.myListsRepository.getMusics(listId) }.onSuccess(onResult) }
     }
 
+    /** 取消正在进行的在线列表同步（弱网下逐页拉取可能很久） */
+    fun cancelSync() {
+        syncJob?.cancel()
+        syncJob = null
+    }
+
+    private var syncJob: kotlinx.coroutines.Job? = null
+
     fun create(name: String) {
         viewModelScope.launch { runCatching { LxApp.app.myListsRepository.create(name) } }
     }
@@ -592,7 +621,8 @@ class MyListsViewModel : ViewModel() {
      * @param onDone 完成回调（结果描述）
      */
     fun syncList(list: Playlist, onProgress: (Int) -> Unit, onDone: (String) -> Unit) {
-        viewModelScope.launch {
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch {
             val source = list.source
             val sourceListId = list.sourceListId
             if (source == null || sourceListId == null) {
