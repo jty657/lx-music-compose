@@ -53,6 +53,8 @@ class LxApp : Application() {
         instance = this
         database = AppDatabase.build(this)
         settings = SettingsRepository(this)
+        // 封面等资源走 OkHttp 磁盘缓存（HttpClient 是单例，需要 App 注入 cacheDir）
+        com.lingxu.music.core.request.HttpClient.instance.setCacheDir(cacheDir)
         engineManager = ScriptEngineManager(this)
         sdkBridge = BuiltinSdkBridge(this)
         apiSourceRepository = ApiSourceRepository(database)

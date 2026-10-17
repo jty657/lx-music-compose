@@ -58,9 +58,11 @@ fun SongListDetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val searchState = remember { androidx.compose.foundation.text.input.TextFieldState() }
     val keyword = searchState.text.toString()
-    val shownMusic = if (keyword.isBlank()) musicList
-    else musicList.filter {
-        it.name.contains(keyword, ignoreCase = true) || it.singer.contains(keyword, ignoreCase = true)
+    val shownMusic = remember(musicList, keyword) {
+        if (keyword.isBlank()) musicList
+        else musicList.filter {
+            it.name.contains(keyword, ignoreCase = true) || it.singer.contains(keyword, ignoreCase = true)
+        }
     }
 
     // 请求代次：旧请求的结果会被丢弃，且不再用 loading 早退（那样会吞掉新请求）

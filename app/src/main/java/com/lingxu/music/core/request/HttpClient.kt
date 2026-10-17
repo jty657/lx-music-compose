@@ -36,11 +36,25 @@ class HttpClient {
         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36",
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build()
+    /** 磁盘缓存目录（由 App 注入；HttpClient 是单例，拿不到 Context） */
+    @Volatile
+    private var cacheDir: java.io.File? = null
+
+    fun setCacheDir(dir: java.io.File) {
+        cacheDir = dir
+    }
+
+    private val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .apply {
+                // 封面等可缓存资源走磁盘缓存，避免每次冷启动重下
+                cacheDir?.let { cache(okhttp3.Cache(java.io.File(it, "http"), 50L * 1024 * 1024)) }
+            }
+            .build()
+    }
 
     suspend fun fetch(url: String, options: ScriptRequestOptions = ScriptRequestOptions()): ScriptResponse =
         withContext(Dispatchers.IO) {

@@ -167,16 +167,22 @@ class BuiltinSdkBridge(context: Context) {
         private var loaderInited = false
     }
 
-    private val sdkBundle: String = context.assets.open("engine/music-sdk.bundle.js").use {
-        it.readBytes().toString(Charsets.UTF_8)
+    // 两个 assets 共 ~587KB：属性初始化器会在构造函数（Application.onCreate，主线程）里同步读盘+inflate+解码。
+    // 改为 lazy，首次访问发生在 init() 的 SDK 线程上，不再阻塞首帧。
+    private val sdkBundle: String by lazy {
+        context.assets.open("engine/music-sdk.bundle.js").use {
+            it.readBytes().toString(Charsets.UTF_8)
+        }
     }
 
     /**
      * Buffer polyfill。bundle 的 esbuild 配置是 platform:neutral，不会注入全局 Buffer，
      * 而 QuickJS 也没有 Node 的 Buffer，不先注入会报 "'Buffer' is not defined" 导致 SDK 初始化失败。
      */
-    private val bufferPolyfill: String = context.assets.open("engine/buffer-polyfill.js").use {
-        it.readBytes().toString(Charsets.UTF_8)
+    private val bufferPolyfill: String by lazy {
+        context.assets.open("engine/buffer-polyfill.js").use {
+            it.readBytes().toString(Charsets.UTF_8)
+        }
     }
 
     /** 单线程执行器：QuickJSContext 同线程要求 */
