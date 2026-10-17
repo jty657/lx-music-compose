@@ -94,6 +94,15 @@ class BuiltinSdkBridge(context: Context) {
                 }
                 val context = QuickJSContext.create()
                 jsContext = context
+                // 必须接上 console：wrapper 内置的 console.js 未指定 stdout 时，任何 console.log 都会抛
+                // "When invoke console stuff, you should be set a stdout of platform to console.stdout."；
+                // SDK bundle 的 fetchData 会 console.log，导致所有搜索失败。
+                context.setConsole(object : QuickJSContext.Console {
+                    override fun log(info: String) { Log.i(TAG, "[sdk] $info") }
+                    override fun info(info: String) { Log.i(TAG, "[sdk] $info") }
+                    override fun warn(info: String) { Log.w(TAG, "[sdk] $info") }
+                    override fun error(info: String) { Log.e(TAG, "[sdk] $info") }
+                })
                 val global = context.getGlobalObject()
 
                 // 注入 native 能力（SDK 桩函数通过 __lxNative 调用）
