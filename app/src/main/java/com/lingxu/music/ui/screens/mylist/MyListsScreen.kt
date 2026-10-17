@@ -415,7 +415,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         .clickable {
                             val target = lists.firstOrNull { it.id == openList }
                             showSort = false
-                            if (target != null) exportLauncher.launch("${target.name}.json")
+                            // 列表名可以直接含路径分隔符，导出前净化（原版 utils.filterFileName）
+                            if (target != null) exportLauncher.launch("${sanitizeFileName(target.name)}.json")
                         }
                         .padding(vertical = 10.dp),
                 )
@@ -564,6 +565,12 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
     }
 }
 
+/** 去掉文件名里非法/危险的字符（对应原版 utils.filterFileName） */
+private fun sanitizeFileName(name: String): String =
+    name.replace(Regex("[\\\\/:*?\"<>|\\u0000-\\u001f]"), "_")
+        .trim()
+        .takeIf { it.isNotBlank() } ?: "歌单"
+
 class MyListsViewModel : ViewModel() {
     val lists = LxApp.app.myListsRepository.lists
 
@@ -607,11 +614,21 @@ class MyListsViewModel : ViewModel() {
     /** 导入单个歌单（新建一个本地列表并写入歌曲） */
     fun importList(name: String, musics: List<MusicInfo>, onDone: (String) -> Unit) {
         viewModelScope.launch {
+            // 按 id 过滤空条目与重复项（导入的重复 id 会让列表页 LazyColumn 因重复 key 崩溃）
+            val cleaned = com.lingxu.music.core.repository.ListTransfer.filterMusicList(musics)
             runCatching {
                 val list = LxApp.app.myListsRepository.create(name.ifBlank { "导入的歌单" })
-                LxApp.app.myListsRepository.addMusics(list.id, musics)
-            }.onSuccess { onDone("已导入 ${musics.size} 首") }
-                .onFailure { onDone("导入失败：${it.message}") }
+                LxApp.app.myListsRepository.addMusics(list.id, cleaned)
+            }.onSuccess { onDone("已导入 ${cleaned.size} 首") }
+                .onFailure { e ->
+                    // 序列化异常对使用者毫无意义，翻译成人话
+                    val msg = if (e is IllegalArgumentException) {
+                        "导入失败：文件不是有效的歌单数据"
+                    } else {
+                        "导入失败：${e.message}"
+                    }
+                    onDone(msg)
+                }
         }
     }
 
@@ -629,26 +646,35 @@ class MyListsViewModel : ViewModel() {
                 onDone("该列表不是在线列表")
                 return@launch
             }
-            runCatching {
+            try {
                 val collected = mutableListOf<MusicInfo>()
                 var page = 1
-                while (page <= 100) {
+                var maxPage = 1
+                // 用 SDK 返回的 maxPage 决定翻页，不再用「size<10」或硬编码 100 页：
+                // wy/kg 的 getListDetail 一次返回整张歌单（maxPage=1），tx 的 getListDetail 第 2 个参数是 tryNum 不是页码（maxPage=1）。
+                while (page <= maxPage.coerceAtMost(500)) {
                     val listData = if (sourceListId.startsWith("board__")) {
                         val bangId = sourceListId.removePrefix("board__").substringAfter("__", "")
-                        LxApp.app.musicRepository.getBoardList(source, bangId, page).list
+                        val bd = LxApp.app.musicRepository.getBoardList(source, bangId, page)
+                        if (page == 1) maxPage = bd.maxPage.coerceAtLeast(1)
+                        bd.list
                     } else {
-                        LxApp.app.musicRepository.getSongListDetail(source, sourceListId, page).list
+                        val sd = LxApp.app.musicRepository.getSongListDetail(source, sourceListId, page)
+                        if (page == 1) maxPage = sd.maxPage.coerceAtLeast(1)
+                        sd.list
                     }
                     if (listData.isEmpty()) break
                     collected += listData.filterNot { m -> collected.any { it.id == m.id } }
                     onProgress(collected.size)
-                    // 返回数量少于页码预期时视为到底
-                    if (listData.size < 10) break
                     page += 1
                 }
                 LxApp.app.myListsRepository.overwriteOnlineMusics(list.id, collected)
-            }.onSuccess { onDone("同步完成") }
-                .onFailure { onDone("同步失败：${it.message}") }
+                onDone("同步完成（${collected.size} 首）")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                onDone("同步失败：${e.message}")
+            }
         }
     }
 

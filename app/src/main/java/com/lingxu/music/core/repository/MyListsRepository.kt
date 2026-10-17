@@ -127,9 +127,14 @@ class MyListsRepository(private val db: AppDatabase) {
     /**
      * 覆盖写入在线列表的同步结果并刷新更新时间（对应原版 core/syncSourceList.ts）
      */
+    /**
+     * 覆盖写入在线列表的同步结果并刷新更新时间（对应原版 core/syncSourceList.ts）。
+     *
+     * 允许写入空结果：平台侧把歌单清空/删除时同步完成却留着旧歌，比误清空更糟；
+     * 「请求失败」由异常路径承担，不需要再用空守卫去防。
+     */
     suspend fun overwriteOnlineMusics(listId: String, musics: List<MusicInfo>): Int = mutex.withLock {
-        if (musics.isEmpty()) return@withLock 0
-        saveMusicsLocked(listId, musics)
+        saveMusicsLocked(listId, ListTransfer.filterMusicList(musics))
         persist(_lists.value.map { if (it.id == listId) it.copy(locationUpdateTime = System.currentTimeMillis()) else it })
         musics.size
     }

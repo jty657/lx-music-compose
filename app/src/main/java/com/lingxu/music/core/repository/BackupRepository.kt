@@ -72,7 +72,7 @@ class BackupRepository(
      * @return 恢复的列表数与歌曲数
      */
     suspend fun import(uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
-        runCatching {
+        val result = runCatching {
             val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
                 ?: error("无法读取所选文件")
             val data = json.decodeFromString<BackupData>(text)
@@ -80,31 +80,43 @@ class BackupRepository(
                 error("备份文件版本(v${data.version})比当前 App(v${BackupData.VERSION})更新，请先升级 App")
             }
 
-            db.saveFavorites(data.favorites)
+            // 过滤非法/重复条目（对齐原版 filterMusicList），否则导入的重复 id 会让列表页崩溃；
+            // 同时把 listId 做白名单校验，备份里的 id 会直接拼进文件名，不能含路径分隔符。
+            val favorites = ListTransfer.filterMusicList(data.favorites)
+            val playlists = data.playlists.filter { it.id.matches(SAFE_ID) }
+            val playlistMusics = data.playlistMusics
+                .filter { it.listId.matches(SAFE_ID) && it.id.matches(SAFE_ID) }
+
+            db.saveFavorites(favorites)
 
             // 覆盖式恢复：备份里不存在的列表要从本地删掉，否则「上次删掉的列表」会复活
-            val keepIds = data.playlists.map { it.id }.toSet()
+            val keepIds = playlists.map { it.id }.toSet()
             db.loadPlaylists().filterNot { it.id in keepIds }.forEach {
                 db.deletePlaylist(it.id)
                 db.deletePlaylistMusics(it.id)
             }
-            data.playlists.forEach { db.upsertPlaylist(it) }
+            playlists.forEach { db.upsertPlaylist(it) }
 
             // PlaylistMusic.listId 指明归属；没有该字段的旧备份按「歌曲出现在哪个列表」无法反推，
             // 因此只恢复带 listId 的条目，其余跳过
-            val grouped = data.playlistMusics
+            val grouped = playlistMusics
                 .filter { it.listId.isNotBlank() }
                 .groupBy { it.listId }
             // 逐列表覆盖写入（包括备份里为空列表的情况），否则该列表的旧歌会原样保留
-            data.playlists.forEach { list ->
+            playlists.forEach { list ->
                 db.savePlaylistMusics(list.id, grouped[list.id] ?: emptyList())
             }
 
-            onImported?.invoke()
-
-            data.playlists.size + data.playlistMusics.size
+            playlists.size + playlistMusics.size
         }
+        // 失败时磁盘可能已经是「半恢复」状态：无论成败都重建内存缓存，
+        // 否则下一次写操作会用旧缓存把刚恢复（或部分恢复）的数据整表覆盖掉
+        runCatching { onImported?.invoke() }
+        result
     }
+
+    /** 列表/歌曲 id 白名单：这些 id 会直接拼进文件名，必须挡住路径分隔符 */
+    private val SAFE_ID = Regex("^[A-Za-z0-9._-]+$")
 
     /** SAF createDocument 用的默认文件名 */
     fun defaultFileName(): String = "$EXPORT_PREFIX${System.currentTimeMillis()}.json"

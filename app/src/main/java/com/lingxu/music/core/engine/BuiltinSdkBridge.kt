@@ -822,10 +822,17 @@ class BuiltinSdkBridge(context: Context) {
                 musics.add(jsMusicInfoToModel(item, source))
             }
         }
+        // 榜单的分页信息（原版 leaderboard.board 用 total/limit 算 maxPage）：
+        // 各源默认一次返回整张榜单，limit 缺失时视为单页，避免外部按固定页数盲目翻页。
+        val total = obj.getIntProperty("total") ?: musics.size
+        val limit = obj.getIntProperty("limit") ?: musics.size.coerceAtLeast(1)
         return BoardDetail(
             id = "${source}__$bangId",
             name = obj.getString("name") ?: "",
             list = musics,
+            total = total,
+            limit = if (obj.getIntProperty("limit") != null) limit else 0,
+            maxPage = if (limit > 0) ((total + limit - 1) / limit).coerceAtLeast(1) else 1,
         )
     }
 

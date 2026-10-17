@@ -81,7 +81,7 @@ class SettingViewModel : ViewModel() {
 
     fun setFontScale(value: Float) = launch { settings.setFontScale(value.coerceIn(0.8f, 1.6f)) }
 
-    fun cycleShareType() = launch { settings.setShareType(next(shareType.value, listOf("system", "link", "text"))) }
+    fun cycleShareType() = launch { settings.setShareType(next(shareType.value, listOf("system", "clipboard"))) }
 
     fun setAutoHidePlayBar(value: Boolean) = launch { settings.setAutoHidePlayBar(value) }
 

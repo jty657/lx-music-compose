@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -151,10 +152,8 @@ fun SettingScreen(
         ArrowPreference(
             title = "分享方式",
             summary = when (shareType) {
-                "system" -> "系统分享"
-                "link" -> "分享链接"
-                "text" -> "分享文本"
-                else -> shareType
+                "clipboard" -> "复制到剪贴板"
+                else -> "系统分享"
             },
             onClick = { viewModel.cycleShareType() },
         )

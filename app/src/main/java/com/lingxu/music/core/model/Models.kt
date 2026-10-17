@@ -126,6 +126,9 @@ data class BoardDetail(
     val id: String,
     val name: String,
     val list: List<MusicInfo> = emptyList(),
+    val total: Int = 0,
+    val limit: Int = 0,
+    val maxPage: Int = 1,
 )
 
 /** 热搜词 */
