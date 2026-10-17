@@ -75,11 +75,16 @@ class ScriptEngineManager(private val context: Context) {
     fun loadScript(info: ApiSourceInfo, script: String) {
         destroyScript()
         currentApiId = info.id
-        _initDeferred = CompletableDeferred()
+        val initDeferred = CompletableDeferred<Boolean>()
+        _initDeferred = initDeferred
         _status.value = ApiStatus(false, "initing")
         _capabilities.value = emptyMap()
 
-        val newEngine = QuickJSEngine(
+        // 旧引擎的迟到回调（init / action 都会 post 回主线程）可能在换源之后才到达；
+        // 闭包若直接读写 Manager 字段，旧脚本的 Ready 会把新引擎的初始化结果提前置位，
+        // 并用旧脚本的能力覆盖 _status/_capabilities。这里用引擎身份比对丢弃过期回调。
+        val holder = arrayOfNulls<QuickJSEngine>(1)
+        holder[0] = QuickJSEngine(
             scriptInfo = QuickJSEngine.ScriptInfo(
                 id = info.id,
                 name = info.name,
@@ -91,60 +96,64 @@ class ScriptEngineManager(private val context: Context) {
             scriptText = script,
             preloadScript = preloadScript,
             onAction = { action ->
-                when (action) {
-                    is ScriptAction.Request -> {
-                        // 脚本发起 HTTP 请求：直接由引擎内部执行
-                        engine?.executeScriptRequest(action.requestKey, action.url, action.options)
+                if (holder[0] === engine) {
+                    when (action) {
+                        is ScriptAction.Request -> {
+                            // 脚本发起 HTTP 请求：直接由引擎内部执行
+                            engine?.executeScriptRequest(action.requestKey, action.url, action.options)
+                        }
+                        is ScriptAction.CancelRequest -> {
+                            scriptRequests.remove(action.requestKey)?.cancel()
+                        }
+                        is ScriptAction.Response -> {
+                            // 脚本对 App 请求的响应：完成挂起的 Deferred
+                            handleScriptResponse(
+                                action.requestKey,
+                                action.status,
+                                action.errorMessage,
+                                action.result,
+                            )
+                        }
+                        is ScriptAction.Log -> {
+                            Log.d(TAG, "[${action.level}] ${action.message}")
+                        }
+                        is ScriptAction.ShowUpdateAlert -> {
+                            Log.i(TAG, "script update alert: ${action.log}")
+                        }
+                        is ScriptAction.Init -> Unit
                     }
-                    is ScriptAction.CancelRequest -> {
-                        scriptRequests.remove(action.requestKey)?.cancel()
-                    }
-                    is ScriptAction.Response -> {
-                        // 脚本对 App 请求的响应：完成挂起的 Deferred
-                        handleScriptResponse(
-                            action.requestKey,
-                            action.status,
-                            action.errorMessage,
-                            action.result,
-                        )
-                    }
-                    is ScriptAction.Log -> {
-                        Log.d(TAG, "[${action.level}] ${action.message}")
-                    }
-                    is ScriptAction.ShowUpdateAlert -> {
-                        Log.i(TAG, "script update alert: ${action.log}")
-                    }
-                    is ScriptAction.Init -> Unit
                 }
             },
             onState = { state ->
-                when (state) {
-                    is EngineState.Ready -> {
-                        _status.value = ApiStatus(true, "")
-                        _initInfo.value = state.initInfo
-                        val caps = mutableMapOf<String, JsonObject>()
-                        (state.initInfo?.get("sources") as? JsonObject)?.let { sources ->
-                            sources.entries.forEach { (source, v) ->
-                                val obj = v as? JsonObject
-                                if (obj?.get("type")?.jsonPrimitive?.content == "music") {
-                                    caps[source] = obj
+                if (holder[0] === engine) {
+                    when (state) {
+                        is EngineState.Ready -> {
+                            _status.value = ApiStatus(true, "")
+                            _initInfo.value = state.initInfo
+                            val caps = mutableMapOf<String, JsonObject>()
+                            (state.initInfo?.get("sources") as? JsonObject)?.let { sources ->
+                                sources.entries.forEach { (source, v) ->
+                                    val obj = v as? JsonObject
+                                    if (obj?.get("type")?.jsonPrimitive?.content == "music") {
+                                        caps[source] = obj
+                                    }
                                 }
                             }
+                            _capabilities.value = caps
+                            if (!initDeferred.isCompleted) initDeferred.complete(true)
                         }
-                        _capabilities.value = caps
-                        if (!_initDeferred.isCompleted) _initDeferred.complete(true)
+                        is EngineState.Failed -> {
+                            _status.value = ApiStatus(false, state.errorMessage)
+                            if (!initDeferred.isCompleted) initDeferred.complete(false)
+                        }
+                        is EngineState.Loading -> Unit
+                        is EngineState.Destroyed -> Unit
                     }
-                    is EngineState.Failed -> {
-                        _status.value = ApiStatus(false, state.errorMessage)
-                        if (!_initDeferred.isCompleted) _initDeferred.complete(false)
-                    }
-                    is EngineState.Loading -> Unit
-                    is EngineState.Destroyed -> Unit
                 }
             },
         )
-        engine = newEngine
-        newEngine.start()
+        engine = holder[0]
+        holder[0]?.start()
     }
 
     /** 销毁脚本引擎（对应 destroyUserApi） */

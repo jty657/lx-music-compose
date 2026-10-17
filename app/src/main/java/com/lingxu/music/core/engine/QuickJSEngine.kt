@@ -361,7 +361,9 @@ class QuickJSEngine(
                 val bodyJson: JsonElement = when (val b = resp.body) {
                     null -> JsonNull
                     is String -> runCatching { json.parseToJsonElement(b) }.getOrElse { JsonPrimitive(b) }
-                    is ByteArray -> JsonNull
+                    // binary 响应：以 base64 下发（脚本可用 lx.utils.buffer.from(body, 'base64') 还原字节），
+                    // 此前直接写成 JsonNull，依赖二进制响应的脚本拿到的 body 恒为 null
+                    is ByteArray -> JsonPrimitive(android.util.Base64.encodeToString(b, android.util.Base64.NO_WRAP))
                     else -> JsonPrimitive(b.toString())
                 }
                 sendResponse(
