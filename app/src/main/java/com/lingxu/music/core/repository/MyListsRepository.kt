@@ -40,6 +40,13 @@ class MyListsRepository(private val db: AppDatabase) {
         _lists.value
     }
 
+    /** 外部（如备份恢复）改动后强制重读：否则下一次写操作会 upsert 旧列表并删掉刚恢复的列表 */
+    suspend fun reload(): List<Playlist> = mutex.withLock {
+        _lists.value = db.loadPlaylists()
+        loaded = true
+        _lists.value
+    }
+
     fun setActiveList(id: String) {
         _activeListId.value = id
     }

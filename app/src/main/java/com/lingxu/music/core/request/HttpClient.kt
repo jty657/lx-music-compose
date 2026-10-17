@@ -44,30 +44,37 @@ class HttpClient {
 
     suspend fun fetch(url: String, options: ScriptRequestOptions = ScriptRequestOptions()): ScriptResponse =
         withContext(Dispatchers.IO) {
-            val builder = Request.Builder().url(url)
-            val headers = defaultHeaders + options.headers
-            headers.forEach { (k, v) -> builder.header(k, v) }
-
             val method = options.method.lowercase()
-            var body: okhttp3.RequestBody? = null
-            when {
-                method == "post" && options.form != null -> {
+            val merged = defaultHeaders + options.headers
+            val builder = Request.Builder().url(url)
+            // Content-Type 交给 RequestBody 管（否则会被 OkHttp 用 body 自带类型覆盖）
+            merged.forEach { (k, v) -> if (!k.equals("Content-Type", ignoreCase = true)) builder.header(k, v) }
+            val contentType = merged.entries.firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
+
+            val body: okhttp3.RequestBody? = when {
+                options.form != null -> {
                     val fb = FormBody.Builder()
                     options.form.forEach { (k, v) -> fb.add(k, v) }
-                    body = fb.build()
+                    fb.build()
                 }
-                method == "post" && options.formData != null -> {
+                options.formData != null -> {
                     val mb = MultipartBody.Builder().setType(MultipartBody.FORM)
                     options.formData.forEach { (k, v) -> mb.addFormDataPart(k, v) }
-                    body = mb.build()
+                    mb.build()
                 }
-                method == "post" && options.body != null -> {
-                    body = when (val b = options.body) {
-                        is String -> b.toRequestBody("application/json".toMediaType())
-                        is ByteArray -> b.toRequestBody(null)
-                        else -> b.toString().toRequestBody("application/json".toMediaType())
+                options.body != null -> {
+                    val ct = (contentType ?: "application/json").toMediaType()
+                    when (val b = options.body) {
+                        is String -> b.toRequestBody(ct)
+                        is ByteArray -> b.toRequestBody(ct)
+                        // 桥把 JS 对象转成了 Map，Map.toString() 不是合法 JSON
+                        is Map<*, *> -> org.json.JSONObject(b).toString().toRequestBody(ct)
+                        else -> b.toString().toRequestBody(ct)
                     }
                 }
+                // OkHttp 要求 POST/PUT/PATCH 必须有 body
+                method in setOf("post", "put", "patch") -> ByteArray(0).toRequestBody(contentType?.toMediaType())
+                else -> null
             }
             builder.method(method.uppercase(), body)
 

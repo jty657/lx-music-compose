@@ -116,12 +116,12 @@ class AppDatabase(private val context: Context) {
     }
 
     suspend fun saveApiSourceScript(id: String, script: String) = withContext(Dispatchers.IO) {
-        java.io.File(dataDir, "api_source_$id.js").writeText(script)
+        java.io.File(dataDir, "api_source_$id.js").writeAtomicText(script)
     }
 
     private fun persistApiSources(list: List<ApiSourceMeta>) {
         java.io.File(dataDir, FILE_API_SOURCE_LIST)
-            .writeText(JSON.encodeToString(list))
+            .writeAtomicText(JSON.encodeToString(list))
     }
 
     // ============ 歌单 ============
@@ -168,7 +168,7 @@ class AppDatabase(private val context: Context) {
     suspend fun savePlaylistMusics(listId: String, musics: List<PlaylistMusic>) =
         withContext(Dispatchers.IO) {
             java.io.File(dataDir, "playlist_$listId.json")
-                .writeText(JSON.encodeToString(musics))
+                .writeAtomicText(JSON.encodeToString(musics))
         }
 
     suspend fun deletePlaylistMusics(listId: String) = withContext(Dispatchers.IO) {
@@ -177,7 +177,7 @@ class AppDatabase(private val context: Context) {
     }
 
     private fun persistPlaylists(list: List<Playlist>) {
-        java.io.File(dataDir, FILE_PLAYLIST).writeText(JSON.encodeToString(list))
+        java.io.File(dataDir, FILE_PLAYLIST).writeAtomicText(JSON.encodeToString(list))
     }
 
     // ============ 我喜欢（收藏） ============
@@ -194,7 +194,7 @@ class AppDatabase(private val context: Context) {
 
     suspend fun saveFavorites(list: List<com.lingxu.music.core.model.MusicInfo>) =
         withContext(Dispatchers.IO) {
-            java.io.File(dataDir, FILE_FAVORITES).writeText(JSON.encodeToString(list))
+            java.io.File(dataDir, FILE_FAVORITES).writeAtomicText(JSON.encodeToString(list))
         }
 
     // ============ 搜索历史 ============
@@ -207,7 +207,7 @@ class AppDatabase(private val context: Context) {
     }
 
     suspend fun saveSearchHistory(list: List<String>) = withContext(Dispatchers.IO) {
-        java.io.File(dataDir, FILE_SEARCH_HISTORY).writeText(JSON.encodeToString(list))
+        java.io.File(dataDir, FILE_SEARCH_HISTORY).writeAtomicText(JSON.encodeToString(list))
     }
 
     // ============ 上次播放（启动自动播放/保存进度用） ============
@@ -223,7 +223,7 @@ class AppDatabase(private val context: Context) {
     suspend fun saveLastPlay(state: com.lingxu.music.core.player.PlayState) =
         withContext(Dispatchers.IO) {
             java.io.File(dataDir, FILE_LAST_PLAY)
-                .writeText(JSON.encodeToString(state))
+                .writeAtomicText(JSON.encodeToString(state))
         }
 
     fun toInfo(meta: ApiSourceMeta): ApiSourceInfo = ApiSourceInfo(
@@ -235,4 +235,19 @@ class AppDatabase(private val context: Context) {
         version = meta.version,
         allowShowUpdateAlert = meta.allowShowUpdateAlert,
     )
+}
+
+
+/**
+ * 原子写：先写 .tmp 再 rename。原先直接 writeText 是先截断再写，
+ * 写盘期间被杀进程/断电会留下半个 JSON，而读取端解析失败会静默当成空数据并标记已加载，
+ * 之后任何一次写操作都会把损坏文件覆盖成「空 + 新数据」，用户数据无声丢失。
+ */
+private fun java.io.File.writeAtomicText(text: String) {
+    val tmp = java.io.File(parentFile, "$name.tmp")
+    tmp.writeText(text)
+    if (!tmp.renameTo(this)) {
+        writeText(text)
+        tmp.delete()
+    }
 }

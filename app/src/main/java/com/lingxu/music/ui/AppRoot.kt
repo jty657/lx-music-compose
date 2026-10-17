@@ -111,8 +111,12 @@ fun AppRoot() {
                     )
 
                     // 底部：迷你播放条 + 导航栏
-                    LaunchedEffect(miniBarScroll.value) {
-                        miniBarVisible = autoHidePlayBar && miniBarScroll.value <= 0
+                    // 切页时复位滚动量，否则在 A 页滑下隐藏后进 B 页会一直不显示
+                    val currentScreen = navigator.backStack.last()
+                    LaunchedEffect(currentScreen) { miniBarScroll.value = 0 }
+                    LaunchedEffect(miniBarScroll.value, autoHidePlayBar) {
+                        // autoHidePlayBar=false 的语义是「始终显示」，不是「始终隐藏」
+                        miniBarVisible = !autoHidePlayBar || miniBarScroll.value <= 0
                     }
                     Column(
                         Modifier
@@ -240,7 +244,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
                 if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
             },
     ) {
-        TrackCover(url = current.meta.picUrl, size = 44.dp, corner = 10.dp)
+        TrackCover(url = state.coverUrl ?: current.meta.picUrl, size = 44.dp, corner = 10.dp)
         Spacer(Modifier.size(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -333,7 +337,7 @@ private fun NavItems(navigator: Navigator) {
     NavigationBar {
         items.forEach { (screen, icon, label) ->
             NavigationBarItem(
-                selected = current == screen,
+                selected = if (screen is Screen.Search) current is Screen.Search else current == screen,
                 onClick = {
                     navigator.backStack.clear()
                     navigator.backStack.add(screen)

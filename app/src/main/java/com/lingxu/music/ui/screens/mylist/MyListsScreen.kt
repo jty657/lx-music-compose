@@ -379,7 +379,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                     "name" -> musics.sortedBy { it.name }
                                     "singer" -> musics.sortedBy { it.singer }
                                     "album" -> musics.sortedBy { it.meta.albumName }
-                                    "interval" -> musics.sortedBy { it.interval ?: "" }
+                                    "interval" -> musics.sortedBy { parseIntervalSeconds(it.interval) }
                                     else -> musics.shuffled()
                                 }.let { if (opt.desc) it.reversed() else it }
                                 musics = sorted
@@ -630,4 +630,14 @@ class MyListsViewModel : ViewModel() {
             }
         }
     }
+}
+
+/** "mm:ss" / "hh:mm:ss" → 秒；解析失败按 0（用于按时长排序，字符串比较会把 10:00 排在 2:00 前面） */
+private fun parseIntervalSeconds(value: String?): Long {
+    if (value.isNullOrBlank()) return 0L
+    val parts = value.split(":").mapNotNull { it.trim().toLongOrNull() }
+    if (parts.isEmpty()) return 0L
+    var seconds = 0L
+    for (p in parts) seconds = seconds * 60 + p
+    return seconds
 }

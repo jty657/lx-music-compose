@@ -238,7 +238,8 @@ class QuickJSEngine(
         global.setProperty("__lx_native_call__set_timeout") { args: Array<Any?> ->
             val id = args[0].toString()
             val timeout = (args[1] as Number).toInt()
-            timeoutHandler.postDelayed({ callJS("__set_timeout__", id) }, timeout.toLong())
+            // 必须回到 JS 线程执行 callJS（主线程直接进 QuickJS 上下文会与 JS 线程竞争）
+            timeoutHandler.postDelayed({ postAction("__set_timeout__", id) }, timeout.toLong())
             null
         }
     }

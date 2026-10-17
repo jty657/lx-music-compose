@@ -7,6 +7,7 @@ import com.lingxu.music.core.model.ApiSourceInfo
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -27,6 +28,7 @@ class ScriptEngineManager(private val context: Context) {
     companion object {
         private const val TAG = "ScriptEngineManager"
         private const val REQUEST_TIMEOUT_MS = 20_000L
+        private const val INIT_TIMEOUT_MS = 15_000L
     }
 
     private var engine: QuickJSEngine? = null
@@ -161,7 +163,11 @@ class ScriptEngineManager(private val context: Context) {
         // 内置音源无需等待
         if (currentApiId == null) return true
         if (_status.value.status) return true
-        return _initDeferred.await()
+        // 脚本可能加载成功却从不 send(inited)；没有超时会让取链/歌词永久挂起
+        return withTimeoutOrNull(INIT_TIMEOUT_MS) { _initDeferred.await() } ?: run {
+            _status.value = ApiStatus(false, "音源初始化超时")
+            false
+        }
     }
 
     /** 源是否可用（对应 assertApiSupport） */

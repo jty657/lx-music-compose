@@ -46,6 +46,9 @@ class BackupRepository(
 
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
+    /** 导入完成后的回调：让内存缓存失效重建（备份是直接写 db 的，不刷新会被旧缓存覆盖） */
+    var onImported: (suspend () -> Unit)? = null
+
     /** 把当前数据写到用户选定的 uri（SAF 输出流），返回导出的条目数 */
     suspend fun export(uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
@@ -89,10 +92,15 @@ class BackupRepository(
 
             // PlaylistMusic.listId 指明归属；没有该字段的旧备份按「歌曲出现在哪个列表」无法反推，
             // 因此只恢复带 listId 的条目，其余跳过
-            data.playlistMusics
+            val grouped = data.playlistMusics
                 .filter { it.listId.isNotBlank() }
                 .groupBy { it.listId }
-                .forEach { (listId, musics) -> db.savePlaylistMusics(listId, musics) }
+            // 逐列表覆盖写入（包括备份里为空列表的情况），否则该列表的旧歌会原样保留
+            data.playlists.forEach { list ->
+                db.savePlaylistMusics(list.id, grouped[list.id] ?: emptyList())
+            }
+
+            onImported?.invoke()
 
             data.playlists.size + data.playlistMusics.size
         }

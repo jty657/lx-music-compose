@@ -219,7 +219,8 @@ class MusicRepository(
         val candidates = otherSources.flatMap { source ->
             runCatching { search(searchText, 1, source, 25) }.getOrElse { emptyList() }
         }.filter { candidate ->
-            candidate.name == musicInfo.name || candidate.singer == musicInfo.singer
+            // 必须曲名与歌手都对上；用 || 会把同名翻唱或该歌手的其它歌当成换源目标
+            candidate.name == musicInfo.name && candidate.singer == musicInfo.singer
         }
         for (candidate in candidates.take(10)) {
             runCatching {

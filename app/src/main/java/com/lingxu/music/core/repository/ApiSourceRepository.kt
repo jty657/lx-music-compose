@@ -5,6 +5,8 @@ import com.lingxu.music.core.db.AppDatabase
 import com.lingxu.music.core.model.ApiSourceInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** 自定义音源仓库：对应原版 utils/data.ts 中 userApi 部分 */
 class ApiSourceRepository(private val db: AppDatabase) {
@@ -38,15 +40,19 @@ class ApiSourceRepository(private val db: AppDatabase) {
 
     suspend fun count(): Int = db.getAllApiSources().size
 
-    /** 导入脚本（对应原版 addUserApi） */
-    suspend fun importScript(script: String): ApiSourceInfo {
+    private val mutex = Mutex()
+
+    /** 导入脚本（对应原版 addUserApi）；数量校验与写入同一临界区，避免并发导入超限 */
+    suspend fun importScript(script: String): ApiSourceInfo = mutex.withLock {
+        if (count() >= MAX_COUNT) throw IllegalArgumentException("最多只能添加 $MAX_COUNT 个自定义音源")
         val headComment = HEAD_COMMENT_RXP.find(script)?.value
             ?: throw IllegalArgumentException("无效的自定义源文件：缺少头部注释")
 
         val meta = matchInfo(headComment)
         val name = meta["name"].orEmpty().ifEmpty { "user_api_${System.currentTimeMillis()}" }
         val apiMeta = ApiSourceMeta(
-            id = "user_api_${System.currentTimeMillis()}_${Thread.currentThread().id}",
+            // 加上随机后缀：仅用「毫秒 + 线程 id」时同毫秒两次导入会撞 id，后者会覆盖前者
+            id = "user_api_${System.currentTimeMillis()}_${(0..999).random()}",
             name = name,
             description = meta["description"].orEmpty(),
             author = meta["author"].orEmpty(),

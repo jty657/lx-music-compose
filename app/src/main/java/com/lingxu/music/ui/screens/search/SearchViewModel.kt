@@ -92,7 +92,13 @@ class SearchViewModel : ViewModel() {
     }
 
     fun setType(type: SearchType) {
+        if (searchType == type) return
         searchType = type
+        // 切换类型后旧结果不再适用，清空并重搜（否则会显示出另一类的旧列表）
+        results = emptyList()
+        songLists = emptyList()
+        hasMore = false
+        if (lastQuery.isNotBlank()) search(lastQuery, lastSource)
     }
 
     private suspend fun recordHistory(text: String) {

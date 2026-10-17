@@ -41,6 +41,8 @@
 - **搜索/榜单/歌单只走内置 SDK bundle；用户音源只提供 `musicUrl`（播放取 URL）**。这是原版的既定架构，不要试图让用户音源提供搜索。
 - **SDK 的 fetch 桥必须让 `resp.text()/blob()/json()` 返回 thenable，且提供 `resp.headers.map`**，否则 SDK 的 `resp.text().then(JSON.parse)` 链直接崩（表现为「搜索无效」）。
 - **不内置任何音源脚本**：由用户自行导入第三方音源（`assets/scripts/presets` 与 `PresetScriptRepository` 已移除，勿再加回）。
+- **bundle 依赖的全局必须由桥补全**（缺一项就会让所有请求直接抛错）：`console`、`process`、`setTimeout/clearTimeout/setInterval/clearInterval`、`FileReader`、`i18n`、`fetch`。
+- **bundle 里的 stub 会坏**：`he`、`pako` 都曾因自赋值（`inflate = inflate` → undefined）而全链路失效，已内联真实库替换。bundle 还依赖 `RegExp.$1`（Annex B 遗留静态属性，QuickJS 未必实现），已改为用 `exec` 的匹配数组。改 bundle 前先在 Node 里跑一遍验证（见 memory `builtin-sdk-search`）。
 - 已用 quickjs-emscripten（Node）做过端到端协议测试，全部通过。
 
 ## 云端编译与验证

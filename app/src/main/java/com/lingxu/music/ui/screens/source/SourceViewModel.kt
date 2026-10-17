@@ -12,7 +12,6 @@ import com.lingxu.music.core.repository.ApiSourceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -48,9 +47,10 @@ class SourceViewModel : ViewModel() {
         statusMessage = if (apiId.startsWith("user_api")) "正在初始化音源…" else null
         if (apiId.startsWith("user_api")) {
             viewModelScope.launch {
-                // 等待初始化出结果（成功或失败），避免无限收集
-                val result = LxApp.app.engineManager.status.first { it.status || it.message.isNotEmpty() }
-                statusMessage = if (result.status) null else "音源初始化失败：${result.message}"
+                // 等初始化真正出结果（awaitInit 内部有超时）；注意不能只等 message 非空——
+                // loadScript 会先写 ApiStatus(false, "initing")，那样会立刻误报失败。
+                val ok = LxApp.app.engineManager.awaitInit()
+                statusMessage = if (ok) null else "音源初始化失败：${LxApp.app.engineManager.status.value.message}"
             }
         }
     }

@@ -438,42 +438,46 @@ class BuiltinSdkBridge(context: Context) {
 
     /** 歌单标签（各源统一走 songList.getTags） */
     suspend fun getSongListTags(source: String): SongListTagInfo {
-        val raw = withSdkThread {
+        val promise = withSdkThread {
             val songList = getSongListModule(source) ?: return@withSdkThread null
             val fn = songList.getJSFunction("getTags") ?: return@withSdkThread null
-            callJSFunction(fn, arrayOf())
+            asPromise(callJSFunction(fn, arrayOf()))
         } ?: return SongListTagInfo(source = source)
-        return parseSongListTags(awaitPromise(asPromise(raw)), source)
+        val result = awaitPromise(promise)
+        return withSdkThread { parseSongListTags(result, source) }
     }
 
     /** 歌单列表 */
     suspend fun getSongList(source: String, sortId: String, tagId: String, page: Int): SongListPage {
-        val raw = withSdkThread {
+        val promise = withSdkThread {
             val songList = getSongListModule(source) ?: return@withSdkThread null
             val fn = songList.getJSFunction("getList") ?: return@withSdkThread null
-            callJSFunction(fn, arrayOf(sortId, tagId, page))
+            asPromise(callJSFunction(fn, arrayOf(sortId, tagId, page)))
         } ?: return SongListPage(source = source, sortId = sortId, tagId = tagId)
-        return parseSongListPage(awaitPromise(asPromise(raw)), source, sortId, tagId)
+        val result = awaitPromise(promise)
+        return withSdkThread { parseSongListPage(result, source, sortId, tagId) }
     }
 
     /** 歌单详情（歌单内歌曲） */
     suspend fun getSongListDetail(source: String, id: String, page: Int): SongListDetail {
-        val raw = withSdkThread {
+        val promise = withSdkThread {
             val songList = getSongListModule(source) ?: return@withSdkThread null
             val fn = songList.getJSFunction("getListDetail") ?: return@withSdkThread null
-            callJSFunction(fn, arrayOf(id, page))
+            asPromise(callJSFunction(fn, arrayOf(id, page)))
         } ?: return SongListDetail(source = source, id = id)
-        return parseSongListDetail(awaitPromise(asPromise(raw)), source, id)
+        val result = awaitPromise(promise)
+        return withSdkThread { parseSongListDetail(result, source, id) }
     }
 
     /** 搜索歌单（对齐原版 core/search/songlist.ts） */
     suspend fun searchSongList(text: String, page: Int, source: String, limit: Int = 18): SongListPage {
-        val raw = withSdkThread {
+        val promise = withSdkThread {
             val songList = getSongListModule(source) ?: return@withSdkThread null
             val fn = songList.getJSFunction("search") ?: return@withSdkThread null
-            callJSFunction(fn, arrayOf(text, page, limit))
+            asPromise(callJSFunction(fn, arrayOf(text, page, limit)))
         } ?: return SongListPage(source = source)
-        return parseSongListPage(awaitPromise(asPromise(raw)), source, "", "")
+        val result = awaitPromise(promise)
+        return withSdkThread { parseSongListPage(result, source, "", "") }
     }
 
     /** 歌单搜索聚合（all = 并发各源） */

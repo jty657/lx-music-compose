@@ -34,6 +34,13 @@ class FavoritesRepository(private val db: AppDatabase) {
         _favorites.value
     }
 
+    /** 外部（如备份恢复）改动后强制重读：否则下一次写操作会用旧缓存覆盖刚恢复的数据 */
+    suspend fun reload(): List<MusicInfo> = mutex.withLock {
+        _favorites.value = db.loadFavorites()
+        loaded = true
+        _favorites.value
+    }
+
     fun isFavorite(id: String): Boolean = _favorites.value.any { it.id == id }
 
     /** 切换收藏状态，返回切换后是否已收藏 */

@@ -59,6 +59,11 @@ class LxApp : Application() {
         favoritesRepository = FavoritesRepository(database)
         myListsRepository = MyListsRepository(database)
         backupRepository = BackupRepository(this, database)
+        // 备份是直接写 db 的，不刷新内存缓存的话下一次写操作会把刚恢复的数据覆盖掉
+        backupRepository.onImported = {
+            favoritesRepository.reload()
+            myListsRepository.reload()
+        }
         shareRepository = ShareRepository(this)
         musicRepository = MusicRepository(sdkBridge, engineManager, settings)
         playerRepository = PlayerRepository.get(this)
@@ -82,10 +87,14 @@ class LxApp : Application() {
 
         // 初始化内置 SDK
         appScope.launch {
-            val apiSource = settings.currentApiSource()
+            val apiSource = runCatching { settings.currentApiSource() }.getOrDefault("kw")
             sdkBridge.init(apiSource)
             musicRepository.setApiSource(apiSource)
-            favoritesRepository.load()
+            runCatching { favoritesRepository.load() }
+            // 我的列表原先从未在冷启动时加载，导致「我的列表」页恒为空
+            runCatching { myListsRepository.load() }
+            // 同理：当前源是内置源时，音源页会显示「自定义音源 0/20」
+            runCatching { apiSourceRepository.getAll() }
             // 恢复播放模式（原版 player.togglePlayMethod）
             playerRepository.restorePlayMode(settings.playMode.first())
             // 恢复上次播放的队列；startupAutoPlay 决定是否直接开播

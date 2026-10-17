@@ -27,7 +27,7 @@ object SourceConst {
     const val MG = "mg"
     const val XM = "xm"
     const val LOCAL = "local"
-    val ONLINE = listOf(KW, KG, TX, WY, MG, XM)
+    val ONLINE = listOf(KW, KG, TX, WY, MG)
     fun isUserApi(id: String) = id.startsWith("user_api")
 
     /** 内置源中文名（对应原版 sourceNameType=alias） */
