@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,6 +28,7 @@ import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -137,12 +139,22 @@ fun SongListDetailScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
-                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(music.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                        Spacer(Modifier.size(10.dp))
+                        TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
+                        Spacer(Modifier.size(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                music.name,
+                                fontSize = MiuixTheme.textStyles.main.fontSize,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             Text(
                                 "${music.singer} · ${SourceConst.displayName(music.source)}",
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }

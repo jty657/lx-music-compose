@@ -92,12 +92,16 @@ class HttpClient {
     suspend fun fetchText(url: String): String =
         fetch(url).body as? String ?: ""
 
-    /** 同步请求（供 SDK 桥线程直接调用，阻塞式） */
+    /**
+     * 同步请求（供 SDK 桥线程直接调用，阻塞式）。
+     * @param binary true 时 body 为原始字节（ByteArray），否则为 UTF-8 字符串。
+     */
     fun fetchSync(
         url: String,
         method: String = "get",
         headers: Map<String, String> = emptyMap(),
         body: String? = null,
+        binary: Boolean = false,
     ): ScriptResponse {
         val builder = Request.Builder().url(url)
         val merged = defaultHeaders + headers
@@ -115,7 +119,7 @@ class HttpClient {
                 statusCode = resp.code,
                 statusMessage = resp.message,
                 headers = resp.headers.toMultimap().mapValues { it.value.joinToString("; ") },
-                body = String(bytes, Charsets.UTF_8),
+                body = if (binary) bytes else String(bytes, Charsets.UTF_8),
             )
         }
     }

@@ -34,6 +34,7 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.ui.components.GlassContext
 import com.lingxu.music.ui.components.GlassHost
 import com.lingxu.music.ui.components.LocalGlass
+import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalMiniBarScroll
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Navigator
@@ -228,6 +229,8 @@ private fun MiniPlayerBar(navigator: Navigator) {
                 if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
             },
     ) {
+        TrackCover(url = current.meta.picUrl, size = 44.dp, corner = 10.dp)
+        Spacer(Modifier.size(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 current.name,

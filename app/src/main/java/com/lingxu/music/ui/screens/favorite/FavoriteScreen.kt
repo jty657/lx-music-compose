@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
@@ -30,6 +31,7 @@ import com.lingxu.music.ui.components.GlassSurface
 import androidx.compose.foundation.layout.Arrangement
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.core.model.SourceConst
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -176,8 +178,16 @@ private fun FavoriteCard(
             modifier = Modifier.padding(8.dp),
         ) {
             Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(music.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+            Spacer(Modifier.size(10.dp))
+            TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
+            Spacer(Modifier.size(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    music.name,
+                    fontSize = MiuixTheme.textStyles.main.fontSize,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 val subtitle = buildList {
                     add(music.singer)
                     if (showAlbumName) music.meta.albumName.takeIf { it.isNotBlank() }?.let { add(it) }
@@ -188,6 +198,8 @@ private fun FavoriteCard(
                     subtitle.joinToString(" · "),
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Icon(

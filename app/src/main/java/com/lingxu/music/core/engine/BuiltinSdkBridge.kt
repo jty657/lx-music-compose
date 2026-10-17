@@ -34,7 +34,10 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
 /**
@@ -59,11 +62,42 @@ class BuiltinSdkBridge(context: Context) {
         private val fetchShim = """
             globalThis.__lxFetchCbs = {};
             globalThis.__lxFetchSeq = 0;
-            globalThis.__lxFetchDone = function (id, ok, status, statusText, text, headersJson) {
+            globalThis.__lxB64ToBytes = function (b64) {
+              var bin = atob(b64 || '');
+              var out = new Uint8Array(bin.length);
+              for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+              return out;
+            };
+            globalThis.__lxB64ToUtf8 = function (b64) {
+              var bin = atob(b64 || '');
+              var out = '';
+              var i = 0;
+              while (i < bin.length) {
+                var c = bin.charCodeAt(i++);
+                if (c < 0x80) out += String.fromCharCode(c);
+                else if (c < 0xE0) out += String.fromCharCode(((c & 0x1F) << 6) | (bin.charCodeAt(i++) & 0x3F));
+                else if (c < 0xF0) out += String.fromCharCode(((c & 0x0F) << 12) | ((bin.charCodeAt(i++) & 0x3F) << 6) | (bin.charCodeAt(i++) & 0x3F));
+                else {
+                  var cp = ((c & 0x07) << 18) | ((bin.charCodeAt(i++) & 0x3F) << 12) | ((bin.charCodeAt(i++) & 0x3F) << 6) | (bin.charCodeAt(i++) & 0x3F);
+                  cp -= 0x10000;
+                  out += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+                }
+              }
+              return out;
+            };
+            globalThis.__lxFetchDone = function (id, ok, status, statusText, b64, headersJson) {
               var cb = __lxFetchCbs[id];
               if (!cb) return;
               delete __lxFetchCbs[id];
-              cb(ok, status, statusText, text, headersJson);
+              cb(ok, status, statusText, b64, headersJson);
+            };
+            // SDK 的二进制分支（blobToBuffer）用 FileReader.readAsDataURL(blob) 取 base64，QuickJS 无此全局对象
+            globalThis.FileReader = function () { this.result = null; this.onload = null; this.onerror = null; };
+            globalThis.FileReader.prototype.readAsDataURL = function (blob) {
+              try {
+                this.result = 'data:application/octet-stream;base64,' + ((blob && blob.__b64) || '');
+                if (this.onload) this.onload();
+              } catch (e) { if (this.onerror) this.onerror(e); }
             };
             globalThis.fetch = function (url, options) {
               options = options || {};
@@ -74,7 +108,7 @@ class BuiltinSdkBridge(context: Context) {
               };
               return new Promise(function (resolve, reject) {
                 var id = ++__lxFetchSeq;
-                __lxFetchCbs[id] = function (ok, status, statusText, text, headersJson) {
+                __lxFetchCbs[id] = function (ok, status, statusText, b64, headersJson) {
                   if (!ok) { reject(new Error(status || 'fetch failed')); return; }
                   var map = {};
                   try { map = JSON.parse(headersJson || '{}'); } catch (e) {}
@@ -84,18 +118,48 @@ class BuiltinSdkBridge(context: Context) {
                     statusText: statusText || '',
                     ok: status >= 200 && status < 300,
                     url: url,
-                    body: text,
+                    get body() { return __lxB64ToUtf8(b64); },
                     headers: { map: map },
-                    text: function () { return Promise.resolve(text); },
+                    text: function () { return Promise.resolve(__lxB64ToUtf8(b64)); },
                     json: function () {
-                      try { return Promise.resolve(JSON.parse(text)); }
+                      try { return Promise.resolve(JSON.parse(__lxB64ToUtf8(b64))); }
                       catch (e) { return Promise.reject(e); }
                     },
-                    blob: function () { return Promise.resolve(text); }
+                    blob: function () { return Promise.resolve({ __b64: b64, size: __lxB64ToBytes(b64).length, type: '' }); }
                   });
                 };
                 __lxFetch(id, url, JSON.stringify(o));
               });
+            };
+            // QuickJS 没有 setTimeout/clearTimeout；bundle 的 fetchData 依赖它做请求超时，
+            // 缺了会让每一次 SDK 请求直接抛 ReferenceError。
+            globalThis.__lxTimers = {};
+            globalThis.__lxTimerSeq = 0;
+            globalThis.__lxTimerFire = function (id, repeat) {
+              var fn = __lxTimers[id];
+              if (!fn) return;
+              if (!repeat) delete __lxTimers[id];
+              try { fn(); } catch (e) {}
+            };
+            globalThis.setTimeout = function (fn, ms) {
+              var id = ++__lxTimerSeq;
+              __lxTimers[id] = fn;
+              __lxTimer(id, Number(ms) || 0);
+              return id;
+            };
+            globalThis.clearTimeout = function (id) {
+              delete __lxTimers[id];
+              __lxTimerCancel(id);
+            };
+            globalThis.setInterval = function (fn, ms) {
+              var id = ++__lxTimerSeq;
+              __lxTimers[id] = fn;
+              __lxTimerInterval(id, Number(ms) || 0);
+              return id;
+            };
+            globalThis.clearInterval = function (id) {
+              delete __lxTimers[id];
+              __lxTimerCancel(id);
             };
         """.trimIndent()
 
@@ -119,6 +183,12 @@ class BuiltinSdkBridge(context: Context) {
     private val executor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "BuiltinSDK").apply { isDaemon = true }
     }
+
+    /** SDK 内 setTimeout/setInterval 的调度器；回调统一回到 SDK 线程执行 */
+    private val timerExecutor = Executors.newSingleThreadScheduledExecutor { r ->
+        Thread(r, "BuiltinSDKTimer").apply { isDaemon = true }
+    }
+    private val timers = ConcurrentHashMap<Int, ScheduledFuture<*>>()
 
     private var jsContext: QuickJSContext? = null
     private var sdkObject: JSObject? = null
@@ -231,6 +301,23 @@ class BuiltinSdkBridge(context: Context) {
                     null
                 }
                 context.evaluate(fetchShim, "lx-fetch-shim.js")
+                // 定时器桥（见 fetchShim 里的 setTimeout 实现）
+                global.setProperty("__lxTimer") { args: Array<Any?> -> scheduleTimer(args, repeat = false) }
+                global.setProperty("__lxTimerInterval") { args: Array<Any?> -> scheduleTimer(args, repeat = true) }
+                global.setProperty("__lxTimerCancel") { args: Array<Any?> -> cancelTimer(args) }
+                // i18n 桩：bundle 只用它拼「x分钟前」这类相对时间文本
+                val i18nObj = context.createNewJSObject()
+                i18nObj.setProperty("t") { args: Array<Any?> ->
+                    val key = args.getOrNull(0) as? String ?: ""
+                    val num = (args.getOrNull(1) as? JSObject)?.getIntProperty("num") ?: 0
+                    when {
+                        key.endsWith("second") -> "${num}秒前"
+                        key.endsWith("minute") -> "${num}分钟前"
+                        key.endsWith("hour") -> "${num}小时前"
+                        else -> ""
+                    }
+                }
+                global.setProperty("i18n", i18nObj)
 
                 // 执行 Buffer polyfill（必须早于 SDK bundle）
                 context.evaluate(bufferPolyfill, "buffer-polyfill.js")
@@ -879,14 +966,15 @@ class BuiltinSdkBridge(context: Context) {
                     (v as? JsonPrimitive)?.content?.let { k to it }
                 }?.toMap() ?: emptyMap()
                 val body = (opt["body"] as? JsonPrimitive)?.content
-                val resp = HttpClient.instance.fetchSync(url, method, headers, body)
-                val text = resp.body as? String ?: ""
+                val resp = HttpClient.instance.fetchSync(url, method, headers, body, binary = true)
+                val bytes = resp.body as? ByteArray ?: ByteArray(0)
+                val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
                 val headersJson = buildJsonObject {
                     resp.headers.forEach { (k, v) -> put(k, JsonPrimitive(v)) }
                 }.toString()
                 val status = resp.statusCode
                 val statusText = resp.statusMessage
-                executor.execute { callFetchDone(id, true, status, statusText, text, headersJson) }
+                executor.execute { callFetchDone(id, true, status, statusText, b64, headersJson) }
             } catch (e: Exception) {
                 Log.e(TAG, "fetch failed: ${e.message}")
                 val msg = e.message ?: "fetch failed"
@@ -895,16 +983,40 @@ class BuiltinSdkBridge(context: Context) {
         }.apply { isDaemon = true }.start()
     }
 
-    /** 回到 SDK 线程调用 JS 侧 __lxFetchDone（在 SDK 线程执行） */
+    /** 回到 SDK 线程调用 JS 侧 __lxFetchDone（在 SDK 线程执行）；payload 为响应体的 base64 */
     private fun callFetchDone(
         id: Int,
         ok: Boolean,
         status: Any?,
         statusText: Any?,
-        text: Any?,
+        payload: Any?,
         headersJson: Any?,
     ) {
         val fn = jsContext?.getGlobalObject()?.getJSFunction("__lxFetchDone") ?: return
-        fn.call(id, ok, status, statusText, text, headersJson)
+        fn.call(id, ok, status, statusText, payload, headersJson)
+    }
+
+    /** 安排一次性/重复定时器；到点后回到 SDK 线程调用 JS 侧 __lxTimerFire */
+    private fun scheduleTimer(args: Array<Any?>, repeat: Boolean): Any? {
+        val id = (args.getOrNull(0) as? Number)?.toInt() ?: return null
+        val delay = ((args.getOrNull(1) as? Number)?.toLong() ?: 0L).coerceAtLeast(0L)
+        val task = Runnable { executor.execute { callTimerFire(id, repeat) } }
+        val future = if (repeat) {
+            timerExecutor.scheduleAtFixedRate(task, delay, delay.coerceAtLeast(1L), TimeUnit.MILLISECONDS)
+        } else {
+            timerExecutor.schedule(task, delay, TimeUnit.MILLISECONDS)
+        }
+        timers[id] = future
+        return null
+    }
+
+    private fun cancelTimer(args: Array<Any?>) {
+        val id = (args.getOrNull(0) as? Number)?.toInt() ?: return
+        timers.remove(id)?.cancel(false)
+    }
+
+    private fun callTimerFire(id: Int, repeat: Boolean) {
+        val fn = jsContext?.getGlobalObject()?.getJSFunction("__lxTimerFire") ?: return
+        fn.call(id, repeat)
     }
 }
