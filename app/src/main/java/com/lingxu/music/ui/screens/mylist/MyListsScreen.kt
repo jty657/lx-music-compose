@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
@@ -174,10 +175,14 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
         ) {
         Spacer(Modifier.size(8.dp))
+        // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
+        val listState = rememberLazyListState()
+        com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
 
         if (openList == null) {
             ListOfLists(
                 lists = lists,
+                listState = listState,
                 onOpen = { list ->
                     openList = list.id
                     searchState.setTextAndPlaceCursorAtEnd("")
@@ -211,7 +216,9 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 )
             }
 
-            LazyColumn(Modifier.weight(1f)) {
+            LazyColumn(
+                state = listState,
+            ) {
                 items(shownMusics, key = { it.id }) { music ->
                     val checked = music.id in selected
                     GlassSurface(
@@ -515,6 +522,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
     lists: List<Playlist>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     onOpen: (Playlist) -> Unit,
     onRename: (Playlist) -> Unit,
     onDelete: (Playlist) -> Unit,
@@ -527,7 +535,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
         )
         return
     }
-    LazyColumn(Modifier.weight(1f)) {
+    LazyColumn(
+        state = listState,
+    ) {
         items(lists, key = { it.id }) { list ->
             GlassSurface(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -647,27 +657,11 @@ class MyListsViewModel : ViewModel() {
                 return@launch
             }
             try {
-                val collected = mutableListOf<MusicInfo>()
-                var page = 1
-                var maxPage = 1
-                // 用 SDK 返回的 maxPage 决定翻页，不再用「size<10」或硬编码 100 页：
-                // wy/kg 的 getListDetail 一次返回整张歌单（maxPage=1），tx 的 getListDetail 第 2 个参数是 tryNum 不是页码（maxPage=1）。
-                while (page <= maxPage.coerceAtMost(500)) {
-                    val listData = if (sourceListId.startsWith("board__")) {
-                        val bangId = sourceListId.removePrefix("board__").substringAfter("__", "")
-                        val bd = LxApp.app.musicRepository.getBoardList(source, bangId, page)
-                        if (page == 1) maxPage = bd.maxPage.coerceAtLeast(1)
-                        bd.list
-                    } else {
-                        val sd = LxApp.app.musicRepository.getSongListDetail(source, sourceListId, page)
-                        if (page == 1) maxPage = sd.maxPage.coerceAtLeast(1)
-                        sd.list
-                    }
-                    if (listData.isEmpty()) break
-                    collected += listData.filterNot { m -> collected.any { it.id == m.id } }
-                    onProgress(collected.size)
-                    page += 1
-                }
+                val collected = LxApp.app.myListsRepository.pullOnlineMusics(
+                    source = source,
+                    sourceListId = sourceListId,
+                    onProgress = { onProgress(it) },
+                )
                 LxApp.app.myListsRepository.overwriteOnlineMusics(list.id, collected)
                 onDone("同步完成（${collected.size} 首）")
             } catch (e: kotlinx.coroutines.CancellationException) {

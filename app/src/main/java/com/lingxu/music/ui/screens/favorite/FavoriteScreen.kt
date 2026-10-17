@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
@@ -95,7 +97,10 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         }
         Spacer(Modifier.size(8.dp))
 
-        LazyColumn {
+        // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
+        val listState = rememberLazyListState()
+        com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
+        LazyColumn(state = listState) {
             items(favorites, key = { it.id }) { music ->
                 FavoriteCard(
                     music = music,

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -98,7 +99,10 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
             return@Column
         }
 
-        LazyColumn(Modifier.weight(1f)) {
+        // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
+        val listState = rememberLazyListState()
+        com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
+        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             itemsIndexed(queue, key = { index, item -> "$index-${item.id}" }) { index, music ->
                 GlassSurface(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

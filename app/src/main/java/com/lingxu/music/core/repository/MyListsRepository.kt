@@ -1,5 +1,6 @@
 package com.lingxu.music.core.repository
 
+import com.lingxu.music.LxApp
 import com.lingxu.music.core.db.AppDatabase
 import com.lingxu.music.core.db.Playlist
 import com.lingxu.music.core.db.PlaylistMusic
@@ -119,6 +120,47 @@ class MyListsRepository(private val db: AppDatabase) {
         )
         persist(_lists.value + list)
         list
+    }
+
+    /**
+     * 拉取在线列表（或榜单）的全部歌曲，按 SDK 返回的 maxPage 翻页。
+     *
+     * 各源行为差异很大：wy/kg 的 getListDetail 一次返回整张歌单（maxPage=1），
+     * tx 的 getListDetail 第 2 个参数是 tryNum 而不是页码（翻到第 3 页必然报错），
+     * 所以必须由 SDK 的分页信息决定翻多少页，不能按固定次数或返回条数猜。
+     */
+    suspend fun pullOnlineMusics(
+        source: String,
+        sourceListId: String,
+        onProgress: (Int) -> Unit = {},
+    ): List<MusicInfo> {
+        val collected = mutableListOf<MusicInfo>()
+        var page = 1
+        var maxPage = 1
+        while (page <= maxPage.coerceAtMost(500)) {
+            val (list, pageMax) = if (sourceListId.startsWith("board__")) {
+                val bangId = sourceListId.removePrefix("board__").substringAfter("__", "")
+                val bd = LxApp.app.musicRepository.getBoardList(source, bangId, page)
+                bd.list to bd.maxPage
+            } else {
+                val sd = LxApp.app.musicRepository.getSongListDetail(source, sourceListId, page)
+                sd.list to sd.maxPage
+            }
+            if (page == 1) maxPage = pageMax.coerceAtLeast(1)
+            if (list.isEmpty()) break
+            collected += list.filterNot { m -> collected.any { it.id == m.id } }
+            onProgress(collected.size)
+            page += 1
+        }
+        return collected
+    }
+
+    /** 收藏后立刻同步内容：否则收藏完打开是空列表，还要用户自己点「同步到最新」 */
+    suspend fun syncOnlineList(list: Playlist, onProgress: (Int) -> Unit = {}): Int {
+        val source = list.source ?: return 0
+        val sourceListId = list.sourceListId ?: return 0
+        val musics = pullOnlineMusics(source, sourceListId, onProgress)
+        return overwriteOnlineMusics(list.id, musics)
     }
 
     suspend fun getMusics(listId: String): List<MusicInfo> =

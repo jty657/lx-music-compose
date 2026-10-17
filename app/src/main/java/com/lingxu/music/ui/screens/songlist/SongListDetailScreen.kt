@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -145,8 +146,13 @@ fun SongListDetailScreen(
                     .padding(vertical = 4.dp),
             )
         }
+        // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
+        val listState = rememberLazyListState()
+        com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
 
-        LazyColumn(Modifier.weight(1f)) {
+        LazyColumn(
+            state = listState,
+        ) {
             items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -220,9 +226,10 @@ class SongListDetailViewModel : ViewModel() {
     fun collect(source: String, id: String, name: String) {
         viewModelScope.launch {
             runCatching {
-                LxApp.app.myListsRepository.collectSongList(
+                val list = LxApp.app.myListsRepository.collectSongList(
                     com.lingxu.music.core.model.SongListInfo(id = id, name = name, source = source),
                 )
+                LxApp.app.myListsRepository.syncOnlineList(list)
             }
         }
     }

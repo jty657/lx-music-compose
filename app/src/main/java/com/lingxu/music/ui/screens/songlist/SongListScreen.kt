@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -180,8 +181,13 @@ fun SongListScreen(
             }
             return@Column
         }
+        // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
+        val listState = rememberLazyListState()
+        com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
 
-        LazyColumn(Modifier.weight(1f)) {
+        LazyColumn(
+            state = listState,
+        ) {
             items(list, key = { "${it.source}_${it.id}" }) { item ->
                 GlassSurface(
     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -248,10 +254,16 @@ class SongListViewModel : ViewModel() {
         }
     }
 
-    /** 长按歌单 = 收藏到「我的列表」（对应原版 collectList） */
+    /**
+     * 长按歌单 = 收藏到「我的列表」（对应原版 collectList）。
+     * 收藏后立刻拉一次内容：否则收藏完打开是空列表，还要用户自己点「同步到最新」。
+     */
     fun collect(item: SongListInfo) {
         viewModelScope.launch {
-            runCatching { LxApp.app.myListsRepository.collectSongList(item) }
+            runCatching {
+                val list = LxApp.app.myListsRepository.collectSongList(item)
+                LxApp.app.myListsRepository.syncOnlineList(list)
+            }
         }
     }
 }
