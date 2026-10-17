@@ -342,6 +342,26 @@ fun SettingScreen(
             onClick = { importLauncher.launch(arrayOf("application/json", "*/*")) },
         )
 
+        Spacer(Modifier.size(12.dp))
+
+        // ============ 关于 ============
+        SectionTitle("关于")
+        val appContext = androidx.compose.ui.platform.LocalContext.current
+        val versionName = androidx.compose.runtime.remember {
+            runCatching {
+                appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName
+            }.getOrNull() ?: ""
+        }
+        Text(
+            "聆序 $versionName",
+            fontSize = MiuixTheme.textStyles.main.fontSize,
+        )
+        Text(
+            "洛雪音乐 v1.9.1 的 Compose 移植版",
+            fontSize = MiuixTheme.textStyles.body2.fontSize,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        )
+
         Spacer(Modifier.size(24.dp))
     }
     if (toast != null) {

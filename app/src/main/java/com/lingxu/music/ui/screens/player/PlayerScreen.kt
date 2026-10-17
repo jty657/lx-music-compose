@@ -31,10 +31,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
+import com.lingxu.music.core.player.LyricLine
 import com.lingxu.music.core.player.PlayMode
 import com.lingxu.music.core.player.PlayState
 import com.lingxu.music.ui.components.GlassDialog
@@ -288,41 +290,71 @@ private fun LyricView(
         ) {
             item { Spacer(Modifier.height(edgePad)) }
             items(count = state.lyricLines.size) { index ->
-                val line = state.lyricLines[index]
-                val isCurrent = index == currentIndex
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalAlignment = horizontal,
-                ) {
-                    Text(
-                        line.text,
-                        fontSize = if (zoomActive && isCurrent) baseSp * 1.4f else baseSp,
-                        color = if (isCurrent) MiuixTheme.colorScheme.primary
-                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    )
-                    if (showRoma) {
-                        line.roma?.let { roma ->
-                            Text(
-                                roma,
-                                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            )
-                        }
-                    }
-                    if (showTranslation) {
-                        line.translation?.let { tr ->
-                            Text(
-                                tr,
-                                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            )
-                        }
-                    }
-                }
+                LyricLineRow(
+                    line = state.lyricLines[index],
+                    isCurrent = index == currentIndex,
+                    baseSp = baseSp,
+                    zoomActive = zoomActive,
+                    showRoma = showRoma,
+                    showTranslation = showTranslation,
+                    horizontal = horizontal,
+                )
             }
             item { Spacer(Modifier.height(edgePad)) }
+        }
+    }
+}
+
+/** 单行歌词：当前行用动画过渡到高亮色与放大字号 */
+@Composable
+private fun LyricLineRow(
+    line: LyricLine,
+    isCurrent: Boolean,
+    baseSp: TextUnit,
+    zoomActive: Boolean,
+    showRoma: Boolean,
+    showTranslation: Boolean,
+    horizontal: Alignment.Horizontal,
+) {
+    val color by androidx.compose.animation.animateColorAsState(
+        targetValue = if (isCurrent) MiuixTheme.colorScheme.primary
+        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        animationSpec = androidx.compose.animation.core.tween(220),
+        label = "lyricColor",
+    )
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (zoomActive && isCurrent) 1.4f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(220),
+        label = "lyricScale",
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        horizontalAlignment = horizontal,
+    ) {
+        Text(
+            line.text,
+            fontSize = baseSp * scale,
+            color = color,
+        )
+        if (showRoma) {
+            line.roma?.let { roma ->
+                Text(
+                    roma,
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        }
+        if (showTranslation) {
+            line.translation?.let { tr ->
+                Text(
+                    tr,
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
         }
     }
 }

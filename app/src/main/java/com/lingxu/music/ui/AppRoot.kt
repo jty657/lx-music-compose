@@ -1,5 +1,10 @@
 package com.lingxu.music.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -114,7 +119,13 @@ fun AppRoot() {
                             .align(Alignment.BottomCenter)
                             .navigationBarsPadding(),
                     ) {
-                        if (miniBarVisible) MiniPlayerBar(navigator)
+                        AnimatedVisibility(
+                            visible = miniBarVisible,
+                            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                        ) {
+                            MiniPlayerBar(navigator)
+                        }
                         if (blurEnabled) {
                             val glass = LocalGlass.current
                             if (glass != null) {
