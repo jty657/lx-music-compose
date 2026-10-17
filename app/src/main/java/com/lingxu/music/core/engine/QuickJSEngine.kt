@@ -363,8 +363,6 @@ class QuickJSEngine(
     /** 外部响应脚本的 HTTP 请求（由 ScriptAction.Request 触发后调用） */
     fun executeScriptRequest(requestKey: String, url: String, options: ScriptRequestOptions) {
         val job = scope.launch {
-            // 完成后要把 Job 从表里摘掉，否则每次取链/取歌词都会在 map 里留下一份引用
-            invokeOnCompletion { pendingRequests.remove(requestKey) }
             runCatching {
                 HttpClient.instance.fetch(url, options)
             }.onSuccess { resp ->
@@ -394,6 +392,8 @@ class QuickJSEngine(
             }.onFailure { e ->
                 sendResponse(requestKey, e.message ?: "request failed", null)
             }
+            // 完成后把 Job 从表里摘掉，否则每次取链/取歌词都会在 map 里留下一份引用
+            pendingRequests.remove(requestKey)
         }
         pendingRequests[requestKey] = job
     }
