@@ -8,6 +8,9 @@ object LrcParser {
     /** 时间标签，如 [01:23.45] 或 [01:23.456] 或 [1:23] */
     private val TIME_TAG = Regex("\\[(\\d{1,3}):(\\d{1,2})(?:[.:](\\d{1,3}))?]")
 
+    /** 整体时间偏移标签 [offset:±ms]（正数表示歌词整体提前） */
+    private val OFFSET_TAG = Regex("\\[offset:\\s*([+-]?\\d+)\\s*]", RegexOption.IGNORE_CASE)
+
     /** 解析歌词信息：主歌词 + 翻译/罗马音（同时间点合并到 translation/roma） */
     fun parse(info: LyricInfo?): List<LyricLine> {
         if (info == null) return emptyList()
@@ -34,6 +37,7 @@ object LrcParser {
     /** 解析单段 LRC 文本；多时间标签行会展开成多行，返回按时间升序的列表 */
     fun parseSingle(lrc: String?): List<LyricLine> {
         if (lrc.isNullOrBlank()) return emptyList()
+        val offset = OFFSET_TAG.find(lrc)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
         val lines = mutableListOf<LyricLine>()
         for (raw in lrc.split('\n', '\r')) {
             val line = raw.trim()
@@ -52,7 +56,7 @@ object LrcParser {
                     2 -> frac.toLong() * 10
                     else -> frac.take(3).toLong()
                 }
-                lines.add(LyricLine(min * 60_000 + sec * 1000 + ms, text))
+                lines.add(LyricLine(min * 60_000 + sec * 1000 + ms - offset, text))
             }
         }
         return lines.sortedBy { it.timeMs }

@@ -184,13 +184,13 @@ class PlayerRepository(context: Context) {
      * 恢复上次播放的队列（不自动播放）。
      * @param autoPlay 为 true 时直接开始播放（对应设置项 player.startupAutoPlay）
      */
-    fun restoreLastPlay(state: PlayState, autoPlay: Boolean) {
+    fun restoreLastPlay(state: PlayState, autoPlay: Boolean, startPositionMs: Long = 0L) {
         if (state.queue.isEmpty() || state.current == null) return
         val index = state.queueIndex.coerceIn(0, state.queue.lastIndex)
         _state.update {
-            state.copy(isPlaying = false, positionMs = 0L, durationMs = 0L)
+            state.copy(isPlaying = false, positionMs = startPositionMs, durationMs = 0L)
         }
-        player.setMediaItems(state.queue.map { it.toMediaItem() }, index, 0L)
+        player.setMediaItems(state.queue.map { it.toMediaItem() }, index, startPositionMs)
         player.prepare()
         if (autoPlay) player.play()
         loadLyric(state.queue[index])
@@ -237,7 +237,11 @@ class PlayerRepository(context: Context) {
             /** 切歌时同步当前曲目与下标（手动、自动、循环、随机都走这里） */
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 // 定时停止：等当前歌曲播完再停模式下，切歌即暂停
-                if (pendingTimeoutStop && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                // 单曲循环下重播的 reason 是 REPEAT 而不是 AUTO，漏掉会让定时停止永不生效
+                if (pendingTimeoutStop &&
+                    (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)
+                ) {
                     pendingTimeoutStop = false
                     player.pause()
                 }

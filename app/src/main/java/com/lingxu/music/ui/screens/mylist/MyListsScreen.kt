@@ -109,6 +109,18 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
         selected = emptySet()
     }
 
+    // 系统返回键：优先退出多选 / 退出列表内层，与顶部返回箭头行为一致
+    androidx.activity.compose.BackHandler(enabled = selectMode || openList != null) {
+        when {
+            selectMode -> exitSelect()
+            openList != null -> {
+                openList = null
+                musics = emptyList()
+                searchState.setTextAndPlaceCursorAtEnd("")
+            }
+        }
+    }
+
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
             Row(

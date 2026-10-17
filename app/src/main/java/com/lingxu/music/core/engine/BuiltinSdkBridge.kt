@@ -1020,6 +1020,8 @@ class BuiltinSdkBridge(context: Context) {
     }
 
     private fun callTimerFire(id: Int, repeat: Boolean) {
+        // 一次性定时器执行后要把条目摘掉，否则 map 会随每次 setTimeout 增长
+        if (!repeat) timers.remove(id)
         val fn = jsContext?.getGlobalObject()?.getJSFunction("__lxTimerFire") ?: return
         fn.call(id, repeat)
     }

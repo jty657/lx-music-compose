@@ -100,7 +100,13 @@ class LxApp : Application() {
             // 恢复上次播放的队列；startupAutoPlay 决定是否直接开播
             val lastPlay = database.loadLastPlay()
             if (lastPlay != null) {
-                playerRepository.restoreLastPlay(lastPlay, settings.startupAutoPlay.first())
+                // 设置里的「保存播放进度」开关此前完全无效：恢复时总是从头播
+                val savePlayTime = runCatching { settings.isSavePlayTime.first() }.getOrDefault(false)
+                playerRepository.restoreLastPlay(
+                    lastPlay,
+                    settings.startupAutoPlay.first(),
+                    if (savePlayTime) lastPlay.positionMs else 0L,
+                )
             }
             // 音频焦点处理开关
             playerRepository.setHandleAudioFocus(settings.isHandleAudioFocus.first())
