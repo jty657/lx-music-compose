@@ -390,22 +390,27 @@ private fun PlayerMoreSettings(
     val rate by LxApp.app.settings.playbackRate.collectAsState(initial = 1f)
     val volume by LxApp.app.settings.volume.collectAsState(initial = 1f)
     val viewModel: PlayerViewModel = viewModel()
+    // 滑块用本地态：每次 onValueChange 都写 DataStore 会让显示值等回写，拖动时抖动/回弹
+    var localRate by remember(rate) { mutableStateOf(rate) }
+    var localVolume by remember(volume) { mutableStateOf(volume) }
     GlassDialog(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 4.dp)) {
             Text("播放设置", fontSize = MiuixTheme.textStyles.title1.fontSize)
             Spacer(Modifier.size(12.dp))
-            Text("播放倍速 ${(rate * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Text("播放倍速 ${(localRate * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
             androidx.compose.material3.Slider(
-                value = rate,
-                onValueChange = { viewModel.setPlaybackRate(it) },
+                value = localRate,
+                onValueChange = { localRate = it },
+                onValueChangeFinished = { viewModel.setPlaybackRate(localRate) },
                 valueRange = 0.5f..3f,
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.size(8.dp))
-            Text("音量 ${(volume * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Text("音量 ${(localVolume * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
             androidx.compose.material3.Slider(
-                value = volume,
-                onValueChange = { viewModel.setVolume(it) },
+                value = localVolume,
+                onValueChange = { localVolume = it },
+                onValueChangeFinished = { viewModel.setVolume(localVolume) },
                 valueRange = 0f..1f,
                 modifier = Modifier.fillMaxWidth(),
             )
