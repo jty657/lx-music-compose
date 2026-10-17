@@ -126,12 +126,28 @@ class MusicRepository(
     // ================= 歌词 =================
 
     suspend fun getLyricInfo(musicInfo: MusicInfo, allowToggleSource: Boolean = true): LyricInfo {
+        val primary = fetchLyricOnce(musicInfo)
+        if (!allowToggleSource || isValidLyric(primary.lyric)) return primary
+        // 当前源没有带时间标签的有效歌词时换源重取（对应原版的换源取词）：
+        // 在其它内置源搜同名同歌手，取到第一个有效歌词就返回
+        for (source in SourceConst.ONLINE.filter { it != musicInfo.source }) {
+            val candidate = runCatching {
+                sdk.search(musicInfo.name, 1, source, 5).list
+                    .firstOrNull { it.name == musicInfo.name && it.singer == musicInfo.singer }
+            }.getOrNull() ?: continue
+            val lyric = runCatching { fetchLyricOnce(candidate) }.getOrNull() ?: continue
+            if (isValidLyric(lyric.lyric)) return lyric
+        }
+        return primary
+    }
+
+    /** 从当前生效音源取一次歌词：用户音源优先，失败或未声明时回落内置 SDK */
+    private suspend fun fetchLyricOnce(musicInfo: MusicInfo): LyricInfo {
         if (SourceConst.isUserApi(currentUserApiId())) {
-            // 用户音源处理 local 与各源歌词
-            return try {
+            try {
                 val oldInfo = musicInfo.toOldMusicInfo()
                 val result = engineManager.getLyric(musicInfo.source, oldInfo)
-                LyricInfo(
+                return LyricInfo(
                     lyric = result["lyric"]?.let { (it as? JsonPrimitive)?.content }
                         ?: throw IllegalStateException("invalid lyric"),
                     tlyric = result["tlyric"]?.let { (it as? JsonPrimitive)?.content },
@@ -141,7 +157,7 @@ class MusicRepository(
             } catch (e: Exception) {
                 Log.e(TAG, "user api lyric failed: ${e.message}")
                 // fallback 到内置 SDK
-                sdk.getLyric(musicInfo.source, musicInfo.toOldMusicInfo())
+                return sdk.getLyric(musicInfo.source, musicInfo.toOldMusicInfo())
             }
         }
         return sdk.getLyric(musicInfo.source, musicInfo.toOldMusicInfo())
