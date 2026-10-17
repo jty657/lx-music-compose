@@ -31,6 +31,8 @@ class ScriptEngineManager(private val context: Context) {
         private const val INIT_TIMEOUT_MS = 15_000L
     }
 
+    // 会被 JS 线程与主线程同时读写（守卫比对、Failed 状态回传），加 @Volatile
+    @Volatile
     private var engine: QuickJSEngine? = null
     private var currentApiId: String? = null
 
@@ -52,9 +54,6 @@ class ScriptEngineManager(private val context: Context) {
 
     /** 挂起的 App 请求（musicUrl/lyric/pic） */
     private val pendingAppRequests = ConcurrentHashMap<String, CompletableDeferred<JsonObject?>>()
-
-    /** 脚本发起的 HTTP 请求（requestKey -> Job），原版 scriptRequestMap */
-    private val scriptRequests = ConcurrentHashMap<String, kotlinx.coroutines.Job>()
 
     private val preloadScript: String by lazy {
         context.assets.open("scripts/user-api-preload.js").use { input ->
@@ -103,7 +102,8 @@ class ScriptEngineManager(private val context: Context) {
                             engine?.executeScriptRequest(action.requestKey, action.url, action.options)
                         }
                         is ScriptAction.CancelRequest -> {
-                            scriptRequests.remove(action.requestKey)?.cancel()
+                            // 实际取消在引擎侧（pendingRequests）；这里原先操作的 scriptRequests 从未被写入，是死代码
+                            Unit
                         }
                         is ScriptAction.Response -> {
                             // 脚本对 App 请求的响应：完成挂起的 Deferred

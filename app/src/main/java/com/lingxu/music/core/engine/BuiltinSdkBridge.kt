@@ -20,6 +20,8 @@ import com.whl.quickjs.wrapper.JSFunction
 import com.whl.quickjs.wrapper.JSObject
 import com.whl.quickjs.wrapper.QuickJSContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -381,13 +383,17 @@ class BuiltinSdkBridge(context: Context) {
         limit: Int = 30,
     ): SearchResult {
         if (source == "all") {
-            // 并发搜索全部内置源
+            // 并发搜索全部内置源（逐个跑时最坏要等 5×单源超时）
             val sources = listOf("kw", "kg", "tx", "wy", "mg")
-            val results = sources.map { s ->
-                runCatching { search(text, page, s, limit) }
-                    .getOrElse {
-                        SearchResult(1, limit, s, emptyList(), 0)
+            val results = kotlinx.coroutines.coroutineScope {
+                sources.map { s ->
+                    async {
+                        runCatching { search(text, page, s, limit) }
+                            .getOrElse {
+                                SearchResult(1, limit, s, emptyList(), 0)
+                            }
                     }
+                }.awaitAll()
             }
             val merged = results.flatMap { it.list }
             return SearchResult(

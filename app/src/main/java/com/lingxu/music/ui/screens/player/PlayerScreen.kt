@@ -93,7 +93,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
             Spacer(Modifier.height(12.dp))
 
             TrackCover(
-                url = state.coverUrl,
+                // coverUrl 是经 coverLoader 兜底拉到的；未就绪时先用搜索结果里的 picUrl
+                url = state.coverUrl ?: state.current?.meta?.picUrl,
                 size = coverSize,
                 corner = CoverCorner,
                 modifier = Modifier.shadow(14.dp, RoundedCornerShape(CoverCorner)),
@@ -277,7 +278,7 @@ private fun LyricView(
     BoxWithConstraints(modifier) {
         val edgePad = maxHeight * 0.4f
         val edgePadPx = with(LocalDensity.current) { edgePad.roundToPx() }
-        LaunchedEffect(currentIndex, edgePadPx) {
+        LaunchedEffect(currentIndex, edgePadPx, state.current?.id) {
             if (currentIndex >= 0) {
                 // +1 跳过首部占位 item
                 listState.animateScrollToItem(currentIndex + 1, scrollOffset = -edgePadPx)

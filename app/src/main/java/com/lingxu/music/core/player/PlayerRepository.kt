@@ -184,16 +184,29 @@ class PlayerRepository(context: Context) {
      * 恢复上次播放的队列（不自动播放）。
      * @param autoPlay 为 true 时直接开始播放（对应设置项 player.startupAutoPlay）
      */
-    fun restoreLastPlay(state: PlayState, autoPlay: Boolean, startPositionMs: Long = 0L) {
-        if (state.queue.isEmpty() || state.current == null) return
-        val index = state.queueIndex.coerceIn(0, state.queue.lastIndex)
+    fun restoreLastPlay(saved: PlayState, autoPlay: Boolean, startPositionMs: Long = 0L) {
+        if (saved.queue.isEmpty() || saved.current == null) return
+        val index = saved.queueIndex.coerceIn(0, saved.queue.lastIndex)
+        // 只恢复队列相关字段：不能用整份持久化状态覆盖（会把 playMode/error/coverUrl 等一起带回旧值，
+        // 例如与刚恢复的 settings.playMode 不一致）
         _state.update {
-            state.copy(isPlaying = false, positionMs = startPositionMs, durationMs = 0L)
+            it.copy(
+                queue = saved.queue,
+                queueIndex = index,
+                current = saved.queue[index],
+                positionMs = startPositionMs,
+                durationMs = 0L,
+                isPlaying = false,
+                loading = false,
+                lyricLines = emptyList(),
+                error = null,
+            )
         }
-        player.setMediaItems(state.queue.map { it.toMediaItem() }, index, startPositionMs)
+        player.setMediaItems(saved.queue.map { it.toMediaItem() }, index, startPositionMs)
         player.prepare()
         if (autoPlay) player.play()
-        loadLyric(state.queue[index])
+        loadLyric(saved.queue[index])
+        loadCover(saved.queue[index])
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -247,7 +260,16 @@ class PlayerRepository(context: Context) {
                 }
                 val index = player.currentMediaItemIndex
                 val current = _state.value.queue.getOrNull(index)
-                val wasPlaying = _state.value.isPlaying
+                // 自动/循环转场说明上层本就在播；不能只看 isPlaying（转场瞬间可能已是 false）
+                val shouldPlay = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT ||
+                    _state.value.isPlaying
+                // 单曲播放：放完当前这首就停（原版 'single' 在 getNextPlayMusicInfo 落到 default → null）
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO &&
+                    _state.value.playMode == PlayMode.SINGLE
+                ) {
+                    player.pause()
+                }
                 _state.update {
                     it.copy(
                         queueIndex = index,
@@ -279,7 +301,7 @@ class PlayerRepository(context: Context) {
                         runCatching {
                             player.replaceMediaItem(index, resolved.toMediaItem())
                             player.prepare()
-                            if (wasPlaying) player.play()
+                            if (shouldPlay) player.play()
                         }
                     }
                 } else {
@@ -315,17 +337,6 @@ class PlayerRepository(context: Context) {
     fun playQueue(queue: List<MusicInfo>, index: Int) {
         if (queue.isEmpty()) return
         val safeIndex = index.coerceIn(0, queue.lastIndex)
-        _state.update {
-            it.copy(
-                queue = queue,
-                queueIndex = safeIndex,
-                current = queue[safeIndex],
-                lyricLines = emptyList(),
-                positionMs = 0L,
-                durationMs = 0L,
-                error = null,
-            )
-        }
         scope.launch {
             val target = queue[safeIndex]
             val resolved = if (target.meta.filePath.isNullOrBlank()) {
@@ -335,13 +346,23 @@ class PlayerRepository(context: Context) {
                 r
             } else target
             if (resolved.meta.filePath.isNullOrBlank()) {
+                // 解析失败时不要动 state/播放器：否则界面会显示一首其实没在播的歌，
+                // 后续 playAt/next/prev 会拿新队列下标去操作旧播放列表
                 _state.update { it.copy(error = "获取播放链接失败，可尝试换源") }
                 return@launch
             }
-            val updated = _state.value.queue.toMutableList().also { list ->
-                if (safeIndex in list.indices && list[safeIndex].id == resolved.id) list[safeIndex] = resolved
+            val updated = queue.toMutableList().also { it[safeIndex] = resolved }
+            _state.update {
+                it.copy(
+                    queue = updated,
+                    queueIndex = safeIndex,
+                    current = resolved,
+                    lyricLines = emptyList(),
+                    positionMs = 0L,
+                    durationMs = 0L,
+                    error = null,
+                )
             }
-            _state.update { it.copy(queue = updated, current = resolved, error = null) }
             player.setMediaItems(updated.map { it.toMediaItem() }, safeIndex, 0L)
             player.prepare()
             player.play()
@@ -378,6 +399,11 @@ class PlayerRepository(context: Context) {
     fun playAt(index: Int) {
         val queue = _state.value.queue
         if (index !in queue.indices) return
+        if (queue[index].meta.filePath.isNullOrBlank()) {
+            // 尚未解析：先解析再开播，否则会拿空 URI 先报一次源错误
+            playQueue(queue, index)
+            return
+        }
         player.seekTo(index, 0L)
         player.prepare()
         player.play()
@@ -387,7 +413,8 @@ class PlayerRepository(context: Context) {
 
     /**
      * 从队列移除第 index 首。
-     * 移除当前项时切到同下标（即原来的下一首），否则保持当前播放不变。
+     * 移除当前项时跳到同下标（即原来的下一首）；否则只从播放列表里摘掉该项，
+     * 保住当前位置与播放状态（原先无条件 setMediaItems(..., 0L) 会让正在放的歌跳回开头）。
      */
     fun removeFromQueue(index: Int) {
         val state = _state.value
@@ -403,12 +430,11 @@ class PlayerRepository(context: Context) {
             index < state.queueIndex -> state.queueIndex - 1
             else -> state.queueIndex
         }
-        _state.update { it.copy(queue = next, queueIndex = newIndex) }
-        player.setMediaItems(next.map { it.toMediaItem() }, newIndex, 0L)
         if (wasCurrent) {
-            player.prepare()
-            player.play()
-            loadLyric(next[newIndex])
+            playQueue(next, newIndex)
+        } else {
+            _state.update { it.copy(queue = next, queueIndex = newIndex) }
+            runCatching { player.removeMediaItem(index) }
         }
     }
 
@@ -436,12 +462,27 @@ class PlayerRepository(context: Context) {
     }
 
     fun next() {
-        if (player.hasNextMediaItem()) player.seekToNextMediaItem()
+        if (_state.value.queue.isEmpty()) return
+        // 手动切歌在队尾/队首要回绕（原版 playNext/playPrev 会把 single/list 重映射成 listLoop）
+        if (player.shuffleModeEnabled) {
+            if (player.hasNextMediaItem()) player.seekToNextMediaItem() else player.seekTo(0, 0L)
+        } else {
+            val last = _state.value.queue.lastIndex
+            val target = if (player.currentMediaItemIndex < last) player.currentMediaItemIndex + 1 else 0
+            player.seekTo(target, 0L)
+        }
         saveLastPlay()
     }
 
     fun prev() {
-        if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem()
+        if (_state.value.queue.isEmpty()) return
+        if (player.shuffleModeEnabled) {
+            if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem() else player.seekTo(_state.value.queue.lastIndex, 0L)
+        } else {
+            val last = _state.value.queue.lastIndex
+            val target = if (player.currentMediaItemIndex > 0) player.currentMediaItemIndex - 1 else last
+            player.seekTo(target, 0L)
+        }
         saveLastPlay()
     }
 
@@ -464,9 +505,24 @@ class PlayerRepository(context: Context) {
     private fun applyPlayMode(mode: String) {
         _state.update { it.copy(playMode = mode) }
         when (mode) {
-            PlayMode.SINGLE_LOOP -> player.repeatMode = Player.REPEAT_MODE_ONE
-            PlayMode.LIST_LOOP, PlayMode.RANDOM -> player.repeatMode = Player.REPEAT_MODE_ALL
-            else -> player.repeatMode = Player.REPEAT_MODE_OFF
+            PlayMode.SINGLE_LOOP -> {
+                player.repeatMode = Player.REPEAT_MODE_ONE
+                player.shuffleModeEnabled = false
+            }
+            PlayMode.LIST_LOOP -> {
+                player.repeatMode = Player.REPEAT_MODE_ALL
+                player.shuffleModeEnabled = false
+            }
+            // 随机播放此前只设了 REPEAT_MODE_ALL，播放顺序仍是顺序的
+            PlayMode.RANDOM -> {
+                player.repeatMode = Player.REPEAT_MODE_ALL
+                player.shuffleModeEnabled = true
+            }
+            // LIST（顺序播放）与 SINGLE（单曲播放，播完停）都关闭循环；单曲播放的「停」在转场回调里处理
+            else -> {
+                player.repeatMode = Player.REPEAT_MODE_OFF
+                player.shuffleModeEnabled = false
+            }
         }
         player.shuffleModeEnabled = mode == PlayMode.RANDOM
     }

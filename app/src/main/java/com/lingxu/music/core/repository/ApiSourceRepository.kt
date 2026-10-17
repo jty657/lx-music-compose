@@ -60,8 +60,10 @@ class ApiSourceRepository(private val db: AppDatabase) {
             version = meta["version"].orEmpty(),
             allowShowUpdateAlert = true,
         )
-        db.upsertApiSource(apiMeta)
+        // 先写脚本文件再写列表：反过来的话，中间崩溃/被杀会留下「列表里有条目但脚本文件不存在」，
+        // 引擎加载时 getScript() 拿到 null 就静默 return，用户要等 15s 超时才看到提示
         db.saveApiSourceScript(apiMeta.id, script)
+        db.upsertApiSource(apiMeta)
         return db.toInfo(apiMeta)
     }
 

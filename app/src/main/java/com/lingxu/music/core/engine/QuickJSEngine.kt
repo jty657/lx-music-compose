@@ -113,6 +113,7 @@ class QuickJSEngine(
 
     private val key = UUID.randomUUID().toString()
     private var jsContext: QuickJSContext? = null
+    @Volatile
     private var inited = false
     private val thread = HandlerThread("JS-${scriptInfo.name}-${System.currentTimeMillis()}")
     private var handler: Handler? = null
@@ -252,6 +253,13 @@ class QuickJSEngine(
 
     /** 在主线程处理脚本事件（避免与 JS 线程抢锁） */
     private fun handleNativeAction(action: String, data: String) {
+        // 脚本传什么形状的数据都可能（例如 headers 给了数组），这里抛异常会直接崩进程：Handler 里的
+        // 未捕获异常走主线程默认处理。所以统一包一层，失败只记日志。
+        runCatching { dispatchNativeAction(action, data) }
+            .onFailure { Log.w(TAG, "handleNativeAction($action) failed: ${it.message}") }
+    }
+
+    private fun dispatchNativeAction(action: String, data: String) {
         val parsed = runCatching { json.parseToJsonElement(data) }.getOrNull()
         when (action) {
             "init" -> {
@@ -355,6 +363,8 @@ class QuickJSEngine(
     /** 外部响应脚本的 HTTP 请求（由 ScriptAction.Request 触发后调用） */
     fun executeScriptRequest(requestKey: String, url: String, options: ScriptRequestOptions) {
         val job = scope.launch {
+            // 完成后要把 Job 从表里摘掉，否则每次取链/取歌词都会在 map 里留下一份引用
+            invokeOnCompletion { pendingRequests.remove(requestKey) }
             runCatching {
                 HttpClient.instance.fetch(url, options)
             }.onSuccess { resp ->
@@ -372,6 +382,9 @@ class QuickJSEngine(
                     buildJsonObject {
                         put("statusCode", JsonPrimitive(resp.statusCode))
                         put("statusMessage", JsonPrimitive(resp.statusMessage))
+                        // 原版响应形状里脚本会用到 ok/url（例如 if (!resp.ok) throw）
+                        put("ok", JsonPrimitive(resp.statusCode in 200..299))
+                        put("url", JsonPrimitive(url))
                         put("headers", buildJsonObject {
                             resp.headers.forEach { (k, v) -> put(k, JsonPrimitive(v)) }
                         })
