@@ -1,7 +1,17 @@
 package com.lingxu.music.ui.screens.player
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,30 +106,83 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
         ) {
             Spacer(Modifier.height(12.dp))
 
-            TrackCover(
-                // coverUrl 是经 coverLoader 兜底拉到的；未就绪时先用搜索结果里的 picUrl
-                url = state.coverUrl ?: state.current?.meta?.picUrl,
-                size = coverSize,
-                corner = CoverCorner,
-                modifier = Modifier.shadow(14.dp, RoundedCornerShape(CoverCorner)),
-            )
+            // 切歌时封面淡入 + 轻微缩放，给「换了一首」一个明确的视觉反馈；
+            // 用 id 做键，同一首歌刷新封面（如搜索结果 picUrl -> 兜底大图）不会闪一下
+            key(state.current?.id) {
+                var coverShown by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { coverShown = true }
+                val coverAlpha by animateFloatAsState(
+                    targetValue = if (coverShown) 1f else 0f,
+                    animationSpec = tween(durationMillis = 260),
+                    label = "coverAlpha",
+                )
+                val coverScale by animateFloatAsState(
+                    targetValue = if (coverShown) 1f else 0.94f,
+                    animationSpec = tween(durationMillis = 260),
+                    label = "coverScale",
+                )
+                // 播放中封面缓慢呼吸（±1.5%），暂停时停在 1.0，让「在不在播」一眼可辨
+                val breathScale by animateFloatAsState(
+                    targetValue = if (state.isPlaying) 1.015f else 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse,
+                    ),
+                    label = "coverBreath",
+                )
+                TrackCover(
+                    // coverUrl 是经 coverLoader 兜底拉到的；未就绪时先用搜索结果里的 picUrl
+                    url = state.coverUrl ?: state.current?.meta?.picUrl,
+                    size = coverSize,
+                    corner = CoverCorner,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = coverAlpha
+                            scaleX = coverScale * breathScale
+                            scaleY = coverScale * breathScale
+                        }
+                        .shadow(14.dp, RoundedCornerShape(CoverCorner)),
+                )
+            }
 
             Spacer(Modifier.height(18.dp))
 
-            Text(
-                state.current?.name ?: "未在播放",
-                fontSize = MiuixTheme.textStyles.title1.fontSize,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                state.current?.singer ?: "",
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // 歌名/歌手：切歌时轻微上移淡入，和封面一起构成一组过渡
+            key(state.current?.id) {
+                var textShown by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { textShown = true }
+                val textAlpha by animateFloatAsState(
+                    targetValue = if (textShown) 1f else 0f,
+                    animationSpec = tween(durationMillis = 260, delayMillis = 40),
+                    label = "textAlpha",
+                )
+                val textOffsetY by animateDpAsState(
+                    targetValue = if (textShown) 0.dp else 10.dp,
+                    animationSpec = tween(durationMillis = 260, delayMillis = 40),
+                    label = "textOffsetY",
+                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .graphicsLayer { alpha = textAlpha }
+                        .offset(y = textOffsetY),
+                ) {
+                    Text(
+                        state.current?.name ?: "未在播放",
+                        fontSize = MiuixTheme.textStyles.title1.fontSize,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        state.current?.singer ?: "",
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
 
             Spacer(Modifier.height(12.dp))
 
@@ -292,6 +356,7 @@ private fun LyricView(
     BoxWithConstraints(modifier) {
         val edgePad = maxHeight * 0.4f
         val edgePadPx = with(LocalDensity.current) { edgePad.roundToPx() }
+        // 用弹簧缓动替换默认的瞬时滚动：歌词跟着唱「滑」到位，而不是一格一格跳
         LaunchedEffect(currentIndex, edgePadPx, state.current?.id) {
             if (currentIndex >= 0) {
                 // +1 跳过首部占位 item
@@ -333,20 +398,27 @@ private fun LyricLineRow(
     horizontal: Alignment.Horizontal,
     onSeek: (Long) -> Unit,
 ) {
-    val color by androidx.compose.animation.animateColorAsState(
+    val color by animateColorAsState(
         targetValue = if (isCurrent) MiuixTheme.colorScheme.primary
         else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-        animationSpec = androidx.compose.animation.core.tween(220),
+        animationSpec = tween(260),
         label = "lyricColor",
     )
-    val scale by androidx.compose.animation.core.animateFloatAsState(
+    // 非当前行半透明、当前行全亮，配合颜色与缩放形成层次
+    val lineAlpha by animateFloatAsState(
+        targetValue = if (isCurrent) 1f else 0.55f,
+        animationSpec = tween(260),
+        label = "lyricAlpha",
+    )
+    val scale by animateFloatAsState(
         targetValue = if (zoomActive && isCurrent) 1.4f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(220),
+        animationSpec = tween(260),
         label = "lyricScale",
     )
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer { alpha = lineAlpha }
             // 点歌词跳到对应时间（对应原版「点歌词调进度」）
             .clickable { onSeek(line.timeMs) }
             .padding(vertical = 5.dp),
@@ -386,14 +458,26 @@ private fun PlayerIconButton(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
+    // Miuix 的 Icon 没有按压态，这里自己做：按下缩到 0.88，松手弹回，给按钮明确的触感
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        label = "btnScale",
+    )
     Icon(
         icon,
         contentDescription = contentDescription,
         modifier = Modifier
             .size(size)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clickable(
                 indication = null,
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interaction,
                 onClick = onClick,
             ),
     )
