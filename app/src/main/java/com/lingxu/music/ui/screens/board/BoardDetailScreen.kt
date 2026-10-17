@@ -70,11 +70,11 @@ fun BoardDetailScreen(
     var requestId by remember { mutableStateOf(0) }
 
     fun load(next: Int) {
-        val id = ++requestId
+        val reqId = ++requestId
         loading = true
         error = null
         viewModel.load(source, bangId, next) { list, message ->
-            if (id != requestId) return@load
+            if (reqId != requestId) return@load
             error = message
             musicList = if (next == 1) list else musicList + list.filterNot { it.id in musicList.map { m -> m.id } }
             hasMore = list.isNotEmpty()

@@ -67,11 +67,12 @@ fun SongListDetailScreen(
     var requestId by remember { mutableStateOf(0) }
 
     fun load(next: Int) {
-        val id = ++requestId
+        // 不要命名为 id：会遮蔽本页的 id（歌单标识）参数
+        val reqId = ++requestId
         loading = true
         error = null
         viewModel.load(source, id, next) { list, message ->
-            if (id != requestId) return@load
+            if (reqId != requestId) return@load
             error = message
             musicList = if (next == 1) list else musicList + list.filterNot { it.id in musicList.map { m -> m.id } }
             hasMore = list.isNotEmpty()

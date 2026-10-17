@@ -65,11 +65,11 @@ fun SongListScreen(
     var requestId by remember { mutableStateOf(0) }
 
     fun load(next: Int) {
-        val id = ++requestId
+        val reqId = ++requestId
         loading = true
         error = null
         viewModel.load(source, sorts.getOrNull(sortIndex)?.second ?: "", selectedTag, next) { result, message ->
-            if (id != requestId) return@load
+            if (reqId != requestId) return@load
             error = message
             list = if (next == 1) result else list + result.filterNot { it.id in list.map { x -> x.id } }
             hasMore = result.isNotEmpty()

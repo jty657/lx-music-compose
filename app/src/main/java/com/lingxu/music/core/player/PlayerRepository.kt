@@ -329,9 +329,9 @@ class PlayerRepository(context: Context) {
         scope.launch {
             val target = queue[safeIndex]
             val resolved = if (target.meta.filePath.isNullOrBlank()) {
-                loading = true
+                _state.update { it.copy(loading = true) }
                 val r = runCatching { resolvePlayInfo(target) }.getOrDefault(target)
-                loading = false
+                _state.update { it.copy(loading = false) }
                 r
             } else target
             if (resolved.meta.filePath.isNullOrBlank()) {
