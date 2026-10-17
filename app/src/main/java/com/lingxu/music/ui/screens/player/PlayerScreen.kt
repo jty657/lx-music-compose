@@ -52,6 +52,8 @@ import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Favorites
+import top.yukonga.miuix.kmp.icon.extended.FavoritesFill
 import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.icon.extended.Pause
@@ -73,6 +75,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val showLrcTranslation by LxApp.app.settings.showLyricTranslation.collectAsState(initial = true)
     val showLrcRoma by LxApp.app.settings.showLyricRoma.collectAsState(initial = false)
     val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
+    val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
     var showMore by remember { mutableStateOf(false) }
 
     // 拖动进度条时，用本地值展示，避免被 500ms 的位置更新覆盖导致回弹
@@ -127,6 +130,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 showTranslation = showLrcTranslation,
                 showRoma = showLrcRoma,
                 centered = lyricAlign == "center",
+                onSeek = { viewModel.seekTo(it) },
             )
 
             state.error?.let { err ->
@@ -194,11 +198,20 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
                     Spacer(Modifier.height(10.dp))
 
-                    // 次控制：队列 / 分享 / 设置
+                    // 次控制：收藏 / 队列 / 分享 / 设置
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(28.dp),
                     ) {
+                        PlayerIconButton(
+                            if (state.current?.id in favoriteIds) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
+                            26.dp,
+                            "收藏",
+                        ) {
+                            state.current?.let { music ->
+                                scope.launch { LxApp.app.favoritesRepository.toggle(music) }
+                            }
+                        }
                         PlayerIconButton(MiuixIcons.Layers, 26.dp, "播放队列") {
                             if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
                         }
@@ -259,6 +272,7 @@ private fun LyricView(
     showTranslation: Boolean = true,
     showRoma: Boolean = false,
     centered: Boolean = false,
+    onSeek: (Long) -> Unit = {},
 ) {
     val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
     if (state.lyricLines.isEmpty()) {
@@ -299,6 +313,7 @@ private fun LyricView(
                     showRoma = showRoma,
                     showTranslation = showTranslation,
                     horizontal = horizontal,
+                    onSeek = onSeek,
                 )
             }
             item { Spacer(Modifier.height(edgePad)) }
@@ -316,6 +331,7 @@ private fun LyricLineRow(
     showRoma: Boolean,
     showTranslation: Boolean,
     horizontal: Alignment.Horizontal,
+    onSeek: (Long) -> Unit,
 ) {
     val color by androidx.compose.animation.animateColorAsState(
         targetValue = if (isCurrent) MiuixTheme.colorScheme.primary
@@ -331,6 +347,8 @@ private fun LyricLineRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // 点歌词跳到对应时间（对应原版「点歌词调进度」）
+            .clickable { onSeek(line.timeMs) }
             .padding(vertical = 5.dp),
         horizontalAlignment = horizontal,
     ) {

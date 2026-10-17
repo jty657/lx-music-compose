@@ -44,6 +44,15 @@ class HttpClient {
         cacheDir = dir
     }
 
+    /** 当前磁盘缓存占用（字节） */
+    fun diskCacheSizeBytes(): Long = runCatching { client.cache?.size() ?: 0L }.getOrDefault(0L)
+
+    /** 清空磁盘缓存（封面等） */
+    fun clearDiskCache() {
+        runCatching { client.cache?.evictAll() }
+        runCatching { client.cache?.delete() }
+    }
+
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)

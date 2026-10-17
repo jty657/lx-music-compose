@@ -347,6 +347,20 @@ fun SettingScreen(
 
         Spacer(Modifier.size(12.dp))
 
+        // ============ 其他 ============
+        SectionTitle("其他")
+        ArrowPreference(
+            title = "清除缓存",
+            summary = "清理已缓存的封面图片等网络数据",
+            onClick = {
+                val size = com.lingxu.music.core.request.HttpClient.instance.diskCacheSizeBytes()
+                com.lingxu.music.core.request.HttpClient.instance.clearDiskCache()
+                toast = if (size > 0) "已清理 ${size / 1024} KB 缓存" else "没有可清理的缓存"
+            },
+        )
+
+        Spacer(Modifier.size(12.dp))
+
         // ============ 关于 ============
         SectionTitle("关于")
         val appContext = androidx.compose.ui.platform.LocalContext.current
