@@ -228,6 +228,9 @@ class PlayerRepository(context: Context) {
     /** 播放模式持久化回调（由 App 注入） */
     var onPlayModeChange: ((String) -> Unit)? = null
 
+    /** 不喜欢列表匹配（由 App 注入）：命中则切歌时跳过 */
+    var dislikeMatcher: ((MusicInfo) -> Boolean)? = null
+
     init {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -281,6 +284,11 @@ class PlayerRepository(context: Context) {
                 }
                 current?.let { loadLyric(it) }
                 current?.let { loadCover(it) }
+                // 命中不喜欢列表：跳到下一首未命中的歌（对应原版 dislikeList）
+                if (current != null && dislikeMatcher?.invoke(current) == true) {
+                    skipDisliked()
+                    return
+                }
                 if (current != null && current.meta.filePath.isNullOrBlank()) {
                     // 队列是按需解析 URL 的：跳到尚未解析的歌（用户快速切歌）时先补解析再继续，
                     // 否则播放器会拿着空 URI 直接报错。
@@ -327,8 +335,25 @@ class PlayerRepository(context: Context) {
         }
     }
 
-    /**
-     * 播放指定队列。
+    /** 命中不喜欢列表时跳到下一首；整队列一圈都命中则暂停 */
+    private fun skipDisliked() {
+        val matcher = dislikeMatcher ?: return
+        val queue = _state.value.queue
+        if (queue.isEmpty()) return
+        var index = player.currentMediaItemIndex
+        repeat(queue.size) {
+            val info = queue.getOrNull(index)
+            if (info == null || !matcher(info)) {
+                if (index != player.currentMediaItemIndex) player.seekTo(index, 0L)
+                return
+            }
+            index = (index + 1) % queue.size
+        }
+        // 所有歌都被标记：直接停
+        player.pause()
+    }
+
+    /** 播放指定队列。
      *
      * 只解析「当前这首」再开播，然后后台预取下一首；其余保持未解析、切到时再按需解析。
      * 原先各列表页会先 `queue.map { resolvePlayInfo(it) }` 串行解析整队列

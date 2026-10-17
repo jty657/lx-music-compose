@@ -10,6 +10,7 @@ import com.lingxu.music.core.repository.FavoritesRepository
 import com.lingxu.music.core.repository.MyListsRepository
 import com.lingxu.music.core.repository.MusicRepository
 import com.lingxu.music.core.repository.BackupRepository
+import com.lingxu.music.core.repository.DislikeRepository
 import com.lingxu.music.core.repository.SettingsRepository
 import com.lingxu.music.core.repository.ShareRepository
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +37,8 @@ class LxApp : Application() {
         private set
     lateinit var backupRepository: BackupRepository
         private set
+    lateinit var dislikeRepository: DislikeRepository
+        private set
     lateinit var shareRepository: ShareRepository
         private set
 
@@ -61,6 +64,7 @@ class LxApp : Application() {
         favoritesRepository = FavoritesRepository(database)
         myListsRepository = MyListsRepository(database)
         backupRepository = BackupRepository(this, database)
+        dislikeRepository = DislikeRepository(this)
         // 备份是直接写 db 的，不刷新内存缓存的话下一次写操作会把刚恢复的数据覆盖掉
         backupRepository.onImported = {
             favoritesRepository.reload()
@@ -82,6 +86,8 @@ class LxApp : Application() {
             runCatching { musicRepository.getPicUrl(musicInfo) }.getOrNull()
         }
         playerRepository.lastPlaySaver = { state -> database.saveLastPlay(state) }
+        // 不喜欢列表：命中则切歌时自动跳过
+        playerRepository.dislikeMatcher = { music -> dislikeRepository.isDisliked(music) }
         playerRepository.playInfoLoader = { musicInfo ->
             val url = runCatching { musicRepository.getMusicUrl(musicInfo) }.getOrNull()
             if (url != null) musicInfo.copy(meta = musicInfo.meta.copy(filePath = url)) else musicInfo
@@ -97,6 +103,7 @@ class LxApp : Application() {
             runCatching { myListsRepository.load() }
             // 同理：当前源是内置源时，音源页会显示「自定义音源 0/20」
             runCatching { apiSourceRepository.getAll() }
+            runCatching { dislikeRepository.load() }
             // 恢复播放模式（原版 player.togglePlayMethod）
             playerRepository.restorePlayMode(settings.playMode.first())
             // 恢复上次播放的队列；startupAutoPlay 决定是否直接开播

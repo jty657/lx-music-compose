@@ -68,6 +68,10 @@ fun SettingScreen(
     // 恢复是覆盖式（备份里没有的列表会被删除），先让用户确认
     var showImportConfirm by remember { mutableStateOf(false) }
 
+    // 不喜欢列表编辑
+    var showDislike by remember { mutableStateOf(false) }
+    var newDislike by remember { mutableStateOf("") }
+
     val themeMode by viewModel.themeMode.collectAsState(initial = "system")
     val lang by viewModel.lang.collectAsState(initial = "system")
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
@@ -350,6 +354,11 @@ fun SettingScreen(
         // ============ 其他 ============
         SectionTitle("其他")
         ArrowPreference(
+            title = "不喜欢列表",
+            summary = "命中的歌曲在切歌时自动跳过（格式：歌曲名@歌手，也可只写歌曲名或 @歌手）",
+            onClick = { showDislike = true },
+        )
+        ArrowPreference(
             title = "清除缓存",
             summary = "清理已缓存的封面图片等网络数据",
             onClick = {
@@ -394,6 +403,50 @@ fun SettingScreen(
             }
         }
     }
+    if (showDislike) {
+        val rules by viewModel.dislikeRules.collectAsState()
+        GlassDialog(onDismissRequest = { showDislike = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("不喜欢列表", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = newDislike,
+                    onValueChange = { newDislike = it },
+                    label = { Text("歌曲名@歌手") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.size(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = {
+                        viewModel.addDislike(newDislike)
+                        newDislike = ""
+                    }) { Text("添加") }
+                }
+                Spacer(Modifier.size(8.dp))
+                if (rules.isEmpty()) {
+                    Text(
+                        "暂无规则",
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                } else {
+                    rules.forEach { rule ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text(rule, modifier = Modifier.weight(1f))
+                            Text(
+                                "删除",
+                                color = MiuixTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .clickable { viewModel.removeDislike(rule) }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (showImportConfirm) {
         GlassDialog(onDismissRequest = { showImportConfirm = false }) {
             Column(Modifier.padding(horizontal = 4.dp)) {

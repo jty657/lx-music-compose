@@ -35,6 +35,17 @@ class SettingViewModel : ViewModel() {
     val isSavePlayTime: StateFlow<Boolean> = state(settings.isSavePlayTime, false)
     val isHandleAudioFocus: StateFlow<Boolean> = state(settings.isHandleAudioFocus, true)
 
+    // ============ 不喜欢列表 ============
+    val dislikeRules: StateFlow<List<String>> = state(LxApp.app.dislikeRepository.rules, emptyList())
+
+    fun addDislike(rule: String) {
+        viewModelScope.launch { LxApp.app.dislikeRepository.add(rule) }
+    }
+
+    fun removeDislike(rule: String) {
+        viewModelScope.launch { LxApp.app.dislikeRepository.remove(rule) }
+    }
+
     // ============ 歌词 ============
     val showLyricTranslation: StateFlow<Boolean> = state(settings.showLyricTranslation, true)
     val showLyricRoma: StateFlow<Boolean> = state(settings.showLyricRoma, false)
