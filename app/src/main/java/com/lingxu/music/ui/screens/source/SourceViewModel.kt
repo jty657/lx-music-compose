@@ -36,6 +36,15 @@ class SourceViewModel : ViewModel() {
     var statusMessage by mutableStateOf<String?>(null)
         private set
 
+    /** 状态提示是失败还是成功/进行中（此前一律按 error 色渲染，导入成功也显示成红字） */
+    var statusIsError by mutableStateOf(false)
+        private set
+
+    private fun setStatus(message: String?, isError: Boolean = false) {
+        statusMessage = message
+        statusIsError = isError
+    }
+
     init {
         viewModelScope.launch {
             currentSource = LxApp.app.settings.currentApiSource()
@@ -45,7 +54,7 @@ class SourceViewModel : ViewModel() {
     fun switchSource(apiId: String) {
         currentSource = apiId
         LxApp.app.setApiSource(apiId)
-        statusMessage = if (apiId.startsWith("user_api")) "正在初始化音源…" else null
+        setStatus(if (apiId.startsWith("user_api")) "正在初始化音源…" else null)
         if (apiId.startsWith("user_api")) {
             viewModelScope.launch {
                 // 注意不能在这里直接 awaitInit()：setApiSource 只是往 Main 队列里派发，此时
@@ -58,7 +67,7 @@ class SourceViewModel : ViewModel() {
                         else -> s.message.isNotEmpty()
                     }
                 }
-                statusMessage = if (result.status) null else "音源初始化失败：${result.message}"
+                setStatus(if (result.status) null else "音源初始化失败：${result.message}", isError = !result.status)
             }
         }
     }
@@ -66,11 +75,11 @@ class SourceViewModel : ViewModel() {
     /** 网络导入（对应原版 ScriptImportOnline） */
     fun importFromUrl(url: String) {
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            statusMessage = "无效的 URL"
+            setStatus("无效的 URL", isError = true)
             return
         }
         viewModelScope.launch {
-            statusMessage = "正在下载脚本…"
+            setStatus("正在下载脚本…")
             runCatching {
                 withContext(Dispatchers.IO) {
                     val client = OkHttpClient()
@@ -91,12 +100,12 @@ class SourceViewModel : ViewModel() {
                     }
                     repo.importScript(script)
                 }.onSuccess { info ->
-                    statusMessage = "导入成功：${info.name}"
+                    setStatus("导入成功：${info.name}")
                 }.onFailure { e ->
-                    statusMessage = "导入失败：${e.message}"
+                    setStatus("导入失败：${e.message}", isError = true)
                 }
             }.onFailure { e ->
-                statusMessage = "下载失败：${e.message}"
+                setStatus("下载失败：${e.message}", isError = true)
             }
         }
     }
@@ -104,7 +113,7 @@ class SourceViewModel : ViewModel() {
     /** 文件导入（对应原版 ScriptImportExport） */
     fun importFromFile(uri: Uri) {
         viewModelScope.launch {
-            statusMessage = "正在读取文件…"
+            setStatus("正在读取文件…")
             runCatching {
                 withContext(Dispatchers.IO) {
                     val resolver = LxApp.app.contentResolver
@@ -123,12 +132,12 @@ class SourceViewModel : ViewModel() {
                     }
                     repo.importScript(script)
                 }.onSuccess { info ->
-                    statusMessage = "导入成功：${info.name}"
+                    setStatus("导入成功：${info.name}")
                 }.onFailure { e ->
-                    statusMessage = "导入失败：${e.message}"
+                    setStatus("导入失败：${e.message}", isError = true)
                 }
             }.onFailure { e ->
-                statusMessage = "读取文件失败：${e.message}"
+                setStatus("读取文件失败：${e.message}", isError = true)
             }
         }
     }
@@ -139,7 +148,7 @@ class SourceViewModel : ViewModel() {
             if (currentSource == id) {
                 switchSource("kw")
             }
-            statusMessage = "已删除"
+            setStatus("已删除")
         }
     }
 }

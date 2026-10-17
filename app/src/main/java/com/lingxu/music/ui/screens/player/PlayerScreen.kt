@@ -200,7 +200,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         horizontalArrangement = Arrangement.spacedBy(28.dp),
                     ) {
                         PlayerIconButton(MiuixIcons.Layers, 26.dp, "播放队列") {
-                            navigator.push(Screen.PlayQueue)
+                            if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
                         }
                         PlayerIconButton(MiuixIcons.Share, 26.dp, "分享") {
                             state.current?.let { music ->

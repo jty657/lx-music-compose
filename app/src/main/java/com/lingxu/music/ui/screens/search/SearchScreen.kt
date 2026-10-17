@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.TextFieldState
@@ -108,12 +109,12 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
 
         Spacer(Modifier.height(8.dp))
 
-        // 音源选择
-        Row(
+        // 音源选择（横向滚动：6 个按钮挤在固定 Row 里会溢出屏幕）
+        LazyRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            sources.forEach { source ->
+            items(sources) { source ->
                 Button(
                     onClick = { selectedSource = source },
                 ) {

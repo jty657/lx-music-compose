@@ -65,6 +65,9 @@ fun SettingScreen(
         }
     }
 
+    // 恢复是覆盖式（备份里没有的列表会被删除），先让用户确认
+    var showImportConfirm by remember { mutableStateOf(false) }
+
     val themeMode by viewModel.themeMode.collectAsState(initial = "system")
     val lang by viewModel.lang.collectAsState(initial = "system")
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
@@ -333,13 +336,13 @@ fun SettingScreen(
         SectionTitle("同步、备份与恢复")
         ArrowPreference(
             title = "导出配置",
-            summary = "把设置、收藏、我的列表导出为 JSON 文件",
+            summary = "把收藏与我的列表导出为 JSON 文件（不含设置与音源脚本）",
             onClick = { exportLauncher.launch(LxApp.app.backupRepository.defaultFileName()) },
         )
         ArrowPreference(
             title = "导入配置",
-            summary = "从 JSON 文件恢复设置与列表",
-            onClick = { importLauncher.launch(arrayOf("application/json", "*/*")) },
+            summary = "从 JSON 文件恢复收藏与我的列表（会覆盖当前数据）",
+            onClick = { showImportConfirm = true },
         )
 
         Spacer(Modifier.size(12.dp))
@@ -377,6 +380,28 @@ fun SettingScreen(
             }
         }
     }
+    if (showImportConfirm) {
+        GlassDialog(onDismissRequest = { showImportConfirm = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("导入配置", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    "将用备份文件覆盖当前的收藏与我的列表；备份里没有的列表会被删除。",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { showImportConfirm = false }) { Text("取消") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        showImportConfirm = false
+                        importLauncher.launch(arrayOf("application/json", "*/*"))
+                    }) { Text("继续") }
+                }
+            }
+        }
+    }
+
     if (showTimeoutExit) {
         GlassDialog(onDismissRequest = { showTimeoutExit = false }) {
             Column(Modifier.padding(horizontal = 4.dp)) {

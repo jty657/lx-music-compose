@@ -379,9 +379,17 @@ private fun NavItems(navigator: Navigator) {
         Triple(Screen.Setting, MiuixIcons.Settings, "设置"),
     )
     NavigationBar {
+        // 二级页面没有自己的 tab：映射到所属 tab，避免底栏 5 个全不高亮
+        val currentTab = when (current) {
+            is Screen.Search -> Screen.Search()
+            is Screen.Favorite -> Screen.Favorite
+            is Screen.Source -> Screen.Source
+            is Screen.Setting -> Screen.Setting
+            else -> Screen.Home
+        }
         items.forEach { (screen, icon, label) ->
             NavigationBarItem(
-                selected = if (screen is Screen.Search) current is Screen.Search else current == screen,
+                selected = currentTab == screen,
                 onClick = {
                     navigator.backStack.clear()
                     navigator.backStack.add(screen)

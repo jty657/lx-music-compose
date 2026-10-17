@@ -2,6 +2,8 @@ package com.lingxu.music.ui.screens.source
 
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import com.lingxu.music.ui.components.GlassDialog
 import android.net.Uri
@@ -29,11 +31,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.core.model.SourceConst
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
+import com.lingxu.music.ui.navigation.LocalNavigator
 
 /** 音源管理页：内置音源 + 自定义音源，支持网络导入与文件导入 */
 @Composable
@@ -41,6 +47,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     val userApis by viewModel.userApis.collectAsState()
     val currentSource = viewModel.currentSource
 
+    val navigator = LocalNavigator.current
     var importUrl by remember { mutableStateOf("") }
     var showUrlInput by remember { mutableStateOf(false) }
     var deletingId by remember { mutableStateOf<String?>(null) }
@@ -53,11 +60,30 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
-            Text(
-                "音源管理",
-                fontSize = MiuixTheme.textStyles.title1.fontSize,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            )
+            ) {
+                // 从首页卡片 push 进来时是二级页，需要可见的返回入口
+                if (navigator.backStack.size > 1) {
+                    Icon(
+                        MiuixIcons.Back,
+                        contentDescription = "返回",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                                onClick = { navigator.pop() },
+                            ),
+                    )
+                    Spacer(Modifier.size(8.dp))
+                }
+                Text(
+                    "音源管理",
+                    fontSize = MiuixTheme.textStyles.title1.fontSize,
+                )
+            }
         }
 
         Column(
@@ -136,9 +162,14 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             }
         }
 
-        // 状态提示
+        // 状态提示（成功/进行中用次要色，只有失败才是红字）
         viewModel.statusMessage?.let { msg ->
-            Text(msg, color = MiuixTheme.colorScheme.error, fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Text(
+                msg,
+                color = if (viewModel.statusIsError) MiuixTheme.colorScheme.error
+                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+            )
         }
         }
     }
