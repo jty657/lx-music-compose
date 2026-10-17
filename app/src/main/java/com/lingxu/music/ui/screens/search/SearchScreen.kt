@@ -18,7 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -203,7 +205,10 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         val results = viewModel.results
         val songLists = viewModel.songLists
         if (songLists.isNotEmpty()) {
-            LazyColumn(Modifier.weight(1f)) {
+            val songListState = rememberLazyListState()
+            // 滚到接近底部时自动加载下一页（留 4 项余量，用户不必伸手点按钮）
+            AutoLoadMore(songListState, viewModel.hasMore, viewModel.loading) { viewModel.loadMore() }
+            LazyColumn(state = songListState, modifier = Modifier.weight(1f)) {
                 items(songLists, key = { "${it.source}_${it.id}" }) { item ->
                     GlassSurface(
     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -234,12 +239,27 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                         ) { Text(if (viewModel.loading) "加载中…" else "加载更多") }
                     }
                 }
+                // 自动加载失败时给一个可点的重试入口，否则用户会一直卡在列表底部
+                viewModel.errorMessage?.let { err ->
+                    item(key = "__load_error__") {
+                        Text(
+                            err,
+                            color = MiuixTheme.colorScheme.error,
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.loadMore() }
+                                .padding(vertical = 8.dp),
+                        )
+                    }
+                }
             }
             return@Column
         }
 
         val resultState = rememberLazyListState()
         com.lingxu.music.ui.components.ReportScrollForMiniBar(resultState)
+        AutoLoadMore(resultState, viewModel.hasMore, viewModel.loading) { viewModel.loadMore() }
         LazyColumn(state = resultState) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
@@ -264,6 +284,19 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     ) {
                         Text(if (viewModel.loading) "加载中…" else "加载更多")
                     }
+                }
+            }
+            viewModel.errorMessage?.let { err ->
+                item(key = "__load_error__") {
+                    Text(
+                        err,
+                        color = MiuixTheme.colorScheme.error,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.loadMore() }
+                            .padding(vertical = 8.dp),
+                    )
                 }
             }
         }
@@ -329,6 +362,27 @@ private fun SearchResultCard(
                         onClick = onToggleFavorite,
                     ),
             )
+        }
+    }
+}
+
+/** 滚到接近底部（留 4 项余量）时自动触发加载下一页 */
+@Composable
+private fun AutoLoadMore(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    hasMore: Boolean,
+    loading: Boolean,
+    onLoadMore: () -> Unit,
+) {
+    LaunchedEffect(listState, hasMore, loading) {
+        snapshotFlow {
+            val visible = listState.layoutInfo.visibleItemsInfo
+            val last = visible.lastOrNull()?.index ?: 0
+            last to listState.layoutInfo.totalItemsCount
+        }.collect { (last, total) ->
+            if (hasMore && !loading && total > 0 && last >= total - 4) {
+                onLoadMore()
+            }
         }
     }
 }

@@ -35,6 +35,13 @@ COMPOSE_EXTENSIONS = {
     "sp": "androidx.compose.ui.unit.sp",
 }
 
+# Compose 顶层函数：名字太短，极易漏 import，而 selfcheck 默认规则拦不到
+COMPOSE_TOPLEVEL = {
+    "key": "androidx.compose.runtime.key",
+    "snapshotFlow": "androidx.compose.runtime.snapshotFlow",
+    "rememberSaveable": "androidx.compose.runtime.saveable.rememberSaveable",
+}
+
 # 项目自有类型：用了简化名就必须 import（云端编译才报，坑过多次）
 PROJECT_SYMBOLS = {
     "LxApp": "com.lingxu.music.LxApp",
@@ -157,6 +164,15 @@ def check_file(p: pathlib.Path, fields: dict[str, set[str]]) -> list[str]:
         if re.search(r"\." + name + r"\s*[( \n]", s) or re.search(r"\d+\." + name + r"\b", s) or re.search(r"\." + name + r"\b", s):
             if f"import {fqcn}\n" not in s:
                 issues.append(f"{rel} 使用了 .{name} 但未 import {fqcn}")
+
+    # 3d) Compose 常用顶层函数：selfcheck 曾漏掉 `key(`，云端才报 Unresolved reference
+    for sym, fqcn in COMPOSE_TOPLEVEL.items():
+        used = re.search(r"(?<![\w.])key\s*\(".replace("key", sym), s)
+        if not used:
+            continue
+        if f"import {fqcn}\n" in s:
+            continue
+        issues.append(f"{rel} 使用了 {sym}(...) 但未 import {fqcn}")
 
     # 4c) 页面内禁止 drawBackdrop：layerBackdrop 子树里出现 drawBackdrop 会自采样递归，
     #     渲染树无限递归 -> RenderThread 栈溢出闪退（SIGSEGV, 512 帧）。只有 AppRoot 的
