@@ -127,14 +127,19 @@ class MyListsRepository(private val db: AppDatabase) {
     /**
      * 覆盖写入在线列表的同步结果并刷新更新时间（对应原版 core/syncSourceList.ts）
      */
-    suspend fun overwriteOnlineMusics(listId: String, musics: List<MusicInfo>): Int {
-        if (musics.isEmpty()) return 0
-        saveMusics(listId, musics)
+    suspend fun overwriteOnlineMusics(listId: String, musics: List<MusicInfo>): Int = mutex.withLock {
+        if (musics.isEmpty()) return@withLock 0
+        saveMusicsLocked(listId, musics)
         persist(_lists.value.map { if (it.id == listId) it.copy(locationUpdateTime = System.currentTimeMillis()) else it })
-        return musics.size
+        musics.size
     }
 
-    suspend fun saveMusics(listId: String, musics: List<MusicInfo>) {
+    suspend fun saveMusics(listId: String, musics: List<MusicInfo>) = mutex.withLock {
+        saveMusicsLocked(listId, musics)
+    }
+
+    /** 不带锁的实现：调用方必须已持有 mutex（Mutex 不可重入） */
+    private suspend fun saveMusicsLocked(listId: String, musics: List<MusicInfo>) {
         ensureLoaded()
         val existing = db.getPlaylistMusics(listId)
         val items = musics.mapIndexed { index, music ->
@@ -146,35 +151,35 @@ class MyListsRepository(private val db: AppDatabase) {
     }
 
     /** 追加歌曲（'top' 置顶，否则追加到末尾；按 id 去重，对应原版 listMusicAdd） */
-    suspend fun addMusics(listId: String, musics: List<MusicInfo>, location: String = "bottom") {
+    suspend fun addMusics(listId: String, musics: List<MusicInfo>, location: String = "bottom") = mutex.withLock {
         ensureLoaded()
         val current = getMusics(listId).toMutableList()
         val existingIds = current.map { it.id }.toSet()
         val fresh = musics.filterNot { it.id in existingIds }
         if (location == "top") current.addAll(0, fresh) else current.addAll(fresh)
-        saveMusics(listId, current)
+        saveMusicsLocked(listId, current)
     }
 
-    suspend fun removeMusics(listId: String, ids: List<String>) {
+    suspend fun removeMusics(listId: String, ids: List<String>) = mutex.withLock {
         ensureLoaded()
         val next = getMusics(listId).filterNot { it.id in ids }
-        saveMusics(listId, next)
+        saveMusicsLocked(listId, next)
     }
 
-    suspend fun clearMusics(listId: String) {
+    suspend fun clearMusics(listId: String) = mutex.withLock {
         ensureLoaded()
-        saveMusics(listId, emptyList())
+        saveMusicsLocked(listId, emptyList())
     }
 
     /** 列表内歌曲移动位置（对应原版 updateListMusicPosition） */
-    suspend fun moveMusic(listId: String, id: String, position: Int) {
+    suspend fun moveMusic(listId: String, id: String, position: Int) = mutex.withLock {
         ensureLoaded()
         val current = getMusics(listId).toMutableList()
         val index = current.indexOfFirst { it.id == id }
-        if (index < 0) return
+        if (index < 0) return@withLock
         val item = current.removeAt(index)
         current.add(position.coerceIn(0, current.size), item)
-        saveMusics(listId, current)
+        saveMusicsLocked(listId, current)
     }
 
     private suspend fun persist(list: List<Playlist>) {

@@ -63,14 +63,19 @@ fun SongListDetailScreen(
         it.name.contains(keyword, ignoreCase = true) || it.singer.contains(keyword, ignoreCase = true)
     }
 
+    // 请求代次：旧请求的结果会被丢弃，且不再用 loading 早退（那样会吞掉新请求）
+    var requestId by remember { mutableStateOf(0) }
+
     fun load(next: Int) {
-        if (loading) return
+        val id = ++requestId
         loading = true
         error = null
-        viewModel.load(source, id, next) { list ->
+        viewModel.load(source, id, next) { list, message ->
+            if (id != requestId) return@load
+            error = message
             musicList = if (next == 1) list else musicList + list.filterNot { it.id in musicList.map { m -> m.id } }
             hasMore = list.isNotEmpty()
-            page = next
+            if (message == null) page = next
             loading = false
         }
     }
@@ -128,7 +133,14 @@ fun SongListDetailScreen(
         }
 
         error?.let {
-            Text(it, color = MiuixTheme.colorScheme.error, fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Text(
+                "$it（点击重试）",
+                color = MiuixTheme.colorScheme.error,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                modifier = Modifier
+                    .clickable { load(1) }
+                    .padding(vertical = 4.dp),
+            )
         }
 
         LazyColumn(Modifier.weight(1f)) {
@@ -175,11 +187,12 @@ fun SongListDetailScreen(
 }
 
 class SongListDetailViewModel : ViewModel() {
-    fun load(source: String, id: String, page: Int, onResult: (List<MusicInfo>) -> Unit) {
+    fun load(source: String, id: String, page: Int, onResult: (List<MusicInfo>, String?) -> Unit) {
         viewModelScope.launch {
             runCatching {
                 LxApp.app.musicRepository.getSongListDetail(source, id, page).list
-            }.onSuccess(onResult).onFailure { onResult(emptyList()) }
+            }.onSuccess { onResult(it, null) }
+                .onFailure { onResult(emptyList(), it.message ?: "加载失败") }
         }
     }
 
@@ -187,8 +200,8 @@ class SongListDetailViewModel : ViewModel() {
         viewModelScope.launch {
             runCatching {
                 val index = queue.indexOfFirst { it.id == music.id }.coerceAtLeast(0)
-                val resolved = queue.map { info -> LxApp.app.playerRepository.resolvePlayInfo(info) }
-                LxApp.app.playerRepository.playQueue(resolved, index)
+                // URL 由 playQueue 按需解析（只解析当前这首再开播），不要在这里解析整列表
+                LxApp.app.playerRepository.playQueue(queue, index)
             }
         }
     }
@@ -196,8 +209,7 @@ class SongListDetailViewModel : ViewModel() {
     fun playAll(queue: List<MusicInfo>) {
         viewModelScope.launch {
             runCatching {
-                val resolved = queue.map { info -> LxApp.app.playerRepository.resolvePlayInfo(info) }
-                LxApp.app.playerRepository.playQueue(resolved, 0)
+                LxApp.app.playerRepository.playQueue(queue, 0)
             }
         }
     }

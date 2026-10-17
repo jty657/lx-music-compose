@@ -637,8 +637,8 @@ class MyListsViewModel : ViewModel() {
         viewModelScope.launch {
             runCatching {
                 val index = queue.indexOfFirst { it.id == music.id }.coerceAtLeast(0)
-                val resolved = queue.map { info -> LxApp.app.playerRepository.resolvePlayInfo(info) }
-                LxApp.app.playerRepository.playQueue(resolved, index)
+                // URL 由 playQueue 按需解析
+                LxApp.app.playerRepository.playQueue(queue, index)
             }
         }
     }

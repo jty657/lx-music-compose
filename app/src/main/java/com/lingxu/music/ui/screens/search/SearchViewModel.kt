@@ -125,10 +125,11 @@ class SearchViewModel : ViewModel() {
 
     /** 加载下一页 */
     fun loadMore() {
-        if (!hasMore) return
+        if (!hasMore || loading) return
         val nextPage = page + 1
         viewModelScope.launch {
             loading = true
+            errorMessage = null
             when (searchType) {
                 SearchType.MUSIC -> runCatching {
                     LxApp.app.musicRepository.search(lastQuery, nextPage, lastSource)
@@ -136,7 +137,10 @@ class SearchViewModel : ViewModel() {
                     results = (results + list).distinctBy { it.id }
                     hasMore = list.isNotEmpty()
                     page = nextPage
-                }.onFailure { hasMore = false }
+                }.onFailure { e ->
+                    // 保留 hasMore，让用户可以重试，而不是永久失去「加载更多」
+                    errorMessage = "加载更多失败：${e.message}"
+                }
                 SearchType.SONGLIST -> runCatching {
                     LxApp.app.musicRepository.searchSongListAll(lastQuery, nextPage)
                 }.onSuccess { pageResult ->
@@ -144,7 +148,9 @@ class SearchViewModel : ViewModel() {
                     songLists = merged
                     hasMore = pageResult.list.isNotEmpty()
                     page = nextPage
-                }.onFailure { hasMore = false }
+                }.onFailure { e ->
+                    errorMessage = "加载更多失败：${e.message}"
+                }
             }
             loading = false
         }
@@ -156,15 +162,13 @@ class SearchViewModel : ViewModel() {
         }
     }
 
+    /** 播放搜索结果里的一首：整段结果作为队列，保留前后切歌能力（URL 由 playQueue 按需解析） */
     fun play(music: MusicInfo) {
-        viewModelScope.launch {
-            runCatching {
-                val url = LxApp.app.musicRepository.getMusicUrl(music)
-                val playInfo = music.copy(meta = music.meta.copy(filePath = url))
-                LxApp.app.playerRepository.playSingle(playInfo)
-            }.onFailure { e ->
-                errorMessage = "获取播放链接失败：${e.message}"
-            }
+        val index = results.indexOfFirst { it.id == music.id }
+        if (index < 0) {
+            LxApp.app.playerRepository.playSingle(music)
+        } else {
+            LxApp.app.playerRepository.playQueue(results, index)
         }
     }
 }

@@ -57,6 +57,7 @@ fun BoardDetailScreen(
     var loading by remember { mutableStateOf(false) }
     var hasMore by remember { mutableStateOf(true) }
     var page by remember { mutableStateOf(1) }
+    var error by remember { mutableStateOf<String?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
     val searchState = remember { androidx.compose.foundation.text.input.TextFieldState() }
     val keyword = searchState.text.toString()
@@ -65,13 +66,19 @@ fun BoardDetailScreen(
         it.name.contains(keyword, ignoreCase = true) || it.singer.contains(keyword, ignoreCase = true)
     }
 
+    // 请求代次：旧请求的结果会被丢弃，且不再用 loading 早退（那样会吞掉新请求）
+    var requestId by remember { mutableStateOf(0) }
+
     fun load(next: Int) {
-        if (loading) return
+        val id = ++requestId
         loading = true
-        viewModel.load(source, bangId, next) { list ->
+        error = null
+        viewModel.load(source, bangId, next) { list, message ->
+            if (id != requestId) return@load
+            error = message
             musicList = if (next == 1) list else musicList + list.filterNot { it.id in musicList.map { m -> m.id } }
             hasMore = list.isNotEmpty()
-            page = next
+            if (message == null) page = next
             loading = false
         }
     }
@@ -112,11 +119,22 @@ fun BoardDetailScreen(
         Spacer(Modifier.size(8.dp))
 
         if (musicList.isEmpty() && !loading) {
-            Text(
-                "暂无歌曲",
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-            )
+            if (error != null) {
+                Text(
+                    "加载失败，点击重试",
+                    color = MiuixTheme.colorScheme.error,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    modifier = Modifier
+                        .clickable { load(1) }
+                        .padding(vertical = 8.dp),
+                )
+            } else {
+                Text(
+                    "暂无歌曲",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+            }
             return@Column
         }
 
@@ -206,12 +224,12 @@ fun BoardDetailScreen(
 
 class BoardDetailViewModel : ViewModel() {
 
-    fun load(source: String, bangId: String, page: Int, onResult: (List<MusicInfo>) -> Unit) {
+    fun load(source: String, bangId: String, page: Int, onResult: (List<MusicInfo>, String?) -> Unit) {
         viewModelScope.launch {
             runCatching {
                 LxApp.app.musicRepository.getBoardList(source, bangId, page).list
-            }.onSuccess(onResult)
-                .onFailure { onResult(emptyList()) }
+            }.onSuccess { onResult(it, null) }
+                .onFailure { onResult(emptyList(), it.message ?: "加载失败") }
         }
     }
 
@@ -219,8 +237,8 @@ class BoardDetailViewModel : ViewModel() {
         viewModelScope.launch {
             runCatching {
                 val index = queue.indexOfFirst { it.id == music.id }.coerceAtLeast(0)
-                val resolved = queue.map { info -> LxApp.app.playerRepository.resolvePlayInfo(info) }
-                LxApp.app.playerRepository.playQueue(resolved, index)
+                // URL 由 playQueue 按需解析（只解析当前这首再开播）
+                LxApp.app.playerRepository.playQueue(queue, index)
             }
         }
     }

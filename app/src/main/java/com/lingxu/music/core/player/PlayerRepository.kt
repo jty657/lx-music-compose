@@ -247,6 +247,7 @@ class PlayerRepository(context: Context) {
                 }
                 val index = player.currentMediaItemIndex
                 val current = _state.value.queue.getOrNull(index)
+                val wasPlaying = _state.value.isPlaying
                 _state.update {
                     it.copy(
                         queueIndex = index,
@@ -258,6 +259,33 @@ class PlayerRepository(context: Context) {
                 }
                 current?.let { loadLyric(it) }
                 current?.let { loadCover(it) }
+                if (current != null && current.meta.filePath.isNullOrBlank()) {
+                    // 队列是按需解析 URL 的：跳到尚未解析的歌（用户快速切歌）时先补解析再继续，
+                    // 否则播放器会拿着空 URI 直接报错。
+                    player.pause()
+                    scope.launch {
+                        val resolved = runCatching { resolvePlayInfo(current) }.getOrDefault(current)
+                        if (resolved.meta.filePath.isNullOrBlank()) {
+                            _state.update { it.copy(error = "获取播放链接失败，可尝试换源", loading = false) }
+                            return@launch
+                        }
+                        _state.update { st ->
+                            val q = st.queue.toMutableList()
+                            if (index in q.indices && q[index].id == resolved.id) {
+                                q[index] = resolved
+                                st.copy(queue = q, current = resolved, error = null)
+                            } else st
+                        }
+                        runCatching {
+                            player.replaceMediaItem(index, resolved.toMediaItem())
+                            player.prepare()
+                            if (wasPlaying) player.play()
+                        }
+                    }
+                } else {
+                    // 预取下一首，让「下一首」几乎立即出声
+                    ensureResolved(index + 1)
+                }
             }
         })
 
@@ -277,7 +305,13 @@ class PlayerRepository(context: Context) {
         }
     }
 
-    /** 播放指定队列 */
+    /**
+     * 播放指定队列。
+     *
+     * 只解析「当前这首」再开播，然后后台预取下一首；其余保持未解析、切到时再按需解析。
+     * 原先各列表页会先 `queue.map { resolvePlayInfo(it) }` 串行解析整队列
+     * （30 首歌 = 30 次请求、且可能触发换源搜索），点一下要等很久才开始出声。
+     */
     fun playQueue(queue: List<MusicInfo>, index: Int) {
         if (queue.isEmpty()) return
         val safeIndex = index.coerceIn(0, queue.lastIndex)
@@ -292,11 +326,52 @@ class PlayerRepository(context: Context) {
                 error = null,
             )
         }
-        player.setMediaItems(queue.map { it.toMediaItem() }, safeIndex, 0L)
-        player.prepare()
-        player.play()
-        loadLyric(queue[safeIndex])
-        saveLastPlay()
+        scope.launch {
+            val target = queue[safeIndex]
+            val resolved = if (target.meta.filePath.isNullOrBlank()) {
+                loading = true
+                val r = runCatching { resolvePlayInfo(target) }.getOrDefault(target)
+                loading = false
+                r
+            } else target
+            if (resolved.meta.filePath.isNullOrBlank()) {
+                _state.update { it.copy(error = "获取播放链接失败，可尝试换源") }
+                return@launch
+            }
+            val updated = _state.value.queue.toMutableList().also { list ->
+                if (safeIndex in list.indices && list[safeIndex].id == resolved.id) list[safeIndex] = resolved
+            }
+            _state.update { it.copy(queue = updated, current = resolved, error = null) }
+            player.setMediaItems(updated.map { it.toMediaItem() }, safeIndex, 0L)
+            player.prepare()
+            player.play()
+            loadLyric(resolved)
+            saveLastPlay()
+            ensureResolved(safeIndex + 1)
+        }
+    }
+
+    /** 正在按需解析的队列下标，避免同一首重复发请求 */
+    private val resolvingIndexes = mutableSetOf<Int>()
+
+    /** 后台解析并回填队列中第 index 首的播放 URL（不打断当前播放） */
+    private fun ensureResolved(index: Int) {
+        val info = _state.value.queue.getOrNull(index) ?: return
+        if (!info.meta.filePath.isNullOrBlank()) return
+        if (!resolvingIndexes.add(index)) return
+        scope.launch {
+            val resolved = runCatching { resolvePlayInfo(info) }.getOrDefault(info)
+            resolvingIndexes.remove(index)
+            if (resolved.meta.filePath.isNullOrBlank()) return@launch
+            _state.update { st ->
+                val q = st.queue.toMutableList()
+                if (index in q.indices && q[index].id == info.id) {
+                    q[index] = resolved
+                    st.copy(queue = q, current = if (index == st.queueIndex) resolved else st.current)
+                } else st
+            }
+            runCatching { player.replaceMediaItem(index, resolved.toMediaItem()) }
+        }
     }
 
     /** 播放队列中第 index 首 */

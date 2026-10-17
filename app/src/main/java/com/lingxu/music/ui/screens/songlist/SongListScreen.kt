@@ -61,15 +61,19 @@ fun SongListScreen(
     var sortIndex by remember { mutableStateOf(0) }
     var page by remember { mutableStateOf(1) }
     var hasMore by remember { mutableStateOf(true) }
+    // 请求代次：切标签/排序时旧请求的结果会被丢弃，且不再用 loading 早退（那样会吞掉新请求）
+    var requestId by remember { mutableStateOf(0) }
 
     fun load(next: Int) {
-        if (loading) return
+        val id = ++requestId
         loading = true
         error = null
-        viewModel.load(source, sorts.getOrNull(sortIndex)?.second ?: "", selectedTag, next) { result ->
+        viewModel.load(source, sorts.getOrNull(sortIndex)?.second ?: "", selectedTag, next) { result, message ->
+            if (id != requestId) return@load
+            error = message
             list = if (next == 1) result else list + result.filterNot { it.id in list.map { x -> x.id } }
             hasMore = result.isNotEmpty()
-            page = next
+            if (message == null) page = next
             loading = false
         }
     }
@@ -158,11 +162,22 @@ fun SongListScreen(
         }
 
         if (list.isEmpty() && !loading) {
-            Text(
-                "暂无歌单",
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-            )
+            if (error != null) {
+                Text(
+                    "加载失败，点击重试",
+                    color = MiuixTheme.colorScheme.error,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    modifier = Modifier
+                        .clickable { load(1) }
+                        .padding(vertical = 8.dp),
+                )
+            } else {
+                Text(
+                    "暂无歌单",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+            }
             return@Column
         }
 
@@ -223,12 +238,13 @@ class SongListViewModel : ViewModel() {
         sortId: String,
         tag: String?,
         page: Int,
-        onResult: (List<SongListInfo>) -> Unit,
+        onResult: (List<SongListInfo>, String?) -> Unit,
     ) {
         viewModelScope.launch {
             runCatching {
                 LxApp.app.musicRepository.getSongList(source, sortId, tag ?: "", page).list
-            }.onSuccess(onResult).onFailure { onResult(emptyList()) }
+            }.onSuccess { onResult(it, null) }
+                .onFailure { onResult(emptyList(), it.message ?: "加载失败") }
         }
     }
 

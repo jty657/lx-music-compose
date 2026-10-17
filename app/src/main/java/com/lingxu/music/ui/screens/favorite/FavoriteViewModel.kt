@@ -22,29 +22,14 @@ class FavoriteViewModel : ViewModel() {
         private set
 
     fun play(musicInfo: MusicInfo) {
-        viewModelScope.launch {
-            errorMessage = null
-            runCatching {
-                val resolved = playerRepo.resolvePlayInfo(musicInfo)
-                playerRepo.playSingle(resolved)
-            }.onFailure { e ->
-                errorMessage = "播放失败：${e.message}"
-            }
-        }
+        // playQueue 会按需解析当前这首的 URL
+        playerRepo.playSingle(musicInfo)
     }
 
     /** 播放全部（替换整个队列） */
     fun playAll(list: List<MusicInfo>) {
         if (list.isEmpty()) return
-        viewModelScope.launch {
-            errorMessage = null
-            runCatching {
-                val resolved = list.map { playerRepo.resolvePlayInfo(it) }
-                playerRepo.playQueue(resolved, 0)
-            }.onFailure { e ->
-                errorMessage = "播放失败：${e.message}"
-            }
-        }
+        playerRepo.playQueue(list, 0)
     }
 
     /** 加入「我的列表」（位置取设置项 list.addMusicLocationType） */
