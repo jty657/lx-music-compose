@@ -13,8 +13,11 @@ import com.lingxu.music.ui.components.GlassDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -86,6 +89,11 @@ fun SettingScreen(
     val isHandleAudioFocus by viewModel.isHandleAudioFocus.collectAsState(initial = true)
     val playbackRate by viewModel.playbackRate.collectAsState(initial = 1f)
     val volume by viewModel.volume.collectAsState(initial = 1f)
+    // 滑块拖动中的本地值：落盘已节流，拖动时用它驱动显示，松手后回到持久化值
+    var localRate by remember { mutableFloatStateOf(playbackRate) }
+    var localVolume by remember { mutableFloatStateOf(volume) }
+    LaunchedEffect(playbackRate) { localRate = playbackRate }
+    LaunchedEffect(volume) { localVolume = volume }
     val timeoutExitPlayed by viewModel.timeoutExitPlayed.collectAsState(initial = true)
     val playState by LxApp.app.playerRepository.state.collectAsState()
     val timeoutRemaining = playState.timeoutExitRemaining
@@ -107,6 +115,9 @@ fun SettingScreen(
 
     val blurEnabled by viewModel.blurEnabled.collectAsState(initial = true)
     val blurRadius by viewModel.blurRadius.collectAsState(initial = 24f)
+    // 拖动中的本地值：每帧写盘会重建 GlassContext 让整屏 backdrop 重画，落盘已节流
+    var localBlur by remember { mutableFloatStateOf(blurRadius) }
+    LaunchedEffect(blurRadius) { localBlur = blurRadius }
     val userApiLog by viewModel.userApiLog.collectAsState(initial = false)
 
     Column(
@@ -142,13 +153,19 @@ fun SettingScreen(
             } + "（界面文案暂仅简体中文）",
             onClick = { viewModel.cycleLang() },
         )
-        SliderPreference(
-            title = "字体大小",
-            summary = "${(fontScale * 100).toInt()}%",
-            value = fontScale,
-            onValueChange = { viewModel.setFontScale(it) },
-            valueRange = 0.8f..1.6f,
-        )
+        // 字体大小用分段选择：滑块每拖一帧都要写 DataStore 并重排整个界面，
+        // 而字号本来也只有几档常用值
+        Text("字体大小", fontSize = MiuixTheme.textStyles.main.fontSize)
+        Spacer(Modifier.size(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(0.85f, 1f, 1.15f, 1.3f, 1.5f).forEach { scale ->
+                val selected = (fontScale - scale).let { it < 0.06f && it > -0.06f }
+                Button(
+                    onClick = { viewModel.setFontScale(scale) },
+                    enabled = !selected,
+                ) { Text("${(scale * 100).toInt()}%") }
+            }
+        }
         ArrowPreference(
             title = "分享方式",
             summary = when (shareType) {
@@ -198,17 +215,23 @@ fun SettingScreen(
         )
         SliderPreference(
             title = "播放倍速",
-            summary = "${(playbackRate * 100).toInt()}%",
-            value = playbackRate,
+            summary = "${(localRate * 100).toInt()}%",
+            value = localRate,
             valueRange = 0.5f..3f,
-            onValueChange = { viewModel.setPlaybackRateAndApply(it) },
+            onValueChange = {
+                localRate = it
+                viewModel.setPlaybackRateAndApply(it)
+            },
         )
         SliderPreference(
             title = "音量",
-            summary = "${(volume * 100).toInt()}%",
-            value = volume,
+            summary = "${(localVolume * 100).toInt()}%",
+            value = localVolume,
             valueRange = 0f..1f,
-            onValueChange = { viewModel.setVolumeAndApply(it) },
+            onValueChange = {
+                localVolume = it
+                viewModel.setVolumeAndApply(it)
+            },
         )
         ArrowPreference(
             title = "定时停止播放",
@@ -315,11 +338,18 @@ fun SettingScreen(
         if (blurEnabled) {
             SliderPreference(
                 title = "模糊强度",
-                summary = "${blurRadius.toInt()}dp",
-                value = blurRadius,
-                onValueChange = { viewModel.setBlurRadius(it) },
+                summary = "${localBlur.toInt()}dp",
+                value = localBlur,
+                onValueChange = {
+                    localBlur = it
+                    viewModel.setBlurRadius(it)
+                },
                 valueRange = 8f..32f,
             )
+            // 松手后提交最终值
+            DisposableEffect(Unit) {
+                onDispose { viewModel.commitBlurRadius() }
+            }
         }
 
         Spacer(Modifier.size(12.dp))
