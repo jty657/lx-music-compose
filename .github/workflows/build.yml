@@ -38,7 +38,8 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk out/lingxu-music-1.3.1.apk
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          cp app/build/outputs/apk/release/app-release.apk "out/lingxu-music-${VERSION}.apk"
           ls -la out/
 
       - name: Upload APK artifact

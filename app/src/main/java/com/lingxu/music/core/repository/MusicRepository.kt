@@ -20,7 +20,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * 音乐统一仓库：对应原版 core/music 系列。
  * - 搜索/榜单/热搜/歌词/封面：内置 SDK（kw/kg/tx/wy/mg）
- * - 播放 URL：用户音源脚本（musicUrl）；无用户音源时，内置源尝试直连取址（酷我/网易可用）
+ * - 播放 URL：用户音源脚本（musicUrl）；未导入用户音源时内置源无法取址（与原版一致）
  * - 换源 fallback：取 URL 失败时在其它源搜索同名歌曲并尝试
  */
 class MusicRepository(
@@ -207,31 +207,8 @@ class MusicRepository(
             val oldInfo = musicInfo.toOldMusicInfo()
             return engineManager.getMusicUrl(musicInfo.source, oldInfo, targetQuality)
         }
-        // 内置源：先尝试内置直连取址（目前酷我/网易可用），失败再回退 SDK
-        // （SDK 的 getMusicUrl 依赖 global.lx.apis，未导入音源时会报 Api is not found）
-        builtinPlayUrl(musicInfo)?.let { return it }
+        // 内置源不提供取址：必须导入用户音源（与原版一致）
         return sdk.getMusicUrl(musicInfo.source, musicInfo.toOldMusicInfo(), targetQuality)
-    }
-
-    /**
-     * 内置平台直连取址（不依赖用户音源）。
-     * 实测酷我与网易的公开接口仍可用；酷狗/QQ/咪咕的公网取址接口已需要鉴权，返回空，因此不做。
-     */
-    private suspend fun builtinPlayUrl(musicInfo: MusicInfo): String? = when (musicInfo.source) {
-        "wy" -> {
-            val id = musicInfo.meta.songId
-            if (id.isBlank()) null else "https://music.163.com/song/media/outer/url?id=$id.mp3"
-        }
-        "kw" -> {
-            val rid = musicInfo.meta.songId
-            if (rid.isBlank()) null else runCatching {
-                HttpClient.instance
-                    .fetchText("https://antiserver.kuwo.cn/anti.s?type=convert_url&rid=$rid&format=mp3&response=url")
-                    .trim()
-                    .takeIf { it.startsWith("http") }
-            }.getOrNull()
-        }
-        else -> null
     }
 
     /** 换源搜索并尝试取 URL（原版 findMusic + getOnlineOtherSourceMusicUrl 简化实现） */

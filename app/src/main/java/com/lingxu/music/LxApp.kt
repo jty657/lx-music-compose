@@ -10,7 +10,6 @@ import com.lingxu.music.core.repository.FavoritesRepository
 import com.lingxu.music.core.repository.MyListsRepository
 import com.lingxu.music.core.repository.MusicRepository
 import com.lingxu.music.core.repository.BackupRepository
-import com.lingxu.music.core.repository.PresetScriptRepository
 import com.lingxu.music.core.repository.SettingsRepository
 import com.lingxu.music.core.repository.ShareRepository
 import kotlinx.coroutines.CoroutineScope
@@ -34,8 +33,6 @@ class LxApp : Application() {
     lateinit var favoritesRepository: FavoritesRepository
         private set
     lateinit var myListsRepository: MyListsRepository
-        private set
-    lateinit var presetScriptRepository: PresetScriptRepository
         private set
     lateinit var backupRepository: BackupRepository
         private set
@@ -61,7 +58,6 @@ class LxApp : Application() {
         apiSourceRepository = ApiSourceRepository(database)
         favoritesRepository = FavoritesRepository(database)
         myListsRepository = MyListsRepository(database)
-        presetScriptRepository = PresetScriptRepository(this, apiSourceRepository)
         backupRepository = BackupRepository(this, database)
         shareRepository = ShareRepository(this)
         musicRepository = MusicRepository(sdkBridge, engineManager, settings)
@@ -90,7 +86,6 @@ class LxApp : Application() {
             sdkBridge.init(apiSource)
             musicRepository.setApiSource(apiSource)
             favoritesRepository.load()
-            presetScriptRepository.importPresetsIfNeeded()
             // 恢复播放模式（原版 player.togglePlayMethod）
             playerRepository.restorePlayMode(settings.playMode.first())
             // 恢复上次播放的队列；startupAutoPlay 决定是否直接开播

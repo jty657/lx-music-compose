@@ -120,6 +120,16 @@ class HttpClient {
         }
     }
 
+    /** 同步拉取二进制（封面图等；fetchSync 的 body 是 UTF-8 字符串，不能用于图片） */
+    fun fetchBytesSync(url: String, headers: Map<String, String> = emptyMap()): ByteArray? {
+        val builder = Request.Builder().url(url)
+        (defaultHeaders + headers).forEach { (k, v) -> builder.header(k, v) }
+        client.newCall(builder.build()).execute().use { resp ->
+            if (!resp.isSuccessful) return null
+            return resp.body?.bytes()
+        }
+    }
+
     companion object {
         val instance by lazy { HttpClient() }
     }

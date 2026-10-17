@@ -40,7 +40,7 @@
 - **必须先注入 `assets/engine/buffer-polyfill.js` 再 eval SDK bundle**。esbuild 配置是 `platform:neutral`，不会内联全局 `Buffer`，而 QuickJS 也没有 Node 的 Buffer，不注入会报 `'Buffer' is not defined` 导致整个 SDK 初始化失败、搜索全不可用。polyfill 用 `/tmp/sdk-bundle/buffer-polyfill.js`（`import {Buffer} from 'buffer'; globalThis.Buffer = Buffer`）打 iife 得到。
 - **搜索/榜单/歌单只走内置 SDK bundle；用户音源只提供 `musicUrl`（播放取 URL）**。这是原版的既定架构，不要试图让用户音源提供搜索。
 - **SDK 的 fetch 桥必须让 `resp.text()/blob()/json()` 返回 thenable，且提供 `resp.headers.map`**，否则 SDK 的 `resp.text().then(JSON.parse)` 链直接崩（表现为「搜索无效」）。
-- 预置音源放 `assets/scripts/presets/*.js`，首次启动由 `PresetScriptRepository` 自动导入。
+- **不内置任何音源脚本**：由用户自行导入第三方音源（`assets/scripts/presets` 与 `PresetScriptRepository` 已移除，勿再加回）。
 - 已用 quickjs-emscripten（Node）做过端到端协议测试，全部通过。
 
 ## 云端编译与验证
