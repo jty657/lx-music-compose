@@ -440,6 +440,15 @@ class PlayerRepository(context: Context) {
         MediaItem.Builder()
             .setUri(meta.filePath ?: "")
             .setMediaId(id)
+            // 不设 metadata 时，系统媒体通知/锁屏只会显示空白（无歌名、歌手、封面）
+            .setMediaMetadata(
+                androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(name)
+                    .setArtist(singer)
+                    .setAlbumTitle(meta.albumName.ifBlank { null })
+                    .setArtworkUri(meta.picUrl?.let { android.net.Uri.parse(it) })
+                    .build(),
+            )
             .build()
 
     companion object {
