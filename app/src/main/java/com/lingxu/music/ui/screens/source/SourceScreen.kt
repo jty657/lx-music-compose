@@ -51,8 +51,8 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         uri?.let { viewModel.importFromFile(it) }
     }
 
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+    Column(Modifier.fillMaxSize()) {
+        GlassTopBar {
             Text(
                 "音源管理",
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
@@ -60,6 +60,11 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             )
         }
 
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        ) {
         Spacer(Modifier.size(8.dp))
 
         Row(Modifier.fillMaxWidth()) {
@@ -134,6 +139,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         // 状态提示
         viewModel.statusMessage?.let { msg ->
             Text(msg, color = MiuixTheme.colorScheme.error, fontSize = MiuixTheme.textStyles.body2.fontSize)
+        }
         }
     }
 

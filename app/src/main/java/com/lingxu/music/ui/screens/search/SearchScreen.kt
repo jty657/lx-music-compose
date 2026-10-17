@@ -67,11 +67,10 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
+            .fillMaxSize(),
     ) {
         // 搜索输入框（磨砂玻璃条）
-        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp)) {
+        GlassTopBar {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -98,6 +97,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             }
         }
 
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        ) {
         Spacer(Modifier.height(8.dp))
 
         Spacer(Modifier.height(8.dp))
@@ -259,6 +263,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     }
                 }
             }
+        }
         }
     }
 }

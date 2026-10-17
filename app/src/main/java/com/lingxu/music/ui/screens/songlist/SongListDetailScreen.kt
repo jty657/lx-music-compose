@@ -75,10 +75,8 @@ fun SongListDetailScreen(
 
     LaunchedEffect(source, id) { load(1) }
 
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        GlassTopBar(
-            modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp),
-        ) {
+    Column(Modifier.fillMaxSize()) {
+        GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Icon(
                 MiuixIcons.Back,
@@ -98,6 +96,11 @@ fun SongListDetailScreen(
             )
         }
         }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        ) {
         Spacer(Modifier.size(8.dp))
 
         Row {
@@ -154,6 +157,7 @@ fun SongListDetailScreen(
                     ) { Text(if (loading) "加载中…" else "加载更多") }
                 }
             }
+        }
         }
     }
 }

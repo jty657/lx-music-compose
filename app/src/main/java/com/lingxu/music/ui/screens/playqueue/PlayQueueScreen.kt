@@ -45,8 +45,8 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     val queue = state.queue
     val currentIndex = state.queueIndex
 
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+    Column(Modifier.fillMaxSize()) {
+        GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Icon(
                 MiuixIcons.Back,
@@ -66,6 +66,11 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
             )
         }
         }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        ) {
         Spacer(Modifier.size(8.dp))
 
         if (queue.isEmpty()) {
@@ -112,6 +117,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                     }
                 }
             }
+        }
         }
     }
 }

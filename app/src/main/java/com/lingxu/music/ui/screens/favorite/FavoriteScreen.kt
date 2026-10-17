@@ -54,16 +54,20 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
 
     Column(
         Modifier
-            .fillMaxSize()
-            .padding(12.dp),
+            .fillMaxSize(),
     ) {
-        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+        GlassTopBar {
             Text(
                 "我喜欢",
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             )
         }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        ) {
         Spacer(Modifier.size(8.dp))
 
         viewModel.errorMessage?.let { err ->
@@ -105,6 +109,7 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                     showAlbumName = showAlbumName,
                 )
             }
+        }
         }
     }
 

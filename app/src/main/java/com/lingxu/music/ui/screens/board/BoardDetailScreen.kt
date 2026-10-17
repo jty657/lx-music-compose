@@ -80,10 +80,9 @@ fun BoardDetailScreen(
 
     Column(
         Modifier
-            .fillMaxSize()
-            .padding(12.dp),
+            .fillMaxSize(),
     ) {
-        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+        GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Icon(
                 MiuixIcons.Back,
@@ -103,6 +102,11 @@ fun BoardDetailScreen(
             )
         }
         }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        ) {
         Spacer(Modifier.size(8.dp))
 
         if (musicList.isEmpty() && !loading) {
@@ -171,6 +175,7 @@ fun BoardDetailScreen(
                     }
                 }
             }
+        }
         }
     }
 

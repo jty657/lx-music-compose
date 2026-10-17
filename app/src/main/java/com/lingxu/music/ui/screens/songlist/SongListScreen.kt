@@ -87,8 +87,8 @@ fun SongListScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        GlassTopBar(modifier = Modifier.padding(horizontal = -12.dp, vertical = -12.dp)) {
+    Column(Modifier.fillMaxSize()) {
+        GlassTopBar {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                 top.yukonga.miuix.kmp.basic.Icon(
                     MiuixIcons.Back,
@@ -108,6 +108,11 @@ fun SongListScreen(
                 )
             }
         }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        ) {
         Spacer(Modifier.size(8.dp))
 
         // 排序
@@ -197,6 +202,7 @@ fun SongListScreen(
                     ) { Text(if (loading) "加载中…" else "加载更多") }
                 }
             }
+        }
         }
     }
 }
