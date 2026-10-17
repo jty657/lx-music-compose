@@ -433,52 +433,73 @@ class QuickJSEngine(
     }
 }
 
-/** musicInfo 转为旧版脚本结构（原版 toOldMusicInfo） */
-fun MusicInfo.toOldMusicInfo(): JsonObject = buildJsonObject {
-    put("name", JsonPrimitive(name))
-    put("singer", JsonPrimitive(singer))
-    put("source", JsonPrimitive(source))
-    put("songmid", JsonPrimitive(meta.songId))
-    put("interval", interval?.let { JsonPrimitive(it) } ?: JsonNull)
-    put("albumName", JsonPrimitive(meta.albumName))
-    put("img", JsonPrimitive(meta.picUrl ?: ""))
-    put("typeUrl", buildJsonObject {})
-    if (source == "local") {
-        put("filePath", JsonPrimitive(meta.filePath ?: ""))
-        put("ext", JsonPrimitive(meta.ext ?: ""))
-        put("albumId", JsonPrimitive(""))
-        put("types", buildJsonArray {})
-        put("_types", buildJsonObject {})
-    } else {
+/**
+ * musicInfo 转为音源脚本结构。
+ * 桌面版 lx/珊瑚版会把完整 MusicInfo（含 `meta.songId` 等）交给脚本；只传扁平字段会让脚本
+ * 拿到错误的歌曲标识（表现为大量 404、取链失败）。这里保留扁平字段兼容旧脚本，同时补上 `id` 与 `meta`。
+ */
+fun MusicInfo.toOldMusicInfo(): JsonObject {
+    val types = buildJsonArray {
+        qualitys.forEach { q ->
+            add(buildJsonObject {
+                put("type", JsonPrimitive(q.type))
+                put("size", q.size?.let { JsonPrimitive(it) } ?: JsonNull)
+                q.hash?.let { put("hash", JsonPrimitive(it)) }
+            })
+        }
+    }
+    val typesMap = buildJsonObject {
+        _qualitys.forEach { (k, v) ->
+            put(k, buildJsonObject {
+                put("size", v.size?.let { JsonPrimitive(it) } ?: JsonNull)
+                v.hash?.let { put("hash", JsonPrimitive(it)) }
+            })
+        }
+    }
+    val metaObj = buildJsonObject {
+        put("songId", JsonPrimitive(meta.songId))
+        put("albumName", JsonPrimitive(meta.albumName))
+        put("picUrl", JsonPrimitive(meta.picUrl ?: ""))
         put("albumId", meta.albumId?.let { JsonPrimitive(it) } ?: JsonNull)
-        put("types", buildJsonArray {
-            qualitys.forEach { q ->
-                add(buildJsonObject {
-                    put("type", JsonPrimitive(q.type))
-                    put("size", q.size?.let { JsonPrimitive(it) } ?: JsonNull)
-                    q.hash?.let { put("hash", JsonPrimitive(it)) }
-                })
-            }
-        })
-        put("_types", buildJsonObject {
-            _qualitys.forEach { (k, v) ->
-                put(k, buildJsonObject {
-                    put("size", v.size?.let { JsonPrimitive(it) } ?: JsonNull)
-                    v.hash?.let { put("hash", JsonPrimitive(it)) }
-                })
-            }
-        })
-        when (source) {
-            "kg" -> hash?.let { put("hash", JsonPrimitive(it)) }
-            "tx" -> {
-                strMediaMid?.let { put("strMediaMid", JsonPrimitive(it)) }
-                put("songId", JsonPrimitive(meta.songId))
-            }
-            "mg" -> {
-                copyrightId?.let { put("copyrightId", JsonPrimitive(it)) }
-                lrcUrl?.let { put("lrcUrl", JsonPrimitive(it)) }
-                mrcUrl?.let { put("mrcUrl", JsonPrimitive(it)) }
-                trcUrl?.let { put("trcUrl", JsonPrimitive(it)) }
+        strMediaMid?.let { put("strMediaMid", JsonPrimitive(it)) }
+        hash?.let { put("hash", JsonPrimitive(it)) }
+        copyrightId?.let { put("copyrightId", JsonPrimitive(it)) }
+        put("qualitys", types)
+        put("_qualitys", typesMap)
+    }
+    return buildJsonObject {
+        put("id", JsonPrimitive(meta.songId))
+        put("name", JsonPrimitive(name))
+        put("singer", JsonPrimitive(singer))
+        put("source", JsonPrimitive(source))
+        put("songmid", JsonPrimitive(meta.songId))
+        put("interval", interval?.let { JsonPrimitive(it) } ?: JsonNull)
+        put("albumName", JsonPrimitive(meta.albumName))
+        put("img", JsonPrimitive(meta.picUrl ?: ""))
+        put("typeUrl", buildJsonObject {})
+        put("meta", metaObj)
+        if (source == "local") {
+            put("filePath", JsonPrimitive(meta.filePath ?: ""))
+            put("ext", JsonPrimitive(meta.ext ?: ""))
+            put("albumId", JsonPrimitive(""))
+            put("types", buildJsonArray {})
+            put("_types", buildJsonObject {})
+        } else {
+            put("albumId", meta.albumId?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("types", types)
+            put("_types", typesMap)
+            when (source) {
+                "kg" -> hash?.let { put("hash", JsonPrimitive(it)) }
+                "tx" -> {
+                    strMediaMid?.let { put("strMediaMid", JsonPrimitive(it)) }
+                    put("songId", JsonPrimitive(meta.songId))
+                }
+                "mg" -> {
+                    copyrightId?.let { put("copyrightId", JsonPrimitive(it)) }
+                    lrcUrl?.let { put("lrcUrl", JsonPrimitive(it)) }
+                    mrcUrl?.let { put("mrcUrl", JsonPrimitive(it)) }
+                    trcUrl?.let { put("trcUrl", JsonPrimitive(it)) }
+                }
             }
         }
     }
