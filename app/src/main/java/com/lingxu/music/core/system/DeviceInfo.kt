@@ -18,7 +18,7 @@ object DeviceInfo {
 
     fun model(): String = "${Build.BRAND} ${Build.MODEL}".trim()
 
-    fun abi(): String = Build.SUPPORTED_ABIS.firstOrNull() ?: Build.ABI
+    fun abi(): String = Build.SUPPORTED_ABIS.firstOrNull().orEmpty()
 
     fun androidVersion(): String = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
 
