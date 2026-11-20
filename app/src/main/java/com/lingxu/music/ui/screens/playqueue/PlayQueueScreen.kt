@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.TrackCover
@@ -56,17 +57,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Icon(
-                MiuixIcons.Back,
-                contentDescription = "返回",
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        onClick = { navigator.pop() },
-                    ),
-            )
+            BackIconButton(onClick = { navigator.pop() })
             Text(
                 "播放队列（${queue.size}）",
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
@@ -74,14 +65,18 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
             )
             Spacer(Modifier.weight(1f))
             if (queue.isNotEmpty()) {
-                Text(
-                    "清空",
-                    fontSize = MiuixTheme.textStyles.body1.fontSize,
-                    color = MiuixTheme.colorScheme.error,
+                Box(
                     modifier = Modifier
-                        .clickable { showClearConfirm = true }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                )
+                        .size(48.dp)
+                        .clickable { showClearConfirm = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "清空",
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.error,
+                    )
+                }
             }
         }
         }
@@ -174,13 +169,18 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                             }
                         }
                         Spacer(Modifier.size(4.dp))
-                        Icon(
-                            MiuixIcons.Delete,
-                            contentDescription = "移除",
-                            modifier = Modifier
-                                .size(24.dp)
+                        Box(
+                            Modifier
+                                .size(48.dp)
                                 .clickable { viewModel.removeAt(index) },
-                        )
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                MiuixIcons.Delete,
+                                contentDescription = "移除",
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
                     }
                 }
             }

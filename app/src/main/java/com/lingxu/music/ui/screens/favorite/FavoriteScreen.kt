@@ -3,6 +3,7 @@ package com.lingxu.music.ui.screens.favorite
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +42,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
@@ -83,11 +85,23 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         }
 
         if (favorites.isEmpty()) {
-            Text(
-                "还没有收藏的歌曲",
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-            )
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 64.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    MiuixIcons.Favorites,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+                )
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    "还没有收藏的歌曲",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+            }
             return@Column
         }
 
@@ -206,13 +220,18 @@ private fun FavoriteCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(
-                MiuixIcons.Delete,
-                contentDescription = "移除",
-                modifier = Modifier
-                    .size(24.dp)
+            Box(
+                Modifier
+                    .size(48.dp)
                     .clickableNoIndication(onRemove),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    MiuixIcons.Delete,
+                    contentDescription = "移除",
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }

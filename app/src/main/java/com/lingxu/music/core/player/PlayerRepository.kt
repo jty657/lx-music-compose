@@ -43,8 +43,7 @@ object PlayMode {
     }
 }
 
-/** 歌词行（translation 为翻译歌词，同时间点合并） */
-/** 歌词行 */
+/** 歌词行（translation 为翻译歌词，roma 为罗马音，同时间点合并） */
 @kotlinx.serialization.Serializable
 data class LyricLine(
     val timeMs: Long,

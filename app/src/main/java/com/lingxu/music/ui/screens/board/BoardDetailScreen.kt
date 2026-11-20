@@ -26,11 +26,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
+import com.lingxu.music.core.model.appendDistinctById
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
@@ -40,7 +43,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
@@ -79,7 +82,7 @@ fun BoardDetailScreen(
         viewModel.load(source, bangId, next) { list, message ->
             if (reqId != requestId) return@load
             error = message
-            musicList = if (next == 1) list else musicList + list.filterNot { it.id in musicList.map { m -> m.id } }
+            musicList = if (next == 1) list else musicList.appendDistinctById(list) { it.id }
             hasMore = list.isNotEmpty()
             if (message == null) page = next
             loading = false
@@ -96,17 +99,7 @@ fun BoardDetailScreen(
     ) {
         GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Icon(
-                MiuixIcons.Back,
-                contentDescription = "返回",
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        onClick = { navigator.pop() },
-                    ),
-            )
+            BackIconButton(onClick = { navigator.pop() })
             Text(
                 name,
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
@@ -123,14 +116,7 @@ fun BoardDetailScreen(
 
         if (musicList.isEmpty() && !loading) {
             if (error != null) {
-                Text(
-                    "加载失败，点击重试",
-                    color = MiuixTheme.colorScheme.error,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    modifier = Modifier
-                        .clickable { load(1) }
-                        .padding(vertical = 8.dp),
-                )
+                RetryHint(text = "加载失败，点击重试", onClick = { load(1) })
             } else {
                 Text(
                     "暂无歌曲",
@@ -170,6 +156,43 @@ fun BoardDetailScreen(
             state = listState,
             modifier = Modifier.weight(1f),
         ) {
+            // 首次加载中且暂无内容：给出明确的进度提示，避免分不清「加载中」还是「无数据」
+            if (loading && musicList.isEmpty() && error == null) {
+                item(key = "__board_loading__") {
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = 64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            "正在加载榜单…",
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
+                }
+            }
+            // 搜索关键词无匹配：给出专属空态，避免过滤后一片空白
+            if (!loading && error == null && musicList.isNotEmpty() && shownMusic.isEmpty()) {
+                item(key = "__board_search_empty__") {
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = 64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            MiuixIcons.Favorites,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+                        )
+                        Spacer(Modifier.size(12.dp))
+                        Text(
+                            "没有匹配的歌曲",
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
+                }
+            }
             items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(
                     modifier = Modifier

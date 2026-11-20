@@ -224,14 +224,20 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    Text(
-                        "下一首",
-                        color = MiuixTheme.colorScheme.primary,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        modifier = Modifier
+                    Box(
+                        Modifier
                             .padding(start = 8.dp)
-                            .clickable { viewModel.next() },
-                    )
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { viewModel.next() }
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "下一首",
+                            color = MiuixTheme.colorScheme.primary,
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        )
+                    }
                 }
             }
 
@@ -300,7 +306,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         PlayerIconButton(
                             if (state.current?.id in favoriteIds) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
                             26.dp,
-                            "收藏",
+                            if (state.current?.id in favoriteIds) "取消收藏" else "收藏",
                         ) {
                             state.current?.let { music ->
                                 scope.launch { LxApp.app.favoritesRepository.toggle(music) }

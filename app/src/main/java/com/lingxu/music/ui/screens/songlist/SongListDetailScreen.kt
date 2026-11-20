@@ -25,10 +25,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
+import com.lingxu.music.core.model.appendDistinctById
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
@@ -38,7 +41,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -78,7 +80,7 @@ fun SongListDetailScreen(
         viewModel.load(source, id, next) { list, message ->
             if (reqId != requestId) return@load
             error = message
-            musicList = if (next == 1) list else musicList + list.filterNot { it.id in musicList.map { m -> m.id } }
+            musicList = if (next == 1) list else musicList.appendDistinctById(list) { it.id }
             hasMore = list.isNotEmpty()
             if (message == null) page = next
             loading = false
@@ -90,17 +92,7 @@ fun SongListDetailScreen(
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Icon(
-                MiuixIcons.Back,
-                contentDescription = "返回",
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        onClick = { navigator.pop() },
-                    ),
-            )
+            BackIconButton(onClick = { navigator.pop() })
             Text(
                 name,
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
@@ -142,14 +134,7 @@ fun SongListDetailScreen(
         }
 
         error?.let {
-            Text(
-                "$it（点击重试）",
-                color = MiuixTheme.colorScheme.error,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                modifier = Modifier
-                    .clickable { load(1) }
-                    .padding(vertical = 4.dp),
-            )
+            RetryHint(text = "$it（点击重试）", onClick = { load(1) })
         }
         // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
         val listState = rememberLazyListState()

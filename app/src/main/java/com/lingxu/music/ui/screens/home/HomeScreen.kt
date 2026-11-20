@@ -23,6 +23,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.Board
 import com.lingxu.music.ui.components.GlassSurface
+import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import top.yukonga.miuix.kmp.basic.Card
@@ -149,14 +150,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         // 失败/空态给出可重试的提示（此前只有标题 + 空列表，用户以为没有榜单）
         if (boards.isEmpty() && !viewModel.loading) {
             if (viewModel.error != null) {
-                Text(
-                    "加载失败，点击重试",
-                    color = MiuixTheme.colorScheme.error,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    modifier = Modifier
-                        .clickable { viewModel.loadBoards() }
-                        .padding(vertical = 8.dp),
-                )
+                RetryHint(text = "加载失败，点击重试", onClick = { viewModel.loadBoards() })
             } else {
                 Text(
                     "暂无榜单",

@@ -2,6 +2,7 @@ package com.lingxu.music.ui.screens.mylist
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.db.Playlist
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
@@ -40,7 +42,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Play
@@ -130,26 +131,18 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
-                Icon(
-                    MiuixIcons.Back,
-                    contentDescription = "返回",
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            onClick = {
-                                when {
-                                    selectMode -> exitSelect()
-                                    openList != null -> {
-                                        openList = null
-                                        musics = emptyList()
-                                        searchState.setTextAndPlaceCursorAtEnd("")
-                                    }
-                                    else -> navigator.pop()
-                                }
-                            },
-                        ),
+                BackIconButton(
+                    onClick = {
+                        when {
+                            selectMode -> exitSelect()
+                            openList != null -> {
+                                openList = null
+                                musics = emptyList()
+                                searchState.setTextAndPlaceCursorAtEnd("")
+                            }
+                            else -> navigator.pop()
+                        }
+                    },
                 )
                 Text(
                     openList?.let { id -> lists.firstOrNull { it.id == id }?.name } ?: "我的列表",
@@ -209,11 +202,23 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
             }
 
             if (shownMusics.isEmpty()) {
-                Text(
-                    if (musics.isEmpty()) "这个列表还没有歌曲" else "没有匹配的歌曲",
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                )
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 56.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        MiuixIcons.Favorites,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    Text(
+                        if (musics.isEmpty()) "这个列表还没有歌曲" else "没有匹配的歌曲",
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    )
+                }
             }
 
             LazyColumn(
@@ -251,11 +256,9 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                 )
                             }
                             if (!selectMode) {
-                                Icon(
-                                    MiuixIcons.Delete,
-                                    contentDescription = "移除",
-                                    modifier = Modifier
-                                        .size(24.dp)
+                                Box(
+                                    Modifier
+                                        .size(48.dp)
                                         .clickable(
                                             indication = null,
                                             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
@@ -266,7 +269,14 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                                 }
                                             },
                                         ),
-                                )
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        MiuixIcons.Delete,
+                                        contentDescription = "移除",
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -559,17 +569,22 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         )
                     }
-                    Icon(
-                        MiuixIcons.Delete,
-                        contentDescription = "删除",
-                        modifier = Modifier
-                            .size(24.dp)
+                    Box(
+                        Modifier
+                            .size(48.dp)
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                                 onClick = { onDelete(list) },
                             ),
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            MiuixIcons.Delete,
+                            contentDescription = "删除",
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
             }
         }

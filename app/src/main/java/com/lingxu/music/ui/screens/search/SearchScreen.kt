@@ -5,6 +5,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -403,19 +404,24 @@ private fun SearchResultCard(
                     )
                 }
             }
-            Icon(
-                if (isFavorite) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
-                contentDescription = if (isFavorite) "取消收藏" else "收藏",
-                tint = if (isFavorite) MiuixTheme.colorScheme.primary
-                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier
-                    .size(24.dp)
+            Box(
+                Modifier
+                    .size(48.dp)
                     .clickable(
                         indication = null,
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         onClick = onToggleFavorite,
                     ),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (isFavorite) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
+                    contentDescription = if (isFavorite) "取消收藏" else "收藏",
+                    tint = if (isFavorite) MiuixTheme.colorScheme.primary
+                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }

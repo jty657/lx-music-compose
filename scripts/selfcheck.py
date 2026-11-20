@@ -53,6 +53,8 @@ PROJECT_SYMBOLS = {
     "GlassFab": "com.lingxu.music.ui.components.GlassFab",
     "GlassCard": "com.lingxu.music.ui.components.GlassCard",
     "GlassHost": "com.lingxu.music.ui.components.GlassHost",
+    "BackIconButton": "com.lingxu.music.ui.components.BackIconButton",
+    "RetryHint": "com.lingxu.music.ui.components.RetryHint",
     # Miuix 基础组件（漏 import 同样只在云端编译才报）
     "Button": "top.yukonga.miuix.kmp.basic.Button",
     "TextField": "top.yukonga.miuix.kmp.basic.TextField",

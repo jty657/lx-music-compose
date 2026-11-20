@@ -1,5 +1,6 @@
 package com.lingxu.music.ui.screens.source
 
+import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import androidx.compose.foundation.clickable
@@ -35,7 +36,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
@@ -66,17 +66,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             ) {
                 // 从首页卡片 push 进来时是二级页，需要可见的返回入口
                 if (navigator.backStack.size > 1) {
-                    Icon(
-                        MiuixIcons.Back,
-                        contentDescription = "返回",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() },
-                                onClick = { navigator.pop() },
-                            ),
-                    )
+                    BackIconButton(onClick = { navigator.pop() })
                     Spacer(Modifier.size(8.dp))
                 }
                 Text(

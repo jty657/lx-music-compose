@@ -27,10 +27,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
+import com.lingxu.music.core.model.appendDistinctById
 import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SongListTag
+import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.launch
@@ -38,7 +41,6 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
@@ -72,7 +74,7 @@ fun SongListScreen(
         viewModel.load(source, sorts.getOrNull(sortIndex)?.second ?: "", selectedTag, next) { result, message ->
             if (reqId != requestId) return@load
             error = message
-            list = if (next == 1) result else list + result.filterNot { it.id in list.map { x -> x.id } }
+            list = if (next == 1) result else list.appendDistinctById(result) { it.id }
             hasMore = result.isNotEmpty()
             if (message == null) page = next
             loading = false
@@ -95,17 +97,7 @@ fun SongListScreen(
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-                top.yukonga.miuix.kmp.basic.Icon(
-                    MiuixIcons.Back,
-                    contentDescription = "返回",
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            onClick = { navigator.pop() },
-                        ),
-                )
+                BackIconButton(onClick = { navigator.pop() })
                 Text(
                     com.lingxu.music.core.model.SourceConst.displayName(source) + " 歌单",
                     fontSize = MiuixTheme.textStyles.title1.fontSize,
@@ -164,14 +156,7 @@ fun SongListScreen(
 
         if (list.isEmpty() && !loading) {
             if (error != null) {
-                Text(
-                    "加载失败，点击重试",
-                    color = MiuixTheme.colorScheme.error,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    modifier = Modifier
-                        .clickable { load(1) }
-                        .padding(vertical = 8.dp),
-                )
+                RetryHint(text = "加载失败，点击重试", onClick = { load(1) })
             } else {
                 Text(
                     "暂无歌单",
