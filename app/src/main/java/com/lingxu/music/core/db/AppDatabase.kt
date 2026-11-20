@@ -154,10 +154,7 @@ class AppDatabase(private val context: Context) {
 
     suspend fun getPlaylistMusics(listId: String): List<PlaylistMusic> = withContext(Dispatchers.IO) {
         val file = java.io.File(dataDir, "playlist_$listId.json")
-        if (file.exists()) {
-            runCatching { JSON.decodeFromString<List<PlaylistMusic>>(file.readText()) }
-                .getOrElse { emptyList() }
-        } else emptyList()
+        file.readJsonOrNull { JSON.decodeFromString<List<PlaylistMusic>>(it) } ?: emptyList()
     }
 
     suspend fun savePlaylistMusics(listId: String, musics: List<PlaylistMusic>) =
@@ -180,11 +177,8 @@ class AppDatabase(private val context: Context) {
     suspend fun loadFavorites(): List<com.lingxu.music.core.model.MusicInfo> =
         withContext(Dispatchers.IO) {
             val file = java.io.File(dataDir, FILE_FAVORITES)
-            if (file.exists()) {
-                runCatching {
-                    JSON.decodeFromString<List<com.lingxu.music.core.model.MusicInfo>>(file.readText())
-                }.getOrElse { emptyList() }
-            } else emptyList()
+            file.readJsonOrNull { JSON.decodeFromString<List<com.lingxu.music.core.model.MusicInfo>>(it) }
+                ?: emptyList()
         }
 
     suspend fun saveFavorites(list: List<com.lingxu.music.core.model.MusicInfo>) =
@@ -196,9 +190,7 @@ class AppDatabase(private val context: Context) {
 
     suspend fun loadSearchHistory(): List<String> = withContext(Dispatchers.IO) {
         val file = java.io.File(dataDir, FILE_SEARCH_HISTORY)
-        if (file.exists()) {
-            runCatching { JSON.decodeFromString<List<String>>(file.readText()) }.getOrElse { emptyList() }
-        } else emptyList()
+        file.readJsonOrNull { JSON.decodeFromString<List<String>>(it) } ?: emptyList()
     }
 
     suspend fun saveSearchHistory(list: List<String>) = withContext(Dispatchers.IO) {
@@ -210,9 +202,7 @@ class AppDatabase(private val context: Context) {
     suspend fun loadLastPlay(): com.lingxu.music.core.player.PlayState? =
         withContext(Dispatchers.IO) {
             val file = java.io.File(dataDir, FILE_LAST_PLAY)
-            if (!file.exists()) return@withContext null
-            runCatching { JSON.decodeFromString<com.lingxu.music.core.player.PlayState>(file.readText()) }
-                .getOrNull()
+            file.readJsonOrNull { JSON.decodeFromString<com.lingxu.music.core.player.PlayState>(it) }
         }
 
     suspend fun saveLastPlay(state: com.lingxu.music.core.player.PlayState) =

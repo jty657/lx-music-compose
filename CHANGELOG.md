@@ -40,21 +40,32 @@
 - **损坏文件隔离**：音源列表 / 歌单 JSON 解析失败时，把损坏文件改名备份（`.corrupt.<时间戳>`），避免下次写入把空数据覆盖回原文件造成用户数据无声丢失
 - **并发可见性**：给两个加载标志加 `@Volatile`，消除多 IO 线程间的可见性竞态
 
-## 第三轮：全量源码复审（本次）
+## 第三轮：全量源码复审 + 数据健壮性 + 性能 + UI 打磨（本次）
 
-本轮对全部 46 个 Kotlin 源文件逐模块复审，除美化外修复了三个此前遗漏的真实缺陷。
+本轮对全部源码逐模块复审，除美化外修复了多个此前遗漏的真实缺陷。
 
-### 缺陷修复
-- **备份导入（严重·数据安全）**：`BackupData.version` 有默认值且旧序列化器未开 `encodeDefaults`，导致「空文件检测」用的 `version<=0` 永远不成立——空 JSON `{}` 会被当作合法备份导入并清空全部收藏与歌单。改用可靠判据「三类数据全空即拒绝」，并开启 `encodeDefaults` 让 `version` 真正落盘，使未来的版本校验生效；单歌单分享文件同步处理
-- **清除缓存（真实 bug）**：`HttpClient.clearDiskCache()` 原先调用 `Cache.delete()` 会关闭 OkHttp 底层缓存，导致清一次之后所有封面缓存写入永久失效。改为仅 `evictAll()` 清空条目，缓存继续可用
-- **设置持久化（真实 bug）**：倍速/音量的 `commitPlaybackRate`/`commitVolume` 此前定义了却无调用方，节流窗口内最后一次拖动的值会丢失。改为 pending 缓存 + 离开设置页时补写，与模糊强度的处理一致
+### 数据安全（核心 bug 修复）
+- **备份导入（严重·数据安全）**：`BackupData.version` 有默认值且旧序列化器未开 `encodeDefaults`，导致「空文件检测」用的 `version<=0` 永远不成立——空 JSON `{}` 会被当作合法备份导入并清空全部收藏与歌单。改为 decode 前先做 JSON 结构校验（必须是对象且含数据键），并开启 `encodeDefaults` 让 `version` 真正落盘；单歌单分享文件同步处理。
+- **损坏文件隔离**：`getPlaylistMusics` / `loadFavorites` / `loadSearchHistory` / `loadLastPlay` 原先解析失败静默当空、下次写入覆盖；统一复用 `readJsonOrNull`（解析失败改名 `.corrupt.<时间戳>` 隔离），损坏文件不再被无声覆盖。
 
-### 美化与代码质量
-- 修正 AppRoot 迷你播放条、首页榜单、搜索/音源/榜单/歌单等页面多处编辑残留的缩进错乱
-- 清理首页/搜索页重复 Spacer、收藏页重复 import
+### 引擎与网络
+- **Promise 等待**：`BuiltinSdkBridge.awaitPromise` 加 `AtomicBoolean` 一次性守卫 + `invokeOnCancellation` 清理，杜绝超时/取消后 JS 回调重复 resume 与 continuation 泄漏；整段包 `runCatching`，SDK 线程异常不再外泄。
+- **定时器桥**：`QuickJSEngine` 的 `set_timeout` 参数改为安全取值（`getOrNull` + 类型判断 + 非负钳制）并包 `runCatching`，异常脚本传参不再打断 JS 线程。
+- **音质列表**：`MusicRepository` / `ScriptEngineManager` 解析 `qualitys` 时用安全类型转换，遇到非字符串元素不再抛异常中断协程。
+- **磁盘缓存**：移除 `Cache.delete()`（会关闭底层 DiskLruCache 导致缓存永久失效），清缓存改为仅 `evictAll()`。
 
-### 定位说明
-README 顶部已明确本作是「同时具备在线与本地功能的音乐播放器」：在线侧含聚合音源、用户脚本、歌词封面与换源 fallback；本地侧含本地歌单、收藏、播放队列、备份恢复、本地音乐源与离线设置。本轮未改动这一定位。
+### 播放稳定性
+- **队列去重**：`addToQueue` 按歌曲 id 去重，避免「加入播放队列」把已在队列的歌重复加入、造成 LazyColumn 重复 key 崩溃。
+
+### 性能
+- **歌词重组隔离**：`LyricView` 改为只接收 `lyricLines / currentIndex / currentId` 等必要参数，而非整个 `PlayState`；播放进度每 500ms 变化不再触发歌词列表全量重组。
+
+### 设置与 UI 美化
+- **倍速/音量落盘**：节流写盘补上「离开设置页提交最终值」（pending + DisposableEffect），修复原先 `commit*` 无调用方、最后调整丢失的问题；播放器内设置弹窗滑块统一为 Miuix 风格。
+- **分区标题**：设置页分组标题放大一档 + primary 色 + 间距，层次更清晰。
+- **图标热区**：播放队列上移/下移图标点击热区从 20dp 扩到 32dp。
+- **搜索历史**：改为 `weight + verticalScroll`，最多 30 条历史在小屏上也能完整查看；删除重复间距。
+- **代码整洁**：修正 AppRoot 迷你播放条、首页榜单、搜索/音源/榜单/歌单等页面多处编辑残留的缩进错乱；清理收藏页重复 import。
 
 ## 质量保证
 

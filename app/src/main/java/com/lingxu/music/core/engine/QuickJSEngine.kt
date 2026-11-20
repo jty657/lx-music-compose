@@ -242,10 +242,12 @@ class QuickJSEngine(
             }
         }
         global.setProperty("__lx_native_call__set_timeout") { args: Array<Any?> ->
-            val id = args[0].toString()
-            val timeout = (args[1] as Number).toInt()
-            // 必须回到 JS 线程执行 callJS（主线程直接进 QuickJS 上下文会与 JS 线程竞争）
-            timeoutHandler.postDelayed({ postAction("__set_timeout__", id) }, timeout.toLong())
+            runCatching {
+                val id = args.getOrNull(0)?.toString().orEmpty()
+                val timeout = (args.getOrNull(1) as? Number)?.toInt()?.coerceAtLeast(0) ?: 0
+                // 必须回到 JS 线程执行 callJS（主线程直接进 QuickJS 上下文会与 JS 线程竞争）
+                timeoutHandler.postDelayed({ postAction("__set_timeout__", id) }, timeout.toLong())
+            }.onFailure { Log.e(TAG, "utils_set_timeout error: ${it.message}") }
             null
         }
     }

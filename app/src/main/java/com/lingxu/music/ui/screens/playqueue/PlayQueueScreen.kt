@@ -1,6 +1,7 @@
 package com.lingxu.music.ui.screens.playqueue
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -138,26 +139,39 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                         }
                         // 上移/下移：用旋转的 Back 箭头替代裸文字，图标化后触摸区更大、语义更清晰
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                MiuixIcons.Back,
-                                contentDescription = "上移",
-                                tint = if (index > 0) MiuixTheme.colorScheme.primary
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.4f),
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .graphicsLayer { rotationZ = 90f }
+                            // 图标本身保持 20dp，但点击热区撑到 32dp，避免手指点不准
+                            Box(
+                                Modifier
+                                    .size(32.dp)
                                     .clickable(enabled = index > 0) { viewModel.moveUp(index) },
-                            )
-                            Icon(
-                                MiuixIcons.Back,
-                                contentDescription = "下移",
-                                tint = if (index < queue.lastIndex) MiuixTheme.colorScheme.primary
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.4f),
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .graphicsLayer { rotationZ = -90f }
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    MiuixIcons.Back,
+                                    contentDescription = "上移",
+                                    tint = if (index > 0) MiuixTheme.colorScheme.primary
+                                    else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.4f),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer { rotationZ = 90f },
+                                )
+                            }
+                            Box(
+                                Modifier
+                                    .size(32.dp)
                                     .clickable(enabled = index < queue.lastIndex) { viewModel.moveDown(index) },
-                            )
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    MiuixIcons.Back,
+                                    contentDescription = "下移",
+                                    tint = if (index < queue.lastIndex) MiuixTheme.colorScheme.primary
+                                    else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.4f),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer { rotationZ = -90f },
+                                )
+                            }
                         }
                         Spacer(Modifier.size(4.dp))
                         Icon(

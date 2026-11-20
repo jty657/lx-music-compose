@@ -2,6 +2,8 @@ package com.lingxu.music.ui.screens.search
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -183,21 +185,29 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                 )
             }
             Spacer(Modifier.height(4.dp))
-            viewModel.history.forEach { word ->
-                Text(
-                    word,
-                    fontSize = MiuixTheme.textStyles.body1.fontSize,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .combinedClickable(
-                            onClick = {
-                                textFieldState.setTextAndPlaceCursorAtEnd(word)
-                                scope.launch { viewModel.search(word, selectedSource) }
-                            },
-                            onLongClick = { viewModel.removeHistory(word) },
-                        )
-                        .padding(vertical = 6.dp),
-                )
+            // 历史最多 30 条，小屏上平铺会超出屏幕且下方条目不可见；用 weight + 滚动承载
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                viewModel.history.forEach { word ->
+                    Text(
+                        word,
+                        fontSize = MiuixTheme.textStyles.body1.fontSize,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = {
+                                    textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                    scope.launch { viewModel.search(word, selectedSource) }
+                                },
+                                onLongClick = { viewModel.removeHistory(word) },
+                            )
+                            .padding(vertical = 6.dp),
+                    )
+                }
             }
             return@Column
         }

@@ -516,7 +516,11 @@ class PlayerRepository(context: Context) {
 
     /** 追加到队列（新加入的项可能还没解析 URL，后台补上） */
     fun addToQueue(musicInfo: MusicInfo) {
-        val next = _state.value.queue + musicInfo
+        val current = _state.value.queue
+        // 队列列表以歌曲 id 作为 LazyColumn 的稳定 key，重复 id 会导致 Compose 抛
+        // "Duplicate key" 崩溃；"加入播放队列"会把已在队列中的歌再次加入，故先去重。
+        if (current.any { it.id == musicInfo.id }) return
+        val next = current + musicInfo
         _state.update { it.copy(queue = next) }
         player.addMediaItem(musicInfo.toMediaItem())
         ensureResolved(next.lastIndex)

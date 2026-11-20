@@ -127,7 +127,7 @@ fun SettingScreen(
     LaunchedEffect(blurRadius) { localBlur = blurRadius }
     val userApiLog by viewModel.userApiLog.collectAsState(initial = false)
 
-    // 离开设置页时补写倍速/音量节流跳过的最终值，避免用户拖完立刻返回导致设置丢失
+    // 离开设置页时提交倍速/音量节流跳过的最终值，避免拖完立刻返回导致调整丢失
     DisposableEffect(Unit) {
         onDispose {
             viewModel.commitPlaybackRate()
@@ -621,6 +621,12 @@ fun SettingScreen(
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, fontSize = MiuixTheme.textStyles.body2.fontSize)
+    // 分区标题放大一档并用 primary 色，与正文 summary 拉开层次，便于快速扫读
+    Text(
+        text,
+        fontSize = MiuixTheme.textStyles.body1.fontSize,
+        color = MiuixTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+    )
     Spacer(Modifier.size(4.dp))
 }

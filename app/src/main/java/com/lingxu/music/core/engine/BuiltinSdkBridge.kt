@@ -38,6 +38,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -659,23 +660,30 @@ class BuiltinSdkBridge(context: Context) {
     private suspend fun awaitPromise(promise: JSObject): Any? =
         withTimeoutOrNull(TIMEOUT_MS) {
             suspendCancellableCoroutine { cont ->
-                executor.execute {
-                    val then = promise.getJSFunction("then")
-                    if (then != null) {
-                        then.call(
-                            { args: Array<Any?> ->
-                                if (cont.isActive) cont.resume(args.getOrNull(0))
-                            },
-                            { args: Array<Any?> ->
-                                if (cont.isActive) {
-                                    val err = args.getOrNull(0)
-                                    cont.resumeWith(Result.failure(Exception(err?.toString() ?: "promise rejected")))
-                                }
-                            },
-                        )
-                    } else {
-                        if (cont.isActive) cont.resume(promise)
+                // 一次性守卫：超时/取消后 JS 的 then 回调仍可能触发，必须保证只 resume 一次，
+                // 且取消后不再持有 cont（否则 continuation 与其协程上下文被 JS 回调长期引用而泄漏）。
+                val settled = AtomicBoolean(false)
+                fun settle(result: Result<Any?>) {
+                    if (settled.compareAndSet(false, true) && cont.isActive) {
+                        cont.resumeWith(result)
                     }
+                }
+                cont.invokeOnCancellation { settled.set(true) }
+                executor.execute {
+                    runCatching {
+                        val then = promise.getJSFunction("then")
+                        if (then != null) {
+                            then.call(
+                                { args: Array<Any?> -> settle(Result.success(args.getOrNull(0))) },
+                                { args: Array<Any?> ->
+                                    val err = args.getOrNull(0)
+                                    settle(Result.failure(Exception(err?.toString() ?: "promise rejected")))
+                                },
+                            )
+                        } else {
+                            settle(Result.success(promise))
+                        }
+                    }.onFailure { settle(Result.failure(it)) }
                 }
             }
         } ?: throw IllegalStateException("promise timeout")

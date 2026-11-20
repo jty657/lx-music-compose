@@ -198,7 +198,7 @@ class ScriptEngineManager(private val context: Context) {
         if (currentApiId == null) return builtinQualityList[source] ?: emptyList()
         val cap = _capabilities.value[source] ?: return emptyList()
         return (cap.get("qualitys") as? kotlinx.serialization.json.JsonArray)
-            ?.mapNotNull { it.jsonPrimitive.content } ?: emptyList()
+            ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content } ?: emptyList()
     }
 
     /**

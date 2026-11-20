@@ -44,9 +44,9 @@ class BackupRepository(
         private const val EXPORT_PREFIX = "lingxu-backup-"
     }
 
-    // encodeDefaults=true：把 version 真正写进备份文件，否则版本检查形同虚设
-    // （version 是默认值，encodeDefaults=false 时不会序列化）。旧备份无该字段时，
-    // 反序列化仍回落到默认值 VERSION，保持向后兼容。
+    // encodeDefaults=true：既把 version 真正写进备份文件（否则版本检查形同虚设），
+    // 也让空数据的备份带上所有数据键而非编码成 "{}"，导入时结构校验可据此区分合法空备份与损坏文件。
+    // 旧备份无 version 字段时反序列化仍回落到默认值 VERSION，保持向后兼容。
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
 
     /** 导入完成后的回调：让内存缓存失效重建（备份是直接写 db 的，不刷新会被旧缓存覆盖） */
@@ -78,12 +78,19 @@ class BackupRepository(
         val result = runCatching {
             val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
                 ?: error("无法读取所选文件")
-            // 结构校验：损坏文件（如 "{}"）会被 kotlinx 解码成「version=默认值 + 三类数据全空」的对象。
-            // 注意 BackupData.version 有默认值 VERSION，老版本备份（未开 encodeDefaults）本就不含该字段，
-            // 所以既不能用「缺 version」也不能用「version<=0」判定损坏——两者都会误伤正常备份或放过空文件。
-            // 唯一可靠的判据是「三类数据全空」：一份有内容的备份不可能三者皆空；
-            // 而用户主动导出空数据时本来也无内容可恢复，拒绝导入同样安全。
+            // 结构校验（decode 前）：kotlinx 会把 "{}" 解码成全默认值的 BackupData
+            // （version=1），原先用 data.version<=0 判断损坏几乎永不成立，导致空/损坏文件
+            // 被当成合法备份导入、清空用户收藏与歌单。先要求顶层是 JSON 对象且含数据键之一。
+            val root = runCatching { json.parseToJsonElement(text) }.getOrNull()
+                as? kotlinx.serialization.json.JsonObject
+                ?: error("备份文件内容为空或已损坏，未做任何改动")
+            val knownKeys = setOf("favorites", "playlists", "playlistMusics")
+            if (root.keys.none { it in knownKeys }) {
+                error("备份文件内容为空或已损坏，未做任何改动")
+            }
             val data = json.decodeFromString<BackupData>(text)
+            // 第二道判据：三类数据全空视为无内容可恢复，拒绝导入（有内容的备份不可能三者皆空）。
+            // 老版本备份未开 encodeDefaults、本就不含 version 字段，故不能靠缺 version 判定损坏。
             if (data.favorites.isEmpty() && data.playlists.isEmpty() && data.playlistMusics.isEmpty()) {
                 error("备份文件内容为空或已损坏，未做任何改动")
             }

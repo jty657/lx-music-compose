@@ -49,6 +49,8 @@ class HttpClient {
 
     /** 清空磁盘缓存（封面等）。只清空条目，不调用 delete()——后者会关闭底层缓存，导致之后所有缓存写入永久失效。 */
     fun clearDiskCache() {
+        // 只清空条目，不调用 delete()：OkHttp 的 Cache.delete() 会关闭底层
+        // DiskLruCache，此后读写缓存均返回 null，缓存被永久禁用且不可恢复。
         runCatching { client.cache?.evictAll() }
     }
 

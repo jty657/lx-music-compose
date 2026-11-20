@@ -50,7 +50,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.LyricLine
 import com.lingxu.music.core.player.PlayMode
-import com.lingxu.music.core.player.PlayState
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.TrackCover
@@ -192,9 +191,13 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
             Spacer(Modifier.height(12.dp))
 
+            // 只传歌词视图真正依赖的值，而非整个 PlayState：positionMs 每 500ms 变化，
+            // 传整个 state 会让歌词列表每 500ms 全量重组；拆分后只有当行号/歌曲变化时才重组。
             LyricView(
-                state,
-                Modifier.weight(1f).fillMaxWidth(),
+                lyricLines = state.lyricLines,
+                currentIndex = state.currentLyricIndex,
+                currentId = state.current?.id,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
                 fontScale = lyricFontScale,
                 zoomActive = zoomActiveLrc,
                 showTranslation = showLrcTranslation,
@@ -335,7 +338,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
  */
 @Composable
 private fun LyricView(
-    state: PlayState,
+    lyricLines: List<LyricLine>,
+    currentIndex: Int,
+    currentId: String?,
     modifier: Modifier = Modifier,
     fontScale: Float = 1f,
     zoomActive: Boolean = false,
@@ -345,7 +350,7 @@ private fun LyricView(
     onSeek: (Long) -> Unit = {},
 ) {
     val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
-    if (state.lyricLines.isEmpty()) {
+    if (lyricLines.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.Center) {
             Text(
                 "暂无歌词",
@@ -356,14 +361,13 @@ private fun LyricView(
         return
     }
     val listState = rememberLazyListState()
-    val currentIndex = state.currentLyricIndex
     val baseSp = (MiuixTheme.textStyles.body2.fontSize.value * fontScale).sp
 
     BoxWithConstraints(modifier) {
         val edgePad = maxHeight * 0.4f
         val edgePadPx = with(LocalDensity.current) { edgePad.roundToPx() }
         // 用弹簧缓动替换默认的瞬时滚动：歌词跟着唱「滑」到位，而不是一格一格跳
-        LaunchedEffect(currentIndex, edgePadPx, state.current?.id) {
+        LaunchedEffect(currentIndex, edgePadPx, currentId) {
             if (currentIndex >= 0) {
                 // +1 跳过首部占位 item
                 listState.animateScrollToItem(currentIndex + 1, scrollOffset = -edgePadPx)
@@ -375,9 +379,9 @@ private fun LyricView(
             horizontalAlignment = horizontal,
         ) {
             item { Spacer(Modifier.height(edgePad)) }
-            items(count = state.lyricLines.size) { index ->
+            items(count = lyricLines.size) { index ->
                 LyricLineRow(
-                    line = state.lyricLines[index],
+                    line = lyricLines[index],
                     isCurrent = index == currentIndex,
                     baseSp = baseSp,
                     zoomActive = zoomActive,
@@ -506,7 +510,7 @@ private fun PlayerMoreSettings(
             Text("播放设置", fontSize = MiuixTheme.textStyles.title1.fontSize)
             Spacer(Modifier.size(12.dp))
             Text("播放倍速 ${(localRate * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
-            androidx.compose.material3.Slider(
+            Slider(
                 value = localRate,
                 onValueChange = { localRate = it },
                 onValueChangeFinished = { viewModel.setPlaybackRate(localRate) },
@@ -515,7 +519,7 @@ private fun PlayerMoreSettings(
             )
             Spacer(Modifier.size(8.dp))
             Text("音量 ${(localVolume * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
-            androidx.compose.material3.Slider(
+            Slider(
                 value = localVolume,
                 onValueChange = { localVolume = it },
                 onValueChangeFinished = { viewModel.setVolume(localVolume) },

@@ -77,7 +77,7 @@ class MusicRepository(
             val type = cap["type"]?.jsonPrimitive?.content ?: return@forEach
             if (type != "music") return@forEach
             val qs = (cap["qualitys"] as? JsonArray)
-                ?.mapNotNull { it.jsonPrimitive.content }
+                ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
                 ?.filter { it in validQualitys }
                 ?: emptyList()
             qualitys[source] = qs

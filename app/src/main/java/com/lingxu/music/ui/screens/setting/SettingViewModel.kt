@@ -174,7 +174,7 @@ class SettingViewModel : ViewModel() {
         }
     }
 
-    /** 离开设置页时补写节流跳过的最终值 */
+    /** 离开设置页时补写节流跳过的最终值，确保最后调整的倍速不丢失 */
     fun commitPlaybackRate() {
         val value = pendingRate ?: return
         pendingRate = null
