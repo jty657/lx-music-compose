@@ -100,7 +100,7 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
         val listState = rememberLazyListState()
         com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
-        LazyColumn(state = listState) {
+        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             items(favorites, key = { it.id }) { music ->
                 FavoriteCard(
                     music = music,

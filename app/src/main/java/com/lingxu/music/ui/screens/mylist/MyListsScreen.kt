@@ -218,6 +218,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
 
             LazyColumn(
                 state = listState,
+                modifier = Modifier.weight(1f),
             ) {
                 items(shownMusics, key = { it.id }) { music ->
                     val checked = music.id in selected

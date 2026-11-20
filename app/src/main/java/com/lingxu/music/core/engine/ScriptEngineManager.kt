@@ -170,6 +170,8 @@ class ScriptEngineManager(private val context: Context) {
         _status.value = ApiStatus(false, "")
         pendingAppRequests.values.forEach { it.completeExceptionally(Exception("api destroyed")) }
         pendingAppRequests.clear()
+        // 唤醒正在 awaitInit 的调用方，避免它们挂满整个初始化超时
+        _initDeferred.complete(false)
     }
 
     /** 等待当前音源初始化完成（对应 global.lx.apiInitPromise[0]） */
@@ -208,7 +210,9 @@ class ScriptEngineManager(private val context: Context) {
         action: String,
         info: JsonObject,
     ): JsonObject {
-        awaitInit()
+        // 初始化失败/超时就不要再发请求，否则还会白等一个 REQUEST_TIMEOUT_MS；
+        // 直接抛错让上层快速失败并给出准确提示。
+        if (!awaitInit()) throw IllegalStateException("音源未就绪")
         val eng = engine ?: throw IllegalStateException("script not loaded")
         val requestKey = "request__${UUID.randomUUID()}"
         val deferred = CompletableDeferred<JsonObject?>()

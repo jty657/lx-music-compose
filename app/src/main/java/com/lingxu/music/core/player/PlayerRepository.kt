@@ -238,10 +238,13 @@ class PlayerRepository(context: Context) {
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                // 错误提示由 onPlayerError 设置、切歌/重播时清除；不能在这里无条件 error=null，
+                // 否则错误发生后紧随的状态回调会瞬间抹掉提示，用户看不到失败原因。
+                // 只有真正进入缓冲（开始新的加载）时才清掉上一次的错误。
                 _state.update {
                     it.copy(
                         loading = playbackState == Player.STATE_BUFFERING,
-                        error = null,
+                        error = if (playbackState == Player.STATE_BUFFERING) null else it.error,
                     )
                 }
             }
@@ -319,18 +322,30 @@ class PlayerRepository(context: Context) {
             }
         })
 
+        // 进度轮询：暂停/空闲时停更，避免后台每 500ms 触发全量重组；
+        // 恢复播放时立即补一次，保证拖动/跳转后进度不错位。
+        var wasPlaying = false
         scope.launch {
             while (isActive) {
-                runCatching {
-                    val duration = player.duration
-                    _state.update {
-                        it.copy(
-                            positionMs = player.currentPosition.coerceAtLeast(0L),
-                            durationMs = if (duration > 0) duration else 0L,
-                        )
+                val playing = player.isPlaying
+                if (playing) {
+                    runCatching {
+                        val duration = player.duration
+                        _state.update {
+                            it.copy(
+                                positionMs = player.currentPosition.coerceAtLeast(0L),
+                                durationMs = if (duration > 0) duration else 0L,
+                            )
+                        }
+                    }
+                } else if (wasPlaying) {
+                    // 刚暂停：补一次最终进度后停止更新
+                    runCatching {
+                        _state.update { it.copy(positionMs = player.currentPosition.coerceAtLeast(0L)) }
                     }
                 }
-                delay(500)
+                wasPlaying = playing
+                delay(if (playing) 500L else 300L)
             }
         }
     }
@@ -575,7 +590,6 @@ class PlayerRepository(context: Context) {
                 player.shuffleModeEnabled = false
             }
         }
-        player.shuffleModeEnabled = mode == PlayMode.RANDOM
     }
 
     fun clear() {
@@ -590,6 +604,8 @@ class PlayerRepository(context: Context) {
 
     fun release() {
         lyricJob?.cancel()
+        coverJob?.cancel()
+        timeoutJob?.cancel()
         player.release()
     }
 
@@ -608,6 +624,9 @@ class PlayerRepository(context: Context) {
     /** 加载当前歌曲封面（优先搜索结果的 meta.picUrl，否则经 coverLoader 获取） */
     private fun loadCover(musicInfo: MusicInfo) {
         coverJob?.cancel()
+        // 先清空上一首的封面，避免切到无封面歌曲时界面残留旧图；
+        // 加载期间显示占位，取到结果后再填回。
+        _state.update { it.copy(coverUrl = null) }
         val url = musicInfo.meta.picUrl
         if (url != null) {
             _state.update { it.copy(coverUrl = url) }

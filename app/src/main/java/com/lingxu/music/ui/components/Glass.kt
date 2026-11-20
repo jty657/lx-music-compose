@@ -131,7 +131,8 @@ fun GlassTopBar(
         modifier = modifier
             .fillMaxWidth()
             .background(
-                if (dark) Color.Black.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.72f),
+                // 与玻璃卡片同极性：深色用低透明白叠在暗背景上，避免「黑顶栏 + 白卡片」的明暗割裂
+                if (dark) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.72f),
             ),
         content = content,
     )

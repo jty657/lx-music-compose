@@ -122,32 +122,36 @@ fun AppRoot() {
                     // 底部：迷你播放条 + 导航栏
                     // 切页时复位滚动量，否则在 A 页滑下隐藏后进 B 页会一直不显示
                     val currentScreen = navigator.backStack.last()
+                    // 播放页是全屏沉浸页，自带完整播放控制，不再叠加迷你条与底栏
+                    val isPlayerScreen = currentScreen == Screen.Player
                     LaunchedEffect(currentScreen) { miniBarScroll.value = 0 }
                     LaunchedEffect(miniBarScroll.value, autoHidePlayBar) {
                         // autoHidePlayBar=false 的语义是「始终显示」，不是「始终隐藏」
                         miniBarVisible = !autoHidePlayBar || miniBarScroll.value <= 0
                     }
-                    Column(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding(),
-                    ) {
-                        AnimatedVisibility(
-                            visible = miniBarVisible,
-                            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    if (!isPlayerScreen) {
+                        Column(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding(),
                         ) {
-                            MiniPlayerBar(navigator)
-                        }
-                        if (blurEnabled) {
-                            val glass = LocalGlass.current
-                            if (glass != null) {
-                                GlassBottomBar(glass, navigator)
+                            AnimatedVisibility(
+                                visible = miniBarVisible,
+                                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                            ) {
+                                MiniPlayerBar(navigator)
+                            }
+                            if (blurEnabled) {
+                                val glass = LocalGlass.current
+                                if (glass != null) {
+                                    GlassBottomBar(glass, navigator)
+                                } else {
+                                    PlainBottomBar(navigator)
+                                }
                             } else {
                                 PlainBottomBar(navigator)
                             }
-                        } else {
-                            PlainBottomBar(navigator)
                         }
                     }
                 }
@@ -168,8 +172,14 @@ private fun MainScaffold(
         BackHandler(enabled = navigator.backStack.size > 1) {
             navigator.pop()
         }
-        // 底部留白：导航栏 + （有歌曲时的）迷你播放条
-        val bottomInset = if (playState.current != null) 132.dp else 76.dp
+        // 底部留白：播放页是全屏沉浸页，无需为底栏留白；
+        // 其余页面为导航栏 + （有歌曲时的）迷你播放条预留空间。
+        val isPlayer = current == Screen.Player
+        val bottomInset = when {
+            isPlayer -> 0.dp
+            playState.current != null -> 132.dp
+            else -> 76.dp
+        }
         Box(
             Modifier
                 .fillMaxSize()

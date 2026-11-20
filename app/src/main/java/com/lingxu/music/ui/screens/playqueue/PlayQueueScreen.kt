@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -103,7 +104,8 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
         val listState = rememberLazyListState()
         com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
-            itemsIndexed(queue, key = { index, item -> "$index-${item.id}" }) { index, music ->
+            // key 只用稳定的歌曲 id：带上 index 会在排序/移除后导致整表重组与封面重载
+            itemsIndexed(queue, key = { _, item -> item.id }) { index, music ->
                 GlassSurface(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     onClick = { viewModel.playAt(index) },
@@ -134,24 +136,27 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
+                        // 上移/下移：用旋转的 Back 箭头替代裸文字，图标化后触摸区更大、语义更清晰
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "↑",
-                                fontSize = MiuixTheme.textStyles.body1.fontSize,
-                                color = if (index > 0) MiuixTheme.colorScheme.primary
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            Icon(
+                                MiuixIcons.Back,
+                                contentDescription = "上移",
+                                tint = if (index > 0) MiuixTheme.colorScheme.primary
+                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.4f),
                                 modifier = Modifier
-                                    .clickable(enabled = index > 0) { viewModel.moveUp(index) }
-                                    .padding(horizontal = 8.dp),
+                                    .size(20.dp)
+                                    .graphicsLayer { rotationZ = 90f }
+                                    .clickable(enabled = index > 0) { viewModel.moveUp(index) },
                             )
-                            Text(
-                                "↓",
-                                fontSize = MiuixTheme.textStyles.body1.fontSize,
-                                color = if (index < queue.lastIndex) MiuixTheme.colorScheme.primary
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            Icon(
+                                MiuixIcons.Back,
+                                contentDescription = "下移",
+                                tint = if (index < queue.lastIndex) MiuixTheme.colorScheme.primary
+                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.4f),
                                 modifier = Modifier
-                                    .clickable(enabled = index < queue.lastIndex) { viewModel.moveDown(index) }
-                                    .padding(horizontal = 8.dp),
+                                    .size(20.dp)
+                                    .graphicsLayer { rotationZ = -90f }
+                                    .clickable(enabled = index < queue.lastIndex) { viewModel.moveDown(index) },
                             )
                         }
                         Spacer(Modifier.size(4.dp))

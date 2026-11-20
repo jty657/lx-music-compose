@@ -11,11 +11,12 @@ import com.lingxu.music.core.request.ScriptRequestOptions
 import com.whl.quickjs.android.QuickJSLoader
 import com.whl.quickjs.wrapper.QuickJSContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.cancelChildren
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -362,7 +363,9 @@ class QuickJSEngine(
 
     /** 外部响应脚本的 HTTP 请求（由 ScriptAction.Request 触发后调用） */
     fun executeScriptRequest(requestKey: String, url: String, options: ScriptRequestOptions) {
-        val job = scope.launch {
+        // LAZY 启动：先把 Job 放进表再 start，避免协程在入表前就完成并从 map 移除，
+        // 随后入表把一个已完成 Job 放回导致永久滞留引用。
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             runCatching {
                 HttpClient.instance.fetch(url, options)
             }.onSuccess { resp ->
@@ -396,6 +399,7 @@ class QuickJSEngine(
             pendingRequests.remove(requestKey)
         }
         pendingRequests[requestKey] = job
+        job.start()
     }
 
     /** 销毁引擎 */
@@ -404,7 +408,9 @@ class QuickJSEngine(
         pendingRequests.values.forEach { it.cancel() }
         pendingRequests.clear()
         timeoutHandler.removeCallbacksAndMessages(null)
-        scope.coroutineContext.cancelChildren()
+        // cancelChildren 只取消子协程，SupervisorJob 本身仍存活，销毁后仍可起新协程；
+        // 直接 cancel 整个 scope 才能真正关闭引擎生命周期。
+        scope.cancel()
     }
 
     fun isReady() = inited

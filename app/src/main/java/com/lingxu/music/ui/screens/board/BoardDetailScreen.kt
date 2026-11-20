@@ -168,6 +168,7 @@ fun BoardDetailScreen(
 
         LazyColumn(
             state = listState,
+            modifier = Modifier.weight(1f),
         ) {
             items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(

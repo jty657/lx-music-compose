@@ -117,12 +117,17 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(sources) { source ->
-                Button(
+                val selected = selectedSource == source
+                GlassSurface(
+                    tint = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f) else null,
                     onClick = { selectedSource = source },
                 ) {
                     Text(
                         text = SourceConst.displayName(source),
                         fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = if (selected) MiuixTheme.colorScheme.primary
+                        else MiuixTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                     )
                 }
             }
@@ -213,8 +218,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     GlassSurface(
     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
     onClick = {
-                            navigator.push(Screen.SongListDetail(item.source, item.id, item.name,
-))
+                            navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                         },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
@@ -260,7 +264,27 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         val resultState = rememberLazyListState()
         com.lingxu.music.ui.components.ReportScrollForMiniBar(resultState)
         AutoLoadMore(resultState, viewModel.hasMore, viewModel.loading) { viewModel.loadMore() }
-        LazyColumn(state = resultState) {
+        // 搜索后无结果：给出明确空态，避免只剩一片空白让用户以为卡住
+        if (results.isEmpty() && !viewModel.loading && viewModel.hasSearched && viewModel.errorMessage == null) {
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    MiuixIcons.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "没有找到相关音乐",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        }
+        LazyColumn(state = resultState, modifier = Modifier.weight(1f)) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
     music = music,

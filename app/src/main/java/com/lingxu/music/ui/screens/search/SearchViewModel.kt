@@ -45,6 +45,10 @@ class SearchViewModel : ViewModel() {
     var hasMore by mutableStateOf(false)
         private set
 
+    /** 是否已发起过搜索：用于区分「尚未搜索」与「搜索后无结果」，避免首屏误显空态 */
+    var hasSearched by mutableStateOf(false)
+        private set
+
     init {
         viewModelScope.launch {
             LxApp.app.favoritesRepository.favoriteIds.collect { favoriteIds = it }
@@ -58,6 +62,7 @@ class SearchViewModel : ViewModel() {
         lastQuery = text
         lastSource = source
         page = 1
+        hasSearched = true
         viewModelScope.launch {
             loading = true
             errorMessage = null

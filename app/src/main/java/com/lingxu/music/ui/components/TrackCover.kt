@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lingxu.music.core.request.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -31,6 +33,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.concurrent.ConcurrentHashMap
 
@@ -149,6 +152,7 @@ fun TrackCover(
             .size(size)
             .clip(RoundedCornerShape(corner))
             .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.12f)),
+        contentAlignment = Alignment.Center,
     ) {
         if (image != null) {
             Image(
@@ -156,6 +160,13 @@ fun TrackCover(
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
                 contentScale = ContentScale.Crop,
+            )
+        } else {
+            // 封面加载中/失败时的音符占位，比纯色块更有辨识度
+            Text(
+                "♪",
+                fontSize = (size.value * 0.4f).sp,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
             )
         }
     }

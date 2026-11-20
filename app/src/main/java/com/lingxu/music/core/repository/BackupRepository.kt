@@ -79,6 +79,12 @@ class BackupRepository(
             if (data.version > BackupData.VERSION) {
                 error("备份文件版本(v${data.version})比当前 App(v${BackupData.VERSION})更新，请先升级 App")
             }
+            // 结构校验：损坏文件（如 "{}"）也能被 kotlinx 解码成全默认的空备份，
+            // 直接导入会把用户的收藏与歌单全部清空。三类数据全空视为非法备份，拒绝导入。
+            // 版本 0 表示连 version 字段都没有，一并按损坏处理。
+            if (data.version <= 0 && data.favorites.isEmpty() && data.playlists.isEmpty() && data.playlistMusics.isEmpty()) {
+                error("备份文件内容为空或已损坏，未做任何改动")
+            }
 
             // 过滤非法/重复条目（对齐原版 filterMusicList），否则导入的重复 id 会让列表页崩溃；
             // 同时把 listId 做白名单校验，备份里的 id 会直接拼进文件名，不能含路径分隔符。

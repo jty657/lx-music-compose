@@ -370,6 +370,11 @@ class BuiltinSdkBridge(context: Context) {
             jsContext = null
             sdkObject = null
         }
+        // 先取消所有挂起的定时器，再关闭线程池；否则遗留定时器会向已关闭的
+        // executor 提交任务抛 RejectedExecutionException，并造成线程/引用泄漏。
+        timers.values.forEach { runCatching { it.cancel(false) } }
+        timers.clear()
+        timerExecutor.shutdownNow()
         executor.shutdown()
     }
 

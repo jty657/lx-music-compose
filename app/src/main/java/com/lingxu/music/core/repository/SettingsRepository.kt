@@ -111,8 +111,13 @@ class SettingsRepository(private val context: Context) {
 
     val blurEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_BLUR_ENABLED] ?: true }
     val blurRadius: Flow<Float> = context.dataStore.data.map { prefs ->
-        // 兼容旧版本把 blurRadius 以字符串存放的格式
-        (prefs[KEY_BLUR_RADIUS] ?: prefs[stringPreferencesKey("glass.blurRadius")]?.toFloatOrNull() ?: 24f)
+        // 兼容旧版本把 blurRadius 以字符串存放的格式。
+        // 注意：DataStore 用 float key 读取同名 string 值会抛 ClassCastException，
+        // ?: 捕获不了异常，必须用 runCatching 包住每一步，回退分支才真正生效，
+        // 否则升级用户一进设置页就崩。
+        runCatching { prefs[KEY_BLUR_RADIUS] }.getOrNull()
+            ?: runCatching { prefs[stringPreferencesKey("glass.blurRadius")]?.toFloatOrNull() }.getOrNull()
+            ?: 24f
     }
 
     // ================= userApi =================
