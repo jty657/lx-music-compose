@@ -266,6 +266,29 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                 }
             }
             return@Column
+        } else if (viewModel.searchType == SearchType.SONGLIST &&
+            !viewModel.loading && viewModel.hasSearched && viewModel.errorMessage == null
+        ) {
+            // 歌单搜索无结果：此前会 fall through 到音乐分支误显「没有找到相关音乐」，
+            // 这里给出对应歌单的空态后直接返回，避免误导。
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    MiuixIcons.Favorites,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "没有找到相关歌单",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+            return@Column
         }
 
         val resultState = rememberLazyListState()

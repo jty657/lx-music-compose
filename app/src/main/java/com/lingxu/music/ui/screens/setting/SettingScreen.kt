@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.PlayMode
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Text
@@ -101,8 +102,11 @@ fun SettingScreen(
     var localRate by remember { mutableFloatStateOf(playbackRate) }
     var localVolume by remember { mutableFloatStateOf(volume) }
     val timeoutExitPlayed by viewModel.timeoutExitPlayed.collectAsState(initial = true)
-    val playState by LxApp.app.playerRepository.state.collectAsState()
-    val timeoutRemaining = playState.timeoutExitRemaining
+    // 只订阅定时剩余秒数这一个字段，而不是整个 PlayState（positionMs 播放中每 500ms 变化，
+    // 订阅整个 state 会让本页几十个 Preference/Slider 每 500ms 全量重组）。
+    val timeoutRemaining by remember {
+        LxApp.app.playerRepository.state.map { it.timeoutExitRemaining }
+    }.collectAsState(initial = -1)
     var showTimeoutExit by remember { mutableStateOf(false) }
 
     val showLyricTranslation by viewModel.showLyricTranslation.collectAsState(initial = true)
@@ -175,8 +179,8 @@ fun SettingScreen(
             onClick = { viewModel.cycleLang() },
         )
         // 字体大小用分段选择：滑块每拖一帧都要写 DataStore 并重排整个界面，
-        // 而字号本来也只有几档常用值
-        Text("字体大小", fontSize = MiuixTheme.textStyles.main.fontSize)
+        // 而字号本来也只有几档常用值。用 SectionTitle 与周围 Preference 的标题层级统一。
+        SectionTitle("字体大小")
         Spacer(Modifier.size(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(0.85f, 1f, 1.15f, 1.3f, 1.5f).forEach { scale ->
@@ -419,6 +423,7 @@ fun SettingScreen(
         )
 
         // ============ 系统能力（对齐原版 utils / 版本更新源） ============
+        SectionTitle("系统")
         val ctx = androidx.compose.ui.platform.LocalContext.current
         val batteryIgnored by viewModel.batteryIgnored.collectAsState(initial = false)
         ArrowPreference(

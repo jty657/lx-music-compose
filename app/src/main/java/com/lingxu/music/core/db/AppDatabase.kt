@@ -146,6 +146,17 @@ class AppDatabase(private val context: Context) {
         _playlists.value = list
     }
 
+    /**
+     * 批量覆盖整个歌单表：一次读取判定删除 + 一次全量写盘。
+     * 供 MyListsRepository.persist 使用——原先对 N 个列表逐个 upsertPlaylist，
+     * 每次都全量重写 playlist.json（O(N²) 写盘），同步歌单时开销与列表数平方相关。
+     */
+    suspend fun replacePlaylists(list: List<Playlist>) = withContext(Dispatchers.IO) {
+        persistPlaylists(list)
+        _playlists.value = list
+        playlistsLoaded = true
+    }
+
     suspend fun deletePlaylist(id: String) = withContext(Dispatchers.IO) {
         val list = loadPlaylists().filterNot { it.id == id }
         persistPlaylists(list)
@@ -229,11 +240,17 @@ class AppDatabase(private val context: Context) {
  * 之后任何一次写操作都会把损坏文件覆盖成「空 + 新数据」，用户数据无声丢失。
  */
 private fun java.io.File.writeAtomicText(text: String) {
-    val tmp = java.io.File(parentFile, "$name.tmp")
-    tmp.writeText(text)
-    if (!tmp.renameTo(this)) {
-        writeText(text)
-        tmp.delete()
+    // 临时文件名带 UUID：多个协程可能并发写同一文件（如歌单属性修改与备份恢复），
+    // 共用固定 .tmp 名会互相覆盖、把正在写的内容截断成残缺 JSON。各自独立临时名后
+    // 再 rename，最后写入者胜出，至少保证落盘的是某一次完整写入。
+    val tmp = java.io.File(parentFile, "$name.${java.util.UUID.randomUUID()}.tmp")
+    try {
+        tmp.writeText(text)
+        if (!tmp.renameTo(this)) {
+            writeText(text)
+        }
+    } finally {
+        if (tmp.exists()) runCatching { tmp.delete() }
     }
 }
 

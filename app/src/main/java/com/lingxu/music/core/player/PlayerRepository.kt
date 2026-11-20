@@ -393,9 +393,17 @@ class PlayerRepository(context: Context) {
     /** 最近一次 playQueue 的协程：新的播放请求到来时取消旧的，避免后台慢解析后到覆盖用户最新选择 */
     private var playQueueJob: Job? = null
 
+    /**
+     * 播放代号：每次 playQueue/clear/release 都递增。解析 URL 是挂起操作，
+     * 期间用户可能清空队列或切到别的歌；在途协程回填前校验代号，过期的直接丢弃，
+     * 避免「清空后被旧请求复活」或操作已释放的播放器。
+     */
+    private var playGeneration: Int = 0
+
     fun playQueue(queue: List<MusicInfo>, index: Int) {
         if (queue.isEmpty()) return
         playQueueJob?.cancel()
+        val gen = ++playGeneration
         // 在线榜单/歌单可能含重复 id，而队列以 id 作 LazyColumn 稳定 key，重复会抛
         // "Duplicate key" 崩溃。先按 id 去重，再定位目标歌曲去重后的真实下标。
         val target = queue.getOrNull(index) ?: queue[0]
@@ -408,12 +416,17 @@ class PlayerRepository(context: Context) {
                 _state.update { it.copy(loading = false) }
                 r
             } else target
+            // 解析可能耗时（取链/换源），期间用户可能已 clear/切歌；代号变化则丢弃本次结果
+            if (gen != playGeneration) return@launch
             if (resolved.meta.filePath.isNullOrBlank()) {
                 // 解析失败时不要动 state/播放器：否则界面会显示一首其实没在播的歌，
                 // 后续 playAt/next/prev 会拿新队列下标去操作旧播放列表
                 _state.update { it.copy(error = "获取播放链接失败，可尝试换源") }
                 return@launch
             }
+            // 二次校验：更新 loading 到真正写状态之间仍有挂起点（runCatching 内的 loader），
+            // 这里再确认一次，确保清空/切歌后的迟到解析不会复活队列。
+            if (gen != playGeneration) return@launch
             val updated = distinct.toMutableList().also { it[safeIndex] = resolved }
             _state.update {
                 it.copy(
@@ -622,19 +635,25 @@ class PlayerRepository(context: Context) {
     }
 
     fun clear() {
+        playGeneration++
+        playQueueJob?.cancel()
         player.stop()
         player.clearMediaItems()
         lyricJob?.cancel()
         coverJob?.cancel()
+        resolvingIndexes.clear()
         _state.update {
             PlayState(playMode = it.playMode)
         }
     }
 
     fun release() {
+        playGeneration++
+        playQueueJob?.cancel()
         lyricJob?.cancel()
         coverJob?.cancel()
         timeoutJob?.cancel()
+        resolvingIndexes.clear()
         player.release()
     }
 

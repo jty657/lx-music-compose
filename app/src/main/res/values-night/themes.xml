@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 系统处于深色模式时，启动窗口与状态栏用暗色，避免 Application 主题初始化前的白屏闪烁。
+         应用内主题（system/light/dark/monet）由 Miuix 在 Compose 层接管，这里只负责启动过渡。 -->
+    <style name="Theme.LXMusic" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

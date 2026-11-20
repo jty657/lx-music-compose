@@ -14,17 +14,21 @@ object LrcParser {
     /** 解析歌词信息：主歌词 + 翻译/罗马音（同时间点合并到 translation/roma） */
     fun parse(info: LyricInfo?): List<LyricLine> {
         if (info == null) return emptyList()
-        val main = parseSingle(info.lyric)
+        // 主歌词实际生效的 offset。翻译/罗马音通常与主歌词共用同一条时间轴，自身不带
+        // [offset:] 标签；若各自按 0 解析，时间会整体错位，translations[line.timeMs]
+        // 全部落空，表现为「翻译/罗马音静默不显示」。故这里提取主歌词 offset 并传给它们。
+        val mainOffset = OFFSET_TAG.find(info.lyric ?: "")?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        val main = parseSingle(info.lyric, mainOffset)
         if (main.isEmpty()) return emptyList()
         val translations = if (info.tlyric.isNullOrBlank()) {
             emptyMap()
         } else {
-            parseSingle(info.tlyric).associate { it.timeMs to it.text }
+            parseSingle(info.tlyric, mainOffset).associate { it.timeMs to it.text }
         }
         val romas = if (info.rlyric.isNullOrBlank()) {
             emptyMap()
         } else {
-            parseSingle(info.rlyric).associate { it.timeMs to it.text }
+            parseSingle(info.rlyric, mainOffset).associate { it.timeMs to it.text }
         }
         return main.map { line ->
             line.copy(
@@ -34,10 +38,14 @@ object LrcParser {
         }
     }
 
-    /** 解析单段 LRC 文本；多时间标签行会展开成多行，返回按时间升序的列表 */
-    fun parseSingle(lrc: String?): List<LyricLine> {
+    /**
+     * 解析单段 LRC 文本；多时间标签行会展开成多行，返回按时间升序的列表。
+     * @param offsetOverride 当本段文本没有自己的 [offset:] 标签时采用的 offset。
+     *   翻译/罗马音传入主歌词的 offset，保证三者时间轴对齐。
+     */
+    fun parseSingle(lrc: String?, offsetOverride: Long? = null): List<LyricLine> {
         if (lrc.isNullOrBlank()) return emptyList()
-        val offset = OFFSET_TAG.find(lrc)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        val offset = OFFSET_TAG.find(lrc)?.groupValues?.get(1)?.toLongOrNull() ?: offsetOverride ?: 0L
         val lines = mutableListOf<LyricLine>()
         for (raw in lrc.split('\n', '\r')) {
             val line = raw.trim()

@@ -108,7 +108,37 @@
 - **首页入口图标语义化**：此前「音源管理 / 我的列表 / 歌单广场」三个入口都用 `Layers` 图标，语义混乱。改为音源管理=`File`、我的列表=`Layers`、歌单广场=`Music`，三个入口一眼可辨（均为项目已依赖图标，无新增依赖）。
 - **搜索历史「清空」热区**：仅靠文字高度约 20dp，低于 48dp 可访问性下限；上下各补 10dp padding，手指更易点中。
 
-## 第六轮：全量复审（搜索竞态 + 歌词性能 + 热搜美化）（v1.3.5，本次）
+## 第七轮：全量复审（歌词时序 + 播放竞态 + 重组性能 + 深色模式美化）（v1.3.6，本次）
+
+本轮对全部源码逐模块复审（core 层与 UI 层并行审查），修复 2 处正确性/时序问题、2 处性能热点、2 处并发健壮性问题，并完成多项 UI 美化与工程改进。完整分析见 [ANALYSIS.md](ANALYSIS.md)。
+
+### 正确性 / 时序
+- **歌词翻译/罗马音静默不显示**（`LrcParser`）：翻译与罗马音各自解析自身文本的 `[offset:]`，而多数音源只在主歌词带 offset。两者时间轴整体错位，合并时 `translations[line.timeMs]` 全部落空。改为 `parseSingle(lrc, offsetOverride)`，翻译/罗马音继承主歌词 offset，时间轴对齐后翻译/罗马音正常显示。
+- **清空队列后被旧请求复活**（`PlayerRepository`）：播放 URL 解析是挂起操作，`clear()`/`release()` 后旧协程仍会回填队列并 `replaceMediaItem`/`play`，甚至操作已释放的播放器。新增 `playGeneration` 代号，playQueue/clear/release 递增并取消在途 job；回填前校验代号，过期结果直接丢弃；clear/release 同步清理 `resolvingIndexes`。
+
+### 性能
+- **设置页整页重组**（`SettingScreen`）：原订阅整个 `PlayState`，播放进度每 500ms 更新就让本页几十个 Preference/Slider 全量重组。改为只订阅 `state.map { it.timeoutExitRemaining }`。
+- **歌单同步 O(N²) 写盘**（`AppDatabase` / `MyListsRepository`）：`persist` 原逐条 `upsertPlaylist`（每次全量重写 playlist.json），`overwriteOnlineMusics` 又调两次。新增 `replacePlaylists` 一次落盘并合并字段更新，写盘从约 2N 次降为 1 次。
+
+### 稳定性 / 并发
+- **原子写临时文件名冲突**（`AppDatabase`）：并发写同一文件的 `.tmp` 会互相覆盖、产生残缺 JSON（进而被判损坏隔离）。临时名加 UUID，最后写入者胜出，保证落盘完整。
+- **HTTP client 容量竞态**（`HttpClient`）：自定义超时 client 的 `size>=8` 检查与 `getOrPut` 非原子，并发下可瞬时超上限。纳入 `synchronized` 块。
+
+### UI 美化
+- **卡片按压反馈**（`Glass.kt`）：`GlassSurface` 点击从 `indication=null` 改为 `LocalIndication.current`，全 App 卡片获得涟漪反馈，外层 clip 保证不溢出圆角。
+- **深色模式启动过渡**（`values-night/themes.xml` + `themes.xml` + `AppRoot`）：新增夜间主题，暗色启动窗口避免白屏闪烁；状态栏图标极性按运行时主题同步，深色主题下图标不再不可读。
+- **歌单搜索空态**（`SearchScreen`）：歌单模式无结果不再误显「没有找到相关音乐」，改为专属空态。
+- **播放页错误恢复**（`PlayerScreen`）：错误提示由单行截断改为两行，并附「下一首」出口。
+- **无效按钮替换**（`PlayerScreen`）：「加入播放队列」对正在播放的歌是空操作，改为「复制歌曲信息」。
+- **设置页层级**（`SettingScreen`）：「字体大小」改用分区标题样式，系统能力项补「系统」分区标题。
+
+### 工程
+- **CI 静态自检**（`.github/workflows/build.yml`）：构建前先跑 `python3 scripts/selfcheck.py`，提前拦截云端才会暴露的低级错误。
+
+### 版本
+- `versionCode` 9 → 10，`versionName` 1.3.5 → 1.3.6。
+
+## 第六轮：全量复审（搜索竞态 + 歌词性能 + 热搜美化）（v1.3.5）
 
 本轮再次对全部源码逐模块复审，修复 1 处并发正确性问题、1 处性能热点，并做了 1 处 UI 美化。完整分析见 [ANALYSIS.md](ANALYSIS.md)。
 

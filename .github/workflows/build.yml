@@ -32,6 +32,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Static self-check (Kotlin sources)
+        run: python3 scripts/selfcheck.py
+
       - name: Build release APK (debug-signed)
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 

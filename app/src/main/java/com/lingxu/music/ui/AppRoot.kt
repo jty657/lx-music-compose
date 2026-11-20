@@ -37,8 +37,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -96,6 +98,14 @@ fun AppRoot() {
     LxTheme(themeMode = themeMode, fontScale = fontScale) {
         val navigator = rememberNavigator()
         val dark = isInDarkTheme()
+        // 状态栏图标极性跟随应用实际主题：深色主题用浅色图标，避免深色图标压在深色内容上不可读。
+        // enableEdgeToEdge 默认按 XML 的浅色主题推断，这里按运行时主题纠正（含用户 App 内切换）。
+        val context = LocalContext.current
+        LaunchedEffect(dark) {
+            val window = (context as? android.app.Activity)?.window ?: return@LaunchedEffect
+            WindowCompat.getInsetsController(window, window.decorView)
+                .isAppearanceLightStatusBars = !dark
+        }
         val autoHidePlayBar by LxApp.app.settings.autoHidePlayBar.collectAsState(initial = true)
         // 列表向下滚动时隐藏迷你播放条（对应原版 common.autoHidePlayBar）
         val miniBarScroll = remember { mutableStateOf(0) }

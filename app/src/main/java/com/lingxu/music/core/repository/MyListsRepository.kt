@@ -181,8 +181,19 @@ class MyListsRepository(private val db: AppDatabase) {
      */
     suspend fun overwriteOnlineMusics(listId: String, musics: List<MusicInfo>): Int = mutex.withLock {
         val filtered = ListTransfer.filterMusicList(musics)
-        saveMusicsLocked(listId, filtered)
-        persist(_lists.value.map { if (it.id == listId) it.copy(locationUpdateTime = System.currentTimeMillis()) else it })
+        ensureLoaded()
+        val existing = db.getPlaylistMusics(listId)
+        val items = filtered.mapIndexed { index, music ->
+            val old = existing.firstOrNull { it.id == music.id }
+            if (old != null) old.copy(sort = index, listId = listId) else PlaylistMusic(id = music.id, music = music, sort = index, listId = listId)
+        }
+        db.savePlaylistMusics(listId, items)
+        // 歌曲 id 列表与同步时间合并为一次内存更新 + 一次落盘（原先 saveMusicsLocked + persist
+        // 各写一遍 playlist.json，同步一个大列表会产生约 2N 次全文件写盘）
+        persist(_lists.value.map {
+            if (it.id == listId) it.copy(musics = filtered.map { m -> m.id }, locationUpdateTime = System.currentTimeMillis())
+            else it
+        })
         // 返回实际写入的条数（过滤后），避免进度/提示大于真实写入数
         filtered.size
     }
@@ -237,9 +248,9 @@ class MyListsRepository(private val db: AppDatabase) {
 
     private suspend fun persist(list: List<Playlist>) {
         _lists.value = list
-        list.forEach { db.upsertPlaylist(it) }
-        val removed = db.loadPlaylists().filterNot { it.id in list.map { l -> l.id } }
-        removed.forEach { db.deletePlaylist(it.id) }
+        // 批量覆盖一次落盘：原先逐条 upsertPlaylist 每次都全量重写 playlist.json，
+        // N 个列表 = N 次写盘；replacePlaylists 一次写完并同步数据库内存缓存。
+        db.replacePlaylists(list)
     }
 
     companion object {

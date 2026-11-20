@@ -10,7 +10,7 @@
 
 ```
 ui/                     表现层（Jetpack Compose + Miuix + Backdrop 液态玻璃）
-  ├─ screens/           9 个功能页 + 对应 ViewModel
+  ├─ screens/           10 个功能页 + 对应 ViewModel
   ├─ components/        Glass（玻璃）/ TrackCover（封面）/ ScrollReporter
   ├─ navigation/        轻量 backStack 导航器
   └─ theme/             主题与全局字体缩放
@@ -24,7 +24,7 @@ core/                   领域层
 LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 ```
 
-**总体评价**：分层清晰，core 层不反向依赖 UI（通过「加载器 / 回调」注入解耦，如 `lyricLoader` / `coverLoader` / `playInfoLoader`），这一设计值得肯定。ViewModel 与页面一一对应，状态驱动合理。项目已经过五轮系统优化，数据健壮性、播放竞态、引擎资源治理等方面都已相当扎实。
+**总体评价**：分层清晰，core 层不反向依赖 UI（通过「加载器 / 回调」注入解耦，如 `lyricLoader` / `coverLoader` / `playInfoLoader`），这一设计值得肯定。ViewModel 与页面一一对应，状态驱动合理。项目已经过七轮系统优化，数据健壮性、播放竞态、引擎资源治理、歌词时序、重组性能等方面都已相当扎实。
 
 ---
 
@@ -33,66 +33,72 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 ### 2.1 正确性 / 并发
 | 项 | 现状 | 建议 / 状态 |
 |---|---|---|
-| 搜索结果竞态 | 快速切换关键词或音源时，旧请求可能后于新请求返回并覆盖列表 | **本轮已修复**：`SearchViewModel` 引入 `requestSeq` 版本锁，仅最新批次可写状态；翻页同样受守卫 |
-| 播放队列去重 | `addToQueue` / `playQueue` 已按 id 去重，避免 LazyColumn 重复 key 崩溃 | 已完善 |
-| 数据加载守卫 | 收藏 / 不喜欢 / 我的列表均有 `Mutex` + `loaded` / `reload()` 守卫 | 已完善 |
-| 备份导入 | decode 前做 JSON 结构校验 + 空数据拒绝 + id 白名单（防路径穿越） | 已完善 |
-| 损坏文件隔离 | 全部本地 JSON 解析失败改名 `.corrupt.<ts>`，不再静默覆盖 | 已完善 |
-| 定时停止恢复 | `timeoutExitMinutes` 已持久化，但冷启动时未调用 `startTimeoutExit` 恢复倒计时 | **建议**（见第六节，需产品决策：重启后是否续算倒计时） |
+| 搜索结果竞态 | `requestSeq` 版本锁，仅最新批次可写状态 | 已完善（v1.3.5） |
+| **清空后队列复活** | 播放解析是挂起操作，clear/release 后旧协程仍回填队列、操作播放器 | **本轮已修复**：`playGeneration` 代号 + `playQueueJob` 取消，过期解析直接丢弃 |
+| **歌词翻译/罗马音错位** | 翻译/罗马音各自按自身 offset 解析；多数音源只给主歌词带 `[offset:]`，导致时间轴错位、翻译静默不显示 | **本轮已修复**：翻译/罗马音继承主歌词 offset（`LrcParser.parseSingle(offsetOverride)`） |
+| 播放队列去重 | `addToQueue`/`playQueue` 按 id 去重 | 已完善 |
+| 数据加载守卫 | 收藏/不喜欢/我的列表均有 `Mutex` + `loaded` 守卫 | 已完善 |
+| 备份导入 | decode 前 JSON 结构校验 + 空数据拒绝 + id 白名单 | 已完善 |
+| 定时停止恢复 | `timeoutExitMinutes` 已持久化，冷启动未恢复倒计时 | 建议（需产品决策：重启后是否续算） |
 
 ### 2.2 性能
 | 项 | 现状 | 建议 / 状态 |
 |---|---|---|
-| 歌词高亮定位 | 原为逐行线性扫描，进度每 500ms 更新时触发 | **本轮已优化**：`PlayState.currentLyricIndex` 改为二分查找（`lyricLines` 按时间升序） |
-| 歌词重组隔离 | `LyricView` 只依赖必要参数，进度变化不触发歌词全量重组 | 已完善 |
-| 封面加载 | 内存 LRU + 失败冷却 + 并发上限 4 + 请求去重 + 降采样解码 | 已完善 |
-| HTTP 连接 | 按超时复用 client（容量上限 8）+ 磁盘缓存 | 已完善 |
+| **设置页重组** | 原订阅整个 `PlayState`，positionMs 每 500ms 变化触发整页 ~40 个组件重组 | **本轮已修复**：改为 `state.map { it.timeoutExitRemaining }` 只订阅所需字段 |
+| **歌单同步写盘** | 原 `persist` 逐条 `upsertPlaylist`（每次全量重写），`overwriteOnlineMusics` 又调两次，约 2N 次写盘 | **本轮已修复**：新增 `replacePlaylists` 一次落盘，合并两次字段更新 |
+| 歌词高亮定位 | 升序二分查找 O(log n) | 已完善（v1.3.5） |
+| 封面加载 | 内存 LRU + 失败冷却 + 并发上限 + 请求去重 + 降采样 | 已完善 |
 | 聚合搜索 | 多源并发，最坏耗时降至单源超时 | 已完善 |
+| 换源取词/取链 | 5 源串行，最坏约 100s；有 `lyricJob` 可取消兜底 | 建议（改 async 并发取首个有效结果，本轮未纳入以控风险） |
 
 ### 2.3 稳定性 / 资源治理
-- QuickJS 的 Promise 等待有一次性守卫 + 取消清理；定时器桥安全取值；SDK 销毁期间迟到 fetch 回调安全沉默——均已到位。
-- ExoPlayer 进度轮询在暂停 / 空闲时停更；`release()` 补全 job 清理。
-- **建议**：`HttpClient.clientForTimeout` 的容量判断（`size >= 8`）与 `getOrPut` 非原子，极端并发下可能瞬时略超上限；可改为在 `synchronized` 块内完成检查与插入（低优先级）。
+- QuickJS Promise 一次性守卫 + 取消清理、定时器安全取值、SDK 销毁期间迟到回调沉默——均已到位。
+- **本轮修复**：自定义超时 client 的 `size>=8` 检查与 `getOrPut` 原本非原子，并发下可瞬时超上限；现用 `synchronized` 包住检查与插入。
+- **本轮修复**：原子写临时文件名加 UUID，避免并发写同一文件时 `.tmp` 互相覆盖产生残缺 JSON（残缺 JSON 会被 `readJsonOrNull` 判损坏隔离，造成数据丢失观感）。
 
 ### 2.4 安全
-- 备份导入对 `listId` / 歌曲 id 做 `^[A-Za-z0-9._-]+$` 白名单校验，防止 id 拼进文件名导致路径穿越——到位。
-- 备份**刻意不含自定义音源脚本**，避免第三方音源凭据随分享文件外泄——设计正确。
-- 不内置、不分发任何音源脚本与受版权保护内容——合规。
-- **建议**：`user-api-preload.js` 等脚本运行于 QuickJS 沙箱，建议持续关注 eval 入口的输入来源仅为用户主动导入的可信脚本（当前设计已满足）。
+- 备份导入 id 白名单防路径穿越；备份刻意不含自定义音源脚本，避免凭据外泄——到位。
+- 不内置、不分发任何音源脚本与受版权内容——合规。
+- QuickJS 沙箱仅运行用户主动导入的可信脚本——当前设计满足。
 
 ### 2.5 UI / UX / 美化
-- 液态玻璃采样边界处理正确（`layerBackdrop` 只套主内容，底栏/迷你条为兄弟节点），规避了自采样递归闪退——关键风险已规避。
-- 低版本（API < 31/33）按 `Build.VERSION.SDK_INT` 门控降级为纯色底栏——到位。
-- 播放页切歌过渡、封面呼吸、按钮按压反馈、歌词缩放层次——体验打磨到位。
-- **本轮美化**：首页热搜榜前三名改用主色强调 + 放大字号，其余弱化，形成清晰榜单层级（此前所有名次同色，无视觉重点）。
-- **建议**：播放页「更多设置」中的「加入播放队列」按钮当前把**正在播放的歌**入队，而该歌必已在队列中，`addToQueue` 去重后为空操作——属于无效交互。建议改为「复制歌曲信息」或「下一首播放」等有实际意义的操作（见第六节，需产品决策）。
+- 液态玻璃采样边界处理正确（layerBackdrop 只套主内容，底栏/迷你条为兄弟节点），规避自采样递归闪退——关键风险已规避。
+- **本轮美化**：
+  - `GlassSurface` 点击从 `indication=null` 改为 `LocalIndication.current`，全 App 卡片获得按压涟漪反馈（`.clip(shape)` 裁剪边界）。
+  - 新增 `values-night/themes.xml` + AppRoot 按运行时主题同步状态栏图标极性，深色模式启动不再闪白、深色图标不再压在深色内容上。
+  - 歌单搜索无结果由误显「没有找到相关音乐」改为专属空态。
+  - 播放页错误提示由单行截断改为两行并附「下一首」恢复出口。
+  - 无效的「加入播放队列」按钮（对正在播放的歌入队是空操作）改为「复制歌曲信息」。
+  - 设置页「字体大小」改用分区标题样式，系统能力项补「系统」分区标题，层级更清晰。
+- **建议**：底栏/迷你条图标热区可统一到 48dp（现 28~36dp），进一步符合触控目标规范（本轮未纳入以控改动面）。
 
 ### 2.6 可维护性
-- `scripts/selfcheck.py` 针对「无本地编译环境」的痛点，静态拦截 import 粘连、图标漏 import、括号不平衡、字段笔误、玻璃自采样等低级错误——是非常实用的工程质量保障。
-- `AGENTS.md` 详尽记录了构建栈约束、音源协议、玻璃采样边界等踩坑经验——交接友好。
-- **建议**：逐步将 `selfcheck.py` 接入 CI（当前仅在本地手动运行），在云端构建前先跑一遍，可进一步降低往返成本。
+- `scripts/selfcheck.py` 静态拦截 import 粘连、图标漏 import、括号不平衡、字段笔误、玻璃自采样等——**本轮已接入 CI 前置步骤**，云端构建前先跑一遍，降低往返成本。
+- `AGENTS.md` 详尽记录构建栈约束、音源协议、玻璃采样边界等踩坑经验——交接友好。
 
 ### 2.7 可访问性
-- 播放队列上下移图标热区已扩大到 32dp；搜索历史「清空」按钮上下补 padding——已改善。
-- **建议**：底栏 / 迷你条图标按钮可统一保证最小 48dp 点击热区（部分图标本体 26~36dp），进一步符合 Material 触控目标规范。
+- 播放队列上下移图标热区 32dp、搜索历史「清空」补 padding——已改善。
+- 本轮卡片按压反馈、深色模式状态栏图标对比度已改善。
+- 建议：图标按钮热区统一 48dp（见 2.5）。
 
 ---
 
-## 三、本轮已执行的优化与美化（第六轮）
+## 三、本轮已执行的优化与美化（第七轮 · v1.3.6）
 
-1. **【正确性】搜索结果竞态修复**（`ui/screens/search/SearchViewModel.kt`）
-   - `search()` 与 `loadMore()` 均以 `requestSeq` 版本锁守卫，过期请求不得写回结果、错误与 `loading` 状态。
-   - 解决「快速切换搜索词 / 音源 / 类型后，旧请求迟到覆盖当前列表」的问题。
+1. **【正确性】歌词 offset 时序修复**（`core/player/LrcParser.kt`）：翻译/罗马音继承主歌词 `[offset:]`，修复时间轴错位导致的翻译/罗马音静默不显示。
+2. **【正确性】播放竞态收口**（`core/player/PlayerRepository.kt`）：新增 `playGeneration` 代号，playQueue/clear/release 递增并取消在途解析；clear/release 额外清 `resolvingIndexes`，杜绝清空后队列复活与操作已释放播放器。
+3. **【性能】设置页重组隔离**（`ui/screens/setting/SettingScreen.kt`）：只订阅 `timeoutExitRemaining` 字段，避免播放进度驱动整页重组。
+4. **【性能】歌单同步写盘**（`core/db/AppDatabase.kt` + `core/repository/MyListsRepository.kt`）：新增 `replacePlaylists` 一次落盘，`overwriteOnlineMusics` 合并两次 persist，写盘从 O(N²) 降为 O(N)。
+5. **【稳定性】原子写 UUID 临时名**（`core/db/AppDatabase.kt`）：并发写不再共用 `.tmp` 互相覆盖。
+6. **【稳定性】HTTP client 容量原子判断**（`core/request/HttpClient.kt`）：check-then-put 纳入 `synchronized`。
+7. **【美化】卡片按压反馈**（`ui/components/Glass.kt`）：`LocalIndication.current` 全局启用涟漪。
+8. **【美化】深色模式启动过渡**（`res/values-night/themes.xml` + `res/values/themes.xml` + `ui/AppRoot.kt`）：暗色启动窗口 + 状态栏图标极性跟随主题。
+9. **【美化】歌单搜索空态 / 播放页错误恢复 / 无效按钮替换**（`SearchScreen.kt` / `PlayerScreen.kt`）。
+10. **【美化】设置页分区层级**（`SettingScreen.kt`）。
+11. **【工程】CI 接入静态自检**（`.github/workflows/build.yml`）。
+12. **【版本】** `versionCode` 9 → 10，`versionName` 1.3.5 → 1.3.6，同步 README。
 
-2. **【性能】歌词高亮二分查找**（`core/player/PlayerRepository.kt`）
-   - `PlayState.currentLyricIndex` 由线性扫描改为升序二分查找，进度高频更新时定位成本从 O(n) 降为 O(log n)。
-
-3. **【美化】热搜榜视觉层级**（`ui/screens/home/HomeScreen.kt`）
-   - 前三名序号与歌名用主色强调、字号放大，其余名次弱化为次要色，榜单重点一目了然。
-
-4. **【版本】** `versionCode` 8 → 9，`versionName` 1.3.4 → 1.3.5，同步 README。
-
-**质量保证**：所有 `.kt` 改动均通过 `scripts/selfcheck.py` 静态自检；云端构建由 GitHub Actions 验证。
+**质量保证**：所有 `.kt` 改动均通过 `scripts/selfcheck.py` 静态自检；云端构建由 GitHub Actions 验证（并已把自检纳入流水线）。
 
 ---
 
@@ -111,16 +117,17 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 ## 五、版本与时间线
 
 - v1.3.4（第五轮）：数据安全补漏 + 资源治理 + 图标语义化 + 交互细节
-- **v1.3.5（本轮）**：搜索竞态修复 + 歌词二分查找 + 热搜视觉层级
+- v1.3.5（第六轮）：搜索竞态修复 + 歌词二分查找 + 热搜视觉层级
+- **v1.3.6（本轮 · 第七轮）**：歌词 offset 时序 + 播放竞态收口 + 设置页/歌单同步性能 + 原子写与 HTTP 并发 + 深色模式与按压反馈等美化 + CI 自检
 
 ---
 
 ## 六、后续建议路线图（未纳入本轮）
 
-1. 播放页「加入播放队列」无效按钮替换为有实际语义的操作（产品决策）。
+1. 换源取词/取链改 `async` 并发，取首个有效结果即取消其余，降低最坏等待。
 2. 定时停止播放冷启动恢复（明确「重启后续算 / 不续算」语义后实现）。
-3. `clientForTimeout` 并发插入原子化。
-4. 底栏图标统一 48dp 触控热区。
-5. 将 `selfcheck.py` 纳入 CI 前置步骤。
+3. 底栏/迷你条图标统一 48dp 触控热区。
+4. `restoreLastPlay` 对过期的在线签名 URL 先异步重解析再灌入播放器，避免冷启动首播失败一次（需谨慎处理时序，本轮因无法本地编译未纳入）。
+5. AppDatabase 所有「读改写」统一加 DB 级 `Mutex`，彻底消除并发覆盖（本轮仅做了临时文件名隔离这一低风险子集）。
 
 > 本报告随源码一同维护。详细变更记录见 [CHANGELOG.md](CHANGELOG.md)。

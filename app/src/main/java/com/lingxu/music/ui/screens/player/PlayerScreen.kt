@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -207,13 +208,27 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
             )
 
             state.error?.let { err ->
-                Text(
-                    err,
-                    color = MiuixTheme.colorScheme.error,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        err,
+                        color = MiuixTheme.colorScheme.error,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "下一首",
+                        color = MiuixTheme.colorScheme.primary,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .clickable { viewModel.next() },
+                    )
+                }
             }
 
             // 进度 + 控制：整块玻璃面板
@@ -535,12 +550,18 @@ private fun PlayerMoreSettings(
                 Button(onClick = { onTimeout(0); onDismiss() }) { Text("关闭") }
             }
             Spacer(Modifier.size(12.dp))
-            // 「添加到播放队列」此前没有任何入口（PlayerRepository.addToQueue 无调用方）
+            // 原「加入播放队列」把正在播放的歌入队（它本就在队列里，addToQueue 去重后为空操作），
+            // 属无效交互。改为「复制歌曲信息」，给用户一个实际有用的操作。
+            val ctx = LocalContext.current
             val playerState by LxApp.app.playerRepository.state.collectAsState()
             Button(onClick = {
-                playerState.current?.let { LxApp.app.playerRepository.addToQueue(it) }
+                playerState.current?.let { music ->
+                    val text = "${music.name} - ${music.singer}"
+                    val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    cm?.setPrimaryClip(android.content.ClipData.newPlainText("歌曲信息", text))
+                }
                 onDismiss()
-            }) { Text("加入播放队列") }
+            }) { Text("复制歌曲信息") }
         }
     }
 }

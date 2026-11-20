@@ -1,5 +1,6 @@
 package com.lingxu.music.ui.components
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -98,16 +99,19 @@ fun GlassSurface(
 ) {
     val dark = LocalGlass.current?.dark ?: false
     val interaction = remember { MutableInteractionSource() }
+    // 用系统默认 indication 给卡片按压反馈；此前 indication=null 导致全 App 点击无任何涟漪。
+    // 外层 .clip(shape) 会把涟漪裁进圆角内，不会溢出边界。
+    val indication = LocalIndication.current
     val clickModifier = when {
         onClick != null && onLongClick != null -> Modifier.combinedClickable(
             interactionSource = interaction,
-            indication = null,
+            indication = indication,
             onLongClick = onLongClick,
             onClick = onClick,
         )
         onClick != null -> Modifier.clickable(
             interactionSource = interaction,
-            indication = null,
+            indication = indication,
             onClick = onClick,
         )
         else -> Modifier
