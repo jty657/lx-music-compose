@@ -88,15 +88,18 @@ class DislikeRepository(private val context: Context) {
     }
 
     private fun persist(list: List<String>) {
-        _rules.value = list
-        runCatching {
-            val tmp = java.io.File(file.parentFile, "${file.name}.tmp")
-            tmp.writeText(json.encodeToString(list))
-            if (!tmp.renameTo(file)) {
-                file.writeText(json.encodeToString(list))
-                tmp.delete()
-            }
-        }
+        val encoded = json.encodeToString(list)
+        // 临时名带 UUID：与 AppDatabase 一致，避免并发写共用固定 .tmp 互相覆盖出残缺 JSON。
+        val tmp = java.io.File(file.parentFile, "${file.name}.${java.util.UUID.randomUUID()}.tmp")
+        val written = runCatching {
+            tmp.writeText(encoded)
+            if (!tmp.renameTo(file)) file.writeText(encoded)
+            true
+        }.getOrDefault(false)
+        runCatching { if (tmp.exists()) tmp.delete() }
+        // 仅在落盘成功后更新内存：旧写法先赋 _rules.value 再吞掉写盘异常，
+        // 会造成「界面显示已保存、重启后规则丢失」的内存/磁盘不一致。
+        if (written) _rules.value = list
     }
 
     private fun matches(rule: String, name: String, singer: String): Boolean {

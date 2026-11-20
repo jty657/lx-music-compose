@@ -86,9 +86,42 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 
 ---
 
-## 三、本轮已执行的优化与美化（第十轮 · v1.3.9）
+## 三、本轮已执行的优化与美化（第十一轮 · v1.4.0）
 
-> 延续「在线 + 本地」双模定位，本轮为全源码复审后的系统性可访问性与空态美化专项：统一全站触控热区到无障碍标准、统一空态视觉语言、补齐无障碍语义，并抽取三处公共抽象消除重复。改动全部落在 UI 层视觉/触控与集合工具，不触碰播放内核、QuickJS 引擎与音源协议，全部通过 `scripts/selfcheck.py` 静态自检，云端构建由 GitHub Actions 验证。
+> 延续「在线 + 本地」双模定位，本轮在第十轮基础上做了一轮覆盖正确性、性能与可访问性的综合复审。坚持低风险原则：不触碰 QuickJS 引擎、音源协议与 assets 脚本，全部改动通过 `scripts/selfcheck.py` 静态自检，云端构建由 GitHub Actions 验证。
+
+**正确性 / Bug 修复（5 项）**
+
+1. **搜索无结果误显历史**（`ui/screens/search/SearchScreen.kt`）：历史分支原只判「结果为空」，而搜索后输入框仍保留关键词，导致任何无结果搜索都命中历史并 `return@Column`，「没有找到相关音乐」空态形同虚设。补上 `textFieldState.text.isBlank()` 判断——有输入走空态、清空输入才看历史。
+2. **歌单广场错误重复渲染**（`ui/screens/songlist/SongListScreen.kt`）：原在空态分支之前单独渲染一遍红色 error 文案，空态分支内又有 `RetryHint`，加载失败且列表空时同一句错误出现两遍。删除前者，统一由 `RetryHint` 展示。
+3. **`fetchSync` 不支持 PUT/PATCH**（`core/request/HttpClient.kt`）：原仅 `post` 且带 body 时才构造 RequestBody，音源脚本通过 SDK 桥用 PUT/PATCH 取链/签名时，OkHttp 因 body 为 null 抛 `IllegalArgumentException` 整次失败，且与异步 `fetch()` 行为不一致。改为 `post/put/patch` 无显式 body 时补空 body，并把方法集合提为 `BODY_METHODS` 常量避免每次请求重建。
+4. **版本号比较忽略大写 V**（`core/repository/UpdateRepository.kt`）：`compareVersion` 原只 `removePrefix("v")`，大写 `V1.4.0` 这类 tag 会被解析成 `0.0.0` 误判为旧版。补 `removePrefix("V")`，与同文件 `parse()` 对齐。
+5. **定时分钟数 Int 溢出**（`core/player/PlayerRepository.kt`）：`minutes * 60` 为 Int 运算，持久化异常大值会溢出为负使 deadline 立即到期、播放被瞬间暂停。改为 Long 运算后 `coerceAtMost(Int.MAX_VALUE)` 再转 Int。
+
+**性能（4 项）**
+
+6. **在线歌单翻页去重 O(N²)→O(N)**（`core/repository/MyListsRepository.kt`）：`pullOnlineMusics` 原每首歌都线性扫已收集列表判重，翻页到上万首明显卡顿。改用 `HashSet` 记录已见 id，追加时 O(1) 查重并顺带去掉批内重复。
+7. **歌单同步/保存按 id 查旧记录 O(N²)→O(N)**（同文件）：`overwriteOnlineMusics`、`saveMusicsLocked` 原在 `mapIndexed` 内对每首歌 `existing.firstOrNull { it.id == ... }`，改为循环外一次 `associateBy { it.id }` 哈希查找。
+8. **备份恢复歌单表 O(N) 次写盘→1 次**（`core/repository/BackupRepository.kt`）：原逐条 `deletePlaylist` + N 次 `upsertPlaylist`，每条都全量重写 `playlist.json`。改为只删被移除列表的歌曲文件，再一次性 `replacePlaylists` 覆盖整表（该方法已存在，语义等价）。
+9. **HTTP 方法集合常量化**（`core/request/HttpClient.kt`）：见第 3 项，`setOf("post","put","patch")` 由每次请求新建改为伴生对象常量。
+
+**健壮性（2 项）**
+
+10. **「不喜欢」规则写盘静默失败**（`core/repository/DislikeRepository.kt`）：原先更新内存 `_rules.value` 再吞掉写盘异常，造成「界面显示已保存、重启后规则丢失」。改为仅在落盘成功后更新内存；临时文件名加 UUID，与 AppDatabase 一致防并发覆盖。
+11. **死代码清理**（`core/repository/MusicRepository.kt`）：删除从未使用的 `sourceMutex` 及其 import，避免误导为已有锁保护。
+
+**UI 美化 / 可访问性（5 项）**
+
+12. **空态视觉统一**：播放队列「队列是空的」（`PlayQueueScreen.kt`）、我的列表清单空态（`MyListsScreen.kt` 的 `ListOfLists`）由左对齐裸文字改为居中 + 40dp 占位图标 + 次要色文案，与收藏页/榜单详情一致。
+13. **首页榜单加载提示**（`ui/screens/home/HomeScreen.kt`）：原 `loading=true` 时榜单区一片空白，改为在空列表时区分「正在加载…/加载失败可重试/暂无榜单」三态。
+14. **搜索错误重试热区达标**（`ui/screens/search/SearchScreen.kt`）：两处 `Text + clickable + padding(8dp)` 改用公共 `RetryHint`（约 44dp 热区 + 圆角按压反馈），消除重复。
+15. **触控热区扩至 48dp**：设置页「不喜欢」删除（约 32→48dp）、首页热搜榜每行（约 30→48dp）。
+16. **长按删除可发现性**（`ui/screens/source/SourceScreen.kt`）：自定义音源标题行右侧补 footnote「长按音源可删除」提示。
+17. **【版本】** `versionCode` 13 → 14，`versionName` 1.3.9 → 1.4.0，README/ANALYSIS/CHANGELOG 同步。
+
+### 上一轮已执行（第十轮 · v1.3.9）
+
+> 第十轮为全源码复审后的系统性可访问性与空态美化专项：统一全站触控热区到无障碍标准、统一空态视觉语言、补齐无障碍语义，并抽取三处公共抽象消除重复。改动全部落在 UI 层视觉/触控与集合工具，不触碰播放内核、QuickJS 引擎与音源协议。
 
 1. **【美化/可访问性/可维护性】返回键公共组件 `BackIconButton`**（新增 `ui/components/BackIconButton.kt`）：音源、榜单详情、歌单广场、歌单详情、我的列表、播放队列 6 个二级页此前各自用 `Icon(28dp)` 直接挂 `clickable`，热区仅 28dp（低于 Material 48dp 最小目标）且代码重复。统一为 `BackIconButton`——外层 48dp `Box` 承载点击、内层 `Icon` 保持 28dp 视觉尺寸，`contentDescription` 统一「返回」；6 处替换并把符号登记进 `selfcheck.py` 的 `PROJECT_SYMBOLS`。
 2. **【可访问性】多处图标/文字热区扩至 48dp**：收藏页、我的列表（列表内 + 列表清单）、播放队列的删除图标（24→48dp）、搜索结果收藏键（24→48dp）、播放队列「清空」文字（约 28→48dp）、播放页错误恢复「下一首」（约 20→44dp 带圆角裁剪）。均为外层 Box 承载点击、内层视觉尺寸不变，交互语义与事件消费行为不变。
@@ -154,7 +187,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.3.6（第七轮）：歌词 offset 时序 + 播放竞态收口 + 设置页/歌单同步性能 + 原子写与 HTTP 并发 + 深色模式与按压反馈等美化 + CI 自检
 - v1.3.7（第八轮）：定时停止冷启动恢复 + 倒计时抗漂移 + 迷你条/播放页触控热区与播放模式命中区美化
 - v1.3.8（第九轮）：歌词手动回看不被打断（跟随暂停 + 回到当前入口）+ 长音频时长 H:MM:SS + 搜索翻页重复请求竞态修复
-- **v1.3.9（本轮 · 第十轮）**：全站可访问性热区达标（返回键/删除键/收藏键/清空/下一首恢复）+ 空态视觉语言统一 + BackIconButton/RetryHint/ListExt 公共抽象抽取
+- v1.3.9（第十轮）：全站可访问性热区达标（返回键/删除键/收藏键/清空/下一首恢复）+ 空态视觉语言统一 + BackIconButton/RetryHint/ListExt 公共抽象抽取
+- **v1.4.0（本轮 · 第十一轮）**：正确性修复（搜索空态/重复错误/PUT-PATCH 取链/版本号 V 前缀/定时溢出）+ 多处 O(N²)→O(N) 与写盘合并 + 规则落盘一致性 + 空态统一与热区达标等美化
 
 ---
 

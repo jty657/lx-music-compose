@@ -10,7 +10,6 @@ import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.core.request.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -39,8 +38,6 @@ class MusicRepository(
         engineManager.builtinQualityList,
     )
     val qualityList: StateFlow<Map<String, List<String>>> = _qualityList
-
-    private val sourceMutex = Mutex()
 
     /** 源是否可用（原版 assertApiSupport） */
     fun assertApiSupport(source: String): Boolean {

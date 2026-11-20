@@ -123,7 +123,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { navigator.push(Screen.Search(word)) }
-                            .padding(vertical = 6.dp),
+                            // 榜单每行热区提到 48dp 下限，视觉紧凑度基本不变
+                            .padding(vertical = 14.dp),
                     ) {
                         Text(
                             "${index + 1}",
@@ -147,12 +148,17 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         // 榜单（始终显示）
         Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
         Spacer(Modifier.size(4.dp))
-        // 失败/空态给出可重试的提示（此前只有标题 + 空列表，用户以为没有榜单）
-        if (boards.isEmpty() && !viewModel.loading) {
-            if (viewModel.error != null) {
-                RetryHint(text = "加载失败，点击重试", onClick = { viewModel.loadBoards() })
-            } else {
-                Text(
+        // 失败/空态/加载中给出提示：此前 loading=true 时榜单区一片空白，用户以为没有榜单。
+        // 与榜单详情、歌单详情的加载提示保持一致。
+        if (boards.isEmpty()) {
+            when {
+                viewModel.loading -> Text(
+                    "正在加载榜单…",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+                viewModel.error != null -> RetryHint(text = "加载失败，点击重试", onClick = { viewModel.loadBoards() })
+                else -> Text(
                     "暂无榜单",
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     fontSize = MiuixTheme.textStyles.body2.fontSize,

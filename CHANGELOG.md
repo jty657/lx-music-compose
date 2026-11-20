@@ -2,7 +2,35 @@
 
 本项目为洛雪音乐 Compose 移植版「聆序」。以下记录基于对全部源码的系统审查所执行的优化与美化。
 
-## 第十轮：全站可访问性与空态美化 + 公共组件抽取（v1.3.9，本次）
+## 第十一轮：正确性与性能综合复审 + 空态/热区美化（v1.4.0，本次）
+
+> 项目定位不变：**同时具备「在线」与「本地」功能的音乐播放器**。本轮在第十轮基础上做覆盖正确性、性能与可访问性的综合复审，坚持低风险原则，不触碰 QuickJS 引擎、音源协议与 assets 脚本，在线/本地双模行为均不受影响。
+
+### Bug 修复 / 正确性
+- **搜索空态被历史遮蔽**（`SearchScreen.kt`）：搜索后输入框保留关键词，而历史分支只判结果为空，导致任何无结果搜索都误显「搜索历史」并遮蔽「没有找到相关音乐」空态；补上输入框为空判断。
+- **歌单广场错误重复渲染**（`SongListScreen.kt`）：加载失败且列表空时同一句错误文案出现两遍（顶部红字 + 空态 RetryHint），删除顶部红字，统一由 RetryHint 展示。
+- **`fetchSync` 支持 PUT/PATCH**（`HttpClient.kt`）：原仅 post 带 body 才构造 RequestBody，音源脚本用 PUT/PATCH 取链/签名会因 body 为 null 抛异常失败；补齐空 body 处理，并与异步 `fetch()` 方法集合复用 `BODY_METHODS` 常量。
+- **版本号比较兼容大写 V**（`UpdateRepository.kt`）：`compareVersion` 原只去小写 `v`，`V1.4.0` 会被解析成 0.0.0 误判为旧版；补去 `V`。
+- **定时分钟数溢出防护**（`PlayerRepository.kt`）：`minutes * 60` 的 Int 溢出会令定时立即到期、播放被瞬间暂停；改 Long 运算后钳制到 Int 上限。
+
+### 性能
+- **在线歌单翻页去重**（`MyListsRepository.kt`）：`pullOnlineMusics` 由 O(N²) 线性判重改为 HashSet O(1) 查重，并去掉批内重复 id。
+- **歌单同步/保存查重**（同文件）：`overwriteOnlineMusics`、`saveMusicsLocked` 内按 id 查旧记录由线性扫描改为 `associateBy` 哈希查找。
+- **备份恢复写盘合并**（`BackupRepository.kt`）：歌单表恢复由逐条 delete+upsert（O(N) 次全文件写盘）改为一次 `replacePlaylists` 覆盖。
+
+### 健壮性 / 工程
+- **「不喜欢」规则落盘一致性**（`DislikeRepository.kt`）：写盘失败不再被静默吞掉造成「界面已保存、重启丢失」，改为落盘成功后才更新内存；临时名加 UUID 防并发覆盖。
+- **死代码清理**（`MusicRepository.kt`）：删除未使用的 `sourceMutex`。
+- 版本 1.3.9 → 1.4.0（versionCode 13 → 14），README/ANALYSIS 同步；全部 `.kt` 改动通过 `scripts/selfcheck.py` 自检，CI 构建验证。
+
+### 美化 / 可访问性
+- **空态视觉统一**：播放队列、我的列表清单空态由左对齐裸文字改为居中 + 占位图标 + 次要色文案。
+- **首页榜单三态提示**（`HomeScreen.kt`）：加载中显示「正在加载榜单…」，不再空白。
+- **搜索错误重试**（`SearchScreen.kt`）：两处重试入口改用公共 `RetryHint`（热区约 44dp + 按压反馈）。
+- **热区达标**：设置页「不喜欢」删除、首页热搜榜每行扩至约 48dp。
+- **长按删除可发现性**（`SourceScreen.kt`）：自定义音源补「长按音源可删除」提示。
+
+## 第十轮：全站可访问性与空态美化 + 公共组件抽取（v1.3.9）
 
 > 项目定位：**同时具备「在线」与「本地」功能的音乐播放器**。本轮为一次全源码复审后的系统性美化与可访问性打磨，改动全部落在 UI 层的视觉/触控细节与重复的抽取，不涉及播放内核、音源协议与 QuickJS 引擎，在线/本地双模行为均不受影响。
 

@@ -41,6 +41,7 @@ import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
@@ -161,7 +162,10 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
 
         // 搜索历史（无结果且输入为空时展示；可在设置里关闭）
         val showHistory by LxApp.app.settings.isShowHistorySearch.collectAsState(initial = true)
-        if (showHistory && viewModel.results.isEmpty() && viewModel.songLists.isEmpty() && viewModel.history.isNotEmpty()) {
+        // 必须加「输入框为空」判断：搜索后输入框仍保留关键词，若只判结果为空，
+        // 任意无结果的搜索都会命中历史分支并 return，导致「没有找到相关音乐」空态永远不显示。
+        val inputIsBlank = textFieldState.text.toString().isBlank()
+        if (showHistory && inputIsBlank && viewModel.results.isEmpty() && viewModel.songLists.isEmpty() && viewModel.history.isNotEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("搜索历史", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Spacer(Modifier.weight(1f))
@@ -254,15 +258,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                 // 自动加载失败时给一个可点的重试入口，否则用户会一直卡在列表底部
                 viewModel.errorMessage?.let { err ->
                     item(key = "__load_error__") {
-                        Text(
-                            err,
-                            color = MiuixTheme.colorScheme.error,
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.loadMore() }
-                                .padding(vertical = 8.dp),
-                        )
+                        RetryHint(text = err, onClick = { viewModel.loadMore() }, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
@@ -343,15 +339,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             }
             viewModel.errorMessage?.let { err ->
                 item(key = "__load_error__") {
-                    Text(
-                        err,
-                        color = MiuixTheme.colorScheme.error,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.loadMore() }
-                            .padding(vertical = 8.dp),
-                    )
+                    RetryHint(text = err, onClick = { viewModel.loadMore() }, modifier = Modifier.fillMaxWidth())
                 }
             }
         }

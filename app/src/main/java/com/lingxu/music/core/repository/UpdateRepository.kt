@@ -92,8 +92,8 @@ class UpdateRepository {
     companion object {
         /** 简单版本号比较：1.3.3 > 1.3.2。返回 1/0/-1。 */
         fun compareVersion(a: String, b: String): Int {
-            val pa = a.removePrefix("v").split('.').map { it.toIntOrNull() ?: 0 }
-            val pb = b.removePrefix("v").split('.').map { it.toIntOrNull() ?: 0 }
+            val pa = a.removePrefix("v").removePrefix("V").split('.').map { it.toIntOrNull() ?: 0 }
+            val pb = b.removePrefix("v").removePrefix("V").split('.').map { it.toIntOrNull() ?: 0 }
             val n = maxOf(pa.size, pb.size)
             for (i in 0 until n) {
                 val x = pa.getOrElse(i) { 0 }

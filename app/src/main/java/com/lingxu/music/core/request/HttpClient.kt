@@ -118,7 +118,7 @@ class HttpClient {
                     }
                 }
                 // OkHttp 要求 POST/PUT/PATCH 必须有 body
-                method in setOf("post", "put", "patch") -> ByteArray(0).toRequestBody(contentType?.toMediaType())
+                method in BODY_METHODS -> ByteArray(0).toRequestBody(contentType?.toMediaType())
                 else -> null
             }
             builder.method(method.uppercase(), body)
@@ -156,11 +156,16 @@ class HttpClient {
         val merged = defaultHeaders + headers
         merged.forEach { (k, v) -> if (!k.equals("Content-Type", ignoreCase = true)) builder.header(k, v) }
         val m = method.lowercase()
-        val requestBody = if (m == "post" && body != null) {
-            val contentType = merged.entries.firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
-                ?: "application/json"
-            body.toRequestBody(contentType.toMediaType())
-        } else null
+        // OkHttp 规定 PUT/PATCH 必须带 body；此前只处理 post，SDK 桥一旦用 put/patch 取链/签名
+        // 会因 body 为空抛 IllegalArgumentException 而整次失败，且与异步 fetch() 行为不一致。
+        val contentType = merged.entries.firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
+            ?: "application/json"
+        val requestBody = when {
+            body != null -> body.toRequestBody(contentType.toMediaType())
+            // 无显式 body 但方法要求带 body 时给空 body，避免 OkHttp 抛异常
+            m in BODY_METHODS -> ByteArray(0).toRequestBody(contentType.toMediaType())
+            else -> null
+        }
         builder.method(m.uppercase(), requestBody)
         client.newCall(builder.build()).execute().use { resp ->
             val bytes = resp.body?.bytes() ?: ByteArray(0)
@@ -185,5 +190,7 @@ class HttpClient {
 
     companion object {
         val instance by lazy { HttpClient() }
+        /** 需要携带 body 的 HTTP 方法（OkHttp 对 POST/PUT/PATCH 强制要求非 null body） */
+        private val BODY_METHODS = setOf("post", "put", "patch")
     }
 }

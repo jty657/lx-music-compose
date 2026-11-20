@@ -556,7 +556,8 @@ fun SettingScreen(
                                 color = MiuixTheme.colorScheme.error,
                                 modifier = Modifier
                                     .clickable { viewModel.removeDislike(rule) }
-                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    // 热区从约 32dp 扩至约 48dp（可达性下限），视觉字号不变
+                                    .padding(horizontal = 8.dp, vertical = 14.dp),
                             )
                         }
                     }

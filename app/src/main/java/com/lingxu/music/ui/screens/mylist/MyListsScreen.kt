@@ -539,11 +539,24 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
     onDelete: (Playlist) -> Unit,
 ) {
     if (lists.isEmpty()) {
-        Text(
-            "还没有列表，点右上角「新建」或去歌单广场收藏",
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            fontSize = MiuixTheme.textStyles.body2.fontSize,
-        )
+        // 与列表内空态、收藏页统一视觉语言：居中 + 占位图标 + 次要色文案
+        Column(
+            Modifier.fillMaxWidth().padding(vertical = 64.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                MiuixIcons.Favorites,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+            )
+            Spacer(Modifier.size(12.dp))
+            Text(
+                "还没有列表，点右上角「新建」或去歌单广场收藏",
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+            )
+        }
         return
     }
     LazyColumn(

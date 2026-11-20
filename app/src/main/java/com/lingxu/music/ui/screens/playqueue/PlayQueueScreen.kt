@@ -88,11 +88,24 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
         Spacer(Modifier.size(8.dp))
 
         if (queue.isEmpty()) {
-            Text(
-                "队列是空的",
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-            )
+            // 空态视觉语言与收藏页/我的列表统一：居中 + 占位图标 + 次要色文案
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 64.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    MiuixIcons.Play,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+                )
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    "队列是空的",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
+            }
             return@Column
         }
 

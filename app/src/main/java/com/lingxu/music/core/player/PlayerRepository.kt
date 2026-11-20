@@ -151,7 +151,9 @@ class PlayerRepository(context: Context) {
             _state.update { it.copy(timeoutExitRemaining = -1) }
             return
         }
-        val totalSeconds = minutes * 60
+        // minutes 来自持久化，异常大值做 Long 运算后再钳制，避免 `minutes * 60` 的 Int 溢出
+        // 变成负数导致 deadline 立即到期、播放被瞬间暂停。
+        val totalSeconds = (minutes.toLong() * 60).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         _state.update { it.copy(timeoutExitRemaining = totalSeconds) }
         // 按绝对到期时间计算剩余秒数，而非「每 delay(1000) 减 1」：
         // App 退到后台被系统冻结后协程 delay 会被显著拉长，累减会让定时严重变慢

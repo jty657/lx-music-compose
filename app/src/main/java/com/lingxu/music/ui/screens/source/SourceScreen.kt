@@ -117,7 +117,16 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
         Spacer(Modifier.size(8.dp))
 
-        Text("自定义音源（${userApis.size}/20）", fontSize = MiuixTheme.textStyles.body2.fontSize)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("自定义音源（${userApis.size}/20）", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Spacer(Modifier.weight(1f))
+            // 删除入口是长按，缺少发现性提示，用户往往不知道如何删除已导入音源
+            Text(
+                "长按音源可删除",
+                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+        }
         Spacer(Modifier.size(4.dp))
 
         LazyColumn(Modifier.weight(1f)) {

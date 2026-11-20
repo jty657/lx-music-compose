@@ -149,10 +149,8 @@ fun SongListScreen(
             Spacer(Modifier.size(8.dp))
         }
 
-        error?.let {
-            Text(it, color = MiuixTheme.colorScheme.error, fontSize = MiuixTheme.textStyles.body2.fontSize)
-            Spacer(Modifier.size(4.dp))
-        }
+        // 错误提示统一由下方空态分支的 RetryHint 展示，此处不再单独渲染红字，
+        // 避免加载失败且列表为空时同一句错误文案出现两遍。
 
         if (list.isEmpty() && !loading) {
             if (error != null) {
@@ -172,6 +170,7 @@ fun SongListScreen(
 
         LazyColumn(
             state = listState,
+            modifier = Modifier.weight(1f),
         ) {
             items(list, key = { "${it.source}_${it.id}" }) { item ->
                 GlassSurface(

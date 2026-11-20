@@ -107,13 +107,14 @@ class BackupRepository(
 
             db.saveFavorites(favorites)
 
-            // 覆盖式恢复：备份里不存在的列表要从本地删掉，否则「上次删掉的列表」会复活
+            // 覆盖式恢复：备份里不存在的列表要从本地删掉，否则「上次删掉的列表」会复活。
+            // 旧写法 deletePlaylist + N 次 upsertPlaylist 每条都全量重写 playlist.json（O(N) 次写盘），
+            // 改为只删这些列表的歌曲文件，再用一次 replacePlaylists 覆盖整表（O(1) 次写盘，语义等价）。
             val keepIds = playlists.map { it.id }.toSet()
             db.loadPlaylists().filterNot { it.id in keepIds }.forEach {
-                db.deletePlaylist(it.id)
                 db.deletePlaylistMusics(it.id)
             }
-            playlists.forEach { db.upsertPlaylist(it) }
+            db.replacePlaylists(playlists)
 
             // PlaylistMusic.listId 指明归属；没有该字段的旧备份按「歌曲出现在哪个列表」无法反推，
             // 因此只恢复带 listId 的条目，其余跳过

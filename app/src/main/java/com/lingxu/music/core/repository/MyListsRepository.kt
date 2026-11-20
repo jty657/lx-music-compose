@@ -139,6 +139,9 @@ class MyListsRepository(private val db: AppDatabase) {
         onProgress: (Int) -> Unit = {},
     ): List<MusicInfo> {
         val collected = mutableListOf<MusicInfo>()
+        // id 集合只在追加时查一次（O(1)），替代 per-item 线性扫 collected（原 O(N²)，
+        // 大歌单翻页到上万首时会明显卡顿）；同时去掉批次内部的重复 id。
+        val seenIds = HashSet<String>()
         var page = 1
         var maxPage = 1
         while (page <= maxPage.coerceAtMost(500)) {
@@ -152,7 +155,7 @@ class MyListsRepository(private val db: AppDatabase) {
             }
             if (page == 1) maxPage = pageMax.coerceAtLeast(1)
             if (list.isEmpty()) break
-            collected += list.filterNot { m -> collected.any { it.id == m.id } }
+            list.forEach { m -> if (seenIds.add(m.id)) collected += m }
             onProgress(collected.size)
             page += 1
         }
@@ -182,9 +185,9 @@ class MyListsRepository(private val db: AppDatabase) {
     suspend fun overwriteOnlineMusics(listId: String, musics: List<MusicInfo>): Int = mutex.withLock {
         val filtered = ListTransfer.filterMusicList(musics)
         ensureLoaded()
-        val existing = db.getPlaylistMusics(listId)
+        val existingById = db.getPlaylistMusics(listId).associateBy { it.id }
         val items = filtered.mapIndexed { index, music ->
-            val old = existing.firstOrNull { it.id == music.id }
+            val old = existingById[music.id]
             if (old != null) old.copy(sort = index, listId = listId) else PlaylistMusic(id = music.id, music = music, sort = index, listId = listId)
         }
         db.savePlaylistMusics(listId, items)
@@ -205,9 +208,9 @@ class MyListsRepository(private val db: AppDatabase) {
     /** 不带锁的实现：调用方必须已持有 mutex（Mutex 不可重入） */
     private suspend fun saveMusicsLocked(listId: String, musics: List<MusicInfo>) {
         ensureLoaded()
-        val existing = db.getPlaylistMusics(listId)
+        val existingById = db.getPlaylistMusics(listId).associateBy { it.id }
         val items = musics.mapIndexed { index, music ->
-            val old = existing.firstOrNull { it.id == music.id }
+            val old = existingById[music.id]
             if (old != null) old.copy(sort = index, listId = listId) else PlaylistMusic(id = music.id, music = music, sort = index, listId = listId)
         }
         db.savePlaylistMusics(listId, items)
