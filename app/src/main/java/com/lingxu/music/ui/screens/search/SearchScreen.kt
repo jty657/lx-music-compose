@@ -174,7 +174,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     "清空",
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { viewModel.clearHistory() },
+                    // 扩大点击热区：仅靠文字高度约 20dp，低于 48dp 的可访问性下限，
+                    // 上下各补 10dp 让手指更容易点中（历史行整体仍保持紧凑）
+                    modifier = Modifier
+                        .clickable { viewModel.clearHistory() }
+                        .padding(vertical = 10.dp),
                 )
             }
             Spacer(Modifier.height(4.dp))

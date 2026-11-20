@@ -30,6 +30,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Music
 import top.yukonga.miuix.kmp.icon.extended.Layers
+import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
@@ -50,7 +51,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             onClick = { navigator.push(Screen.Source) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
-                IconWrap(MiuixIcons.Layers)
+                IconWrap(MiuixIcons.File)
                 Column(Modifier.padding(start = 12.dp)) {
                     Text("音源管理", fontSize = MiuixTheme.textStyles.main.fontSize)
                     Text(
@@ -88,7 +89,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 onClick = { navigator.push(Screen.SongList(selectedSource)) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
-                    IconWrap(MiuixIcons.Layers)
+                    IconWrap(MiuixIcons.Music)
                     Column(Modifier.padding(start = 12.dp)) {
                         Text("歌单广场", fontSize = MiuixTheme.textStyles.main.fontSize)
                         Text(

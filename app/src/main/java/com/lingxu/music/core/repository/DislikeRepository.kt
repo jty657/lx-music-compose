@@ -6,6 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
@@ -26,7 +28,12 @@ class DislikeRepository(private val context: Context) {
     private val _rules = MutableStateFlow<List<String>>(emptyList())
     val rules: StateFlow<List<String>> = _rules.asStateFlow()
 
-    suspend fun load() = withContext(Dispatchers.IO) {
+    /** 读写都在同一临界区，避免 load 未完成时 add 用空规则覆盖磁盘已有数据、以及并发 add 丢更新 */
+    private val mutex = Mutex()
+    private var loaded = false
+
+    /** 从磁盘读取一次（调用方需持有 mutex 或确保单线程初始化） */
+    private fun loadLocked() {
         _rules.value = if (file.exists()) {
             val text = runCatching { file.readText() }.getOrNull()
             val parsed = text?.let { t -> runCatching { json.decodeFromString<List<String>>(t) }.getOrNull() }
@@ -41,17 +48,37 @@ class DislikeRepository(private val context: Context) {
                 emptyList()
             }
         } else emptyList()
-        Unit
+    }
+
+    suspend fun load() = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            loadLocked()
+            loaded = true
+        }
     }
 
     suspend fun add(rule: String) = withContext(Dispatchers.IO) {
-        val trimmed = rule.trim()
-        if (trimmed.isEmpty() || trimmed == "@") return@withContext
-        persist((_rules.value + trimmed).distinct())
+        mutex.withLock {
+            // 冷启动时 load() 走异步 IO，用户可能在此之前就添加规则；先补一次读盘，
+            // 否则会用「空列表 + 新规则」覆盖磁盘已有规则（与 FavoritesRepository 守卫一致）
+            if (!loaded) {
+                loadLocked()
+                loaded = true
+            }
+            val trimmed = rule.trim()
+            if (trimmed.isEmpty() || trimmed == "@") return@withLock
+            persist((_rules.value + trimmed).distinct())
+        }
     }
 
     suspend fun remove(rule: String) = withContext(Dispatchers.IO) {
-        persist(_rules.value.filterNot { it == rule })
+        mutex.withLock {
+            if (!loaded) {
+                loadLocked()
+                loaded = true
+            }
+            persist(_rules.value.filterNot { it == rule })
+        }
     }
 
     fun isDisliked(music: MusicInfo): Boolean {

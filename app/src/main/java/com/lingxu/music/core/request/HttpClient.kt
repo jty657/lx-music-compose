@@ -70,9 +70,17 @@ class HttpClient {
             }
             .build()
 
+    /** 自定义超时 client 的容量上限：每个 client 带独立连接池/线程池，不能让脚本用递增 timeout 无限创建 */
+    private val maxTimeoutClients = 8
+
     /** 默认 client 之外，为自定义超时复用固定数量的 client（新建 client 会带独立连接池，故需缓存） */
     private fun clientForTimeout(timeoutMs: Long): OkHttpClient {
         if (timeoutMs == 60_000L) return client
+        // 已缓存的档位继续复用；未见过的新档位且已达上限时退回默认 client，
+        // 避免第三方脚本用递增 timeout 取链/取词时无界创建 client 造成资源累积
+        val cached = timeoutClients[timeoutMs]
+        if (cached != null) return cached
+        if (timeoutClients.size >= maxTimeoutClients) return client
         return timeoutClients.getOrPut(timeoutMs) { buildClient(timeoutMs) }
     }
 

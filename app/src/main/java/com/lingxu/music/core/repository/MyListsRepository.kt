@@ -56,7 +56,9 @@ class MyListsRepository(private val db: AppDatabase) {
     /** 新建列表（对应原版 createUserList） */
     suspend fun create(name: String): Playlist = mutex.withLock {
         ensureLoaded()
-        val list = Playlist(id = "userlist_${System.currentTimeMillis()}", name = name, createTime = System.currentTimeMillis())
+        // 加随机后缀：仅用毫秒时间戳时，同毫秒连续新建两个歌单会撞 id，后者覆盖前者导致歌单静默丢失
+        // （与 collectSongList / collectBoard 两处保持一致的 id 生成策略）
+        val list = Playlist(id = "userlist_${System.currentTimeMillis()}_${(0..999).random()}", name = name, createTime = System.currentTimeMillis())
         persist(_lists.value + list)
         list
     }
