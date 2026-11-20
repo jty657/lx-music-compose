@@ -301,23 +301,28 @@ private fun MiniPlayerBar(navigator: Navigator) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Icon(
-                    if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
-                    contentDescription = if (state.isPlaying) "暂停" else "播放",
+                // 触控热区统一到 48dp（Material 无障碍最小Target），图标视觉尺寸不变：
+                // 外层 Box 提供 48dp 可点区域，内层 Icon 保持原尺寸，避免放大后视觉过冲。
+                Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(48.dp)
                         .clickable(
                             indication = null,
                             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                             onClick = { LxApp.app.playerRepository.togglePlay() },
                         ),
-                )
-                Spacer(Modifier.size(8.dp))
-                Icon(
-                    MiuixIcons.Layers,
-                    contentDescription = "播放队列",
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
+                        contentDescription = if (state.isPlaying) "暂停" else "播放",
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.size(2.dp))
+                Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(48.dp)
                         .clickable(
                             indication = null,
                             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
@@ -325,7 +330,14 @@ private fun MiniPlayerBar(navigator: Navigator) {
                                 if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
                             },
                         ),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        MiuixIcons.Layers,
+                        contentDescription = "播放队列",
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
             // 细进度线：给迷你条一个不占位的播放进度反馈
             val progress = if (state.durationMs > 0) {

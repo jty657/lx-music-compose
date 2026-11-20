@@ -121,6 +121,18 @@ class LxApp : Application() {
                     if (savePlayTime) lastPlay.positionMs else 0L,
                 )
             }
+            // 定时停止播放冷启动恢复：原版只持久化分钟数、不存绝对到期时间，
+            // 故采用「重启后按设定分钟数重新计时」的语义（不跨重启续算绝对时间），
+            // 避免用户隔天打开 App 时定时器早已过期、或重新计时与预期不符。
+            runCatching {
+                val timeoutMinutes = settings.timeoutExitMinutes.first()
+                if (timeoutMinutes > 0) {
+                    playerRepository.startTimeoutExit(
+                        timeoutMinutes,
+                        settings.timeoutExitPlayed.first(),
+                    )
+                }
+            }
             // 音频焦点处理开关
             playerRepository.setHandleAudioFocus(settings.isHandleAudioFocus.first())
             // 「记录自定义源日志」开关

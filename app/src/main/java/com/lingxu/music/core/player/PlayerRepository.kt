@@ -152,13 +152,19 @@ class PlayerRepository(context: Context) {
             _state.update { it.copy(timeoutExitRemaining = -1) }
             return
         }
-        _state.update { it.copy(timeoutExitRemaining = minutes * 60) }
+        val totalSeconds = minutes * 60
+        _state.update { it.copy(timeoutExitRemaining = totalSeconds) }
+        // 按绝对到期时间计算剩余秒数，而非「每 delay(1000) 减 1」：
+        // App 退到后台被系统冻结后协程 delay 会被显著拉长，累减会让定时严重变慢
+        // （设 30 分钟实际可能一小时后仍未到点）；用系统时钟重算可抗挂起漂移。
+        val deadline = System.currentTimeMillis() + totalSeconds * 1000L
         timeoutJob = scope.launch {
-            var remaining = minutes * 60
-            while (remaining > 0) {
+            while (true) {
                 delay(1000)
-                remaining -= 1
+                val remaining = ((deadline - System.currentTimeMillis()) / 1000L)
+                    .coerceAtLeast(0L).toInt()
                 _state.update { it.copy(timeoutExitRemaining = remaining) }
+                if (remaining <= 0) break
             }
             if (waitForSongEnd && _state.value.isPlaying) {
                 // 等待当前歌曲播完：置标志，切歌时再停

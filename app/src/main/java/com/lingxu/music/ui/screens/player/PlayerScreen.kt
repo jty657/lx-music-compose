@@ -37,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -287,9 +288,11 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                     Spacer(Modifier.height(10.dp))
 
                     // 次控制：收藏 / 队列 / 分享 / 设置
+                    // 图标按钮热区已扩到 48dp（图标居中），故把间距从 28dp 收至 8dp，
+                    // 保持与扩大前相近的视觉密度，避免按钮散开。
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(28.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         PlayerIconButton(
                             if (state.current?.id in favoriteIds) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
@@ -316,14 +319,15 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    // 播放模式
-                    Row {
+                    // 播放模式：热区加大到 40dp 高，提升点按命中率
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         PlayMode.ALL.forEach { mode ->
                             Text(
                                 PlayMode.label(mode),
                                 modifier = Modifier
-                                    .padding(4.dp)
-                                    .clickable { viewModel.setMode(mode) },
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { viewModel.setMode(mode) }
+                                    .padding(horizontal = 8.dp, vertical = 10.dp),
                                 color = if (state.playMode == mode) MiuixTheme.colorScheme.primary
                                 else MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
@@ -475,7 +479,7 @@ private fun LyricLineRow(
     }
 }
 
-/** 播放页图标按钮：去掉水波纹，只保留点击热区 */
+/** 播放页图标按钮：去掉水波纹，只保留点击热区；热区最小 48dp，视觉尺寸不变 */
 @Composable
 private fun PlayerIconButton(
     icon: ImageVector,
@@ -491,11 +495,12 @@ private fun PlayerIconButton(
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
         label = "btnScale",
     )
-    Icon(
-        icon,
-        contentDescription = contentDescription,
+    // 热区至少 48dp（Material 无障碍最小目标）；主播放键本身 64dp 则保持原尺寸。
+    // 用 Box 承载点击与缩放动画，Icon 只用 size 控制视觉大小，二者解耦。
+    val hitSize = if (size >= 48.dp) size else 48.dp
+    Box(
         modifier = Modifier
-            .size(size)
+            .size(hitSize)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -505,7 +510,10 @@ private fun PlayerIconButton(
                 interactionSource = interaction,
                 onClick = onClick,
             ),
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(size))
+    }
 }
 
 /** 播放页更多设置：倍速 / 音量 / 定时停止（对应原版播放页 SettingPopup） */
