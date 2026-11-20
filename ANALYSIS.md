@@ -83,7 +83,16 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 
 ---
 
-## 三、本轮已执行的优化与美化（第八轮 · v1.3.7）
+## 三、本轮已执行的优化与美化（第九轮 · v1.3.8）
+
+> 延续「在线 + 本地」双模定位，本轮聚焦播放页歌词交互体验与时长显示的正确性、搜索翻页的并发健壮性，均为低风险定点改动，全部通过 `scripts/selfcheck.py` 静态自检，云端构建由 GitHub Actions 验证。
+
+1. **【UI/UX】歌词手动回看与自动跟随冲突修复**（`ui/screens/player/PlayerScreen.kt`）：此前 `LyricView` 的自动滚动 `LaunchedEffect(currentIndex, ...)` 每切一句歌词就调用 `animateScrollToItem`，用户上滑回看旧歌词时会被立刻拽回当前行，无法阅读。本轮新增 `followCurrent` 跟随开关——`LazyColumn` 上挂 `pointerInput` **只观察 touch down、不消费手势**（`awaitEachGesture`/`awaitFirstDown(requireUnconsumed=false)`），用户手指按下歌词区即置 `followCurrent=false` 暂停跟随，滚动/点击歌词行交互不受影响；暂停时浮出「回到当前歌词」玻璃按钮一键恢复，点歌词跳转（`onSeek`）与切歌（`currentId` 变化）也自动恢复跟随，恢复时 `animateScrollToItem` 立即把当前行滑回居中。
+2. **【正确性】时长显示支持小时与负值钳制**（`ui/screens/player/PlayerViewModel.kt`）：`formatTime` 原实现固定 `MM:SS`，超 1 小时音频会显示成 `75:30` 这类不易读的值，且负毫秒会产生乱码。改为 `ms` 钳到非负、按 `H:MM:SS` 格式化超过 1 小时的时长，普通歌曲仍用 `MM:SS`。
+3. **【并发健壮性】搜索翻页重复请求竞态**（`ui/screens/search/SearchViewModel.kt`）：`search()` 与 `loadMore()` 原先把 `loading=true` 放在 `viewModelScope.launch` 内异步执行，两次快速触发 `loadMore` 之间、`loadMore` 与新搜索之间都存在守卫失效窗口，可能重复请求同一页。改为在 launch 前**同步置位** `loading` 并清空 `errorMessage`，封住竞态窗口；已有的 `requestSeq` 版本锁继续负责丢弃迟到结果。
+4. **【版本】** `versionCode` 11 → 12，`versionName` 1.3.7 → 1.3.8，README/ANALYSIS/CHANGELOG 同步。
+
+### 上一轮已执行（第八轮 · v1.3.7）
 
 1. **【正确性】定时停止冷启动恢复**（`LxApp.kt`）：启动时读取持久化的 `timeoutExitMinutes`，>0 则调用 `startTimeoutExit` 恢复倒计时；采用「重启后按设定分钟数重新计时」语义（不跨重启续算绝对时间），避免隔天打开时定时器已过期或行为不符预期。
 2. **【正确性】倒计时抗后台漂移**（`core/player/PlayerRepository.kt`）：定时停止由「每 `delay(1000)` 减 1」改为按 `deadline - System.currentTimeMillis()` 重算剩余秒数，App 退到后台被冻结后 `delay` 被拉长也不再让定时严重变慢。
@@ -129,7 +138,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.3.4（第五轮）：数据安全补漏 + 资源治理 + 图标语义化 + 交互细节
 - v1.3.5（第六轮）：搜索竞态修复 + 歌词二分查找 + 热搜视觉层级
 - v1.3.6（第七轮）：歌词 offset 时序 + 播放竞态收口 + 设置页/歌单同步性能 + 原子写与 HTTP 并发 + 深色模式与按压反馈等美化 + CI 自检
-- **v1.3.7（本轮 · 第八轮）**：定时停止冷启动恢复 + 倒计时抗漂移 + 迷你条/播放页触控热区与播放模式命中区美化
+- v1.3.7（第八轮）：定时停止冷启动恢复 + 倒计时抗漂移 + 迷你条/播放页触控热区与播放模式命中区美化
+- **v1.3.8（本轮 · 第九轮）**：歌词手动回看不被打断（跟随暂停 + 回到当前入口）+ 长音频时长 H:MM:SS + 搜索翻页重复请求竞态修复
 
 ---
 

@@ -32,9 +32,13 @@ class PlayerViewModel : ViewModel() {
     }
 
     fun formatTime(ms: Long): String {
-        val totalSec = ms / 1000
-        val min = totalSec / 60
+        // 钳到非负：拖动进度到极小负值或异常状态时避免出现 "-1:-2" 之类的乱码时长
+        val totalSec = (ms / 1000).coerceAtLeast(0L)
+        val hour = totalSec / 3600
+        val min = (totalSec % 3600) / 60
         val sec = totalSec % 60
-        return "%02d:%02d".format(min, sec)
+        // 超过 1 小时的音频（播客/无损长曲/现场）用 H:MM:SS，避免 "75:30" 这类不易读的显示
+        return if (hour > 0) "%d:%02d:%02d".format(hour, min, sec)
+        else "%02d:%02d".format(min, sec)
     }
 }

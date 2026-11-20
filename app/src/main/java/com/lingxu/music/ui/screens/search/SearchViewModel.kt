@@ -70,9 +70,10 @@ class SearchViewModel : ViewModel() {
         lastSource = source
         page = 1
         hasSearched = true
+        // 同步置位：让翻页守卫能立即感知「正在搜索」，避免 launch 异步执行前 loadMore 插队重复请求
+        loading = true
+        errorMessage = null
         viewModelScope.launch {
-            loading = true
-            errorMessage = null
             when (searchType) {
                 SearchType.MUSIC -> runCatching {
                     LxApp.app.musicRepository.search(text, page, source)
@@ -147,9 +148,10 @@ class SearchViewModel : ViewModel() {
         // 否则「加载更多」的迟到响应会把上一批的旧结果追加到新搜索的列表里。
         val seq = requestSeq
         val nextPage = page + 1
+        // 同步置位，封住两次快速触发 loadMore 之间的竞态窗口（原来 loading 在 launch 内才置 true）
+        loading = true
+        errorMessage = null
         viewModelScope.launch {
-            loading = true
-            errorMessage = null
             when (searchType) {
                 SearchType.MUSIC -> runCatching {
                     LxApp.app.musicRepository.search(lastQuery, nextPage, lastSource)

@@ -9,6 +9,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.offset
@@ -41,6 +43,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.awaitPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -382,19 +386,37 @@ private fun LyricView(
     val listState = rememberLazyListState()
     val baseSp = (MiuixTheme.textStyles.body2.fontSize.value * fontScale).sp
 
+    // 自动跟随开关：用户手动触摸歌词列表时暂停跟随，避免每句切换都把正在回看的歌词拽回当前行。
+    // 以 currentId 为 key：切到下一首时自动恢复跟随。点「回到当前歌词」也恢复。
+    var followCurrent by remember(currentId) { mutableStateOf(true) }
+
     BoxWithConstraints(modifier) {
         val edgePad = maxHeight * 0.4f
         val edgePadPx = with(LocalDensity.current) { edgePad.roundToPx() }
-        // 用弹簧缓动替换默认的瞬时滚动：歌词跟着唱「滑」到位，而不是一格一格跳
-        LaunchedEffect(currentIndex, edgePadPx, currentId) {
-            if (currentIndex >= 0) {
+        // 用弹簧缓动替换默认的瞬时滚动：歌词跟着唱「滑」到位，而不是一格一格跳。
+        // followCurrent 作为 key：恢复跟随时立即把当前行滑回居中位置。
+        LaunchedEffect(currentIndex, edgePadPx, currentId, followCurrent) {
+            if (currentIndex >= 0 && followCurrent) {
                 // +1 跳过首部占位 item
                 listState.animateScrollToItem(currentIndex + 1, scrollOffset = -edgePadPx)
             }
         }
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                // 只观察 touch down、不消费手势，LazyColumn 自身的滚动/点击不受影响。
+                // 一旦用户手指按下歌词区，说明想手动回看，暂停自动跟随。
+                .pointerInput(currentId) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        followCurrent = false
+                        // 等本次手势的所有手指抬起，期间不重复置位
+                        do {
+                            val event = awaitPointerEvent()
+                        } while (event.changes.any { it.pressed })
+                    }
+                },
             horizontalAlignment = horizontal,
         ) {
             item { Spacer(Modifier.height(edgePad)) }
@@ -407,10 +429,36 @@ private fun LyricView(
                     showRoma = showRoma,
                     showTranslation = showTranslation,
                     horizontal = horizontal,
-                    onSeek = onSeek,
+                    onSeek = { timeMs ->
+                        // 点歌词跳转是主动定位：恢复自动跟随，让列表跟着新的播放位置继续走
+                        followCurrent = true
+                        onSeek(timeMs)
+                    },
                 )
             }
             item { Spacer(Modifier.height(edgePad)) }
+        }
+
+        // 手动回看时浮出「回到当前歌词」入口，点击后恢复自动跟随并把当前行滑回居中。
+        // 放在 LazyColumn 之后（BoxWithConstraints 内叠层），不占用列表布局、不遮挡歌词。
+        if (!followCurrent && currentIndex >= 0) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 10.dp),
+            ) {
+                GlassSurface(
+                    shape = RoundedCornerShape(20.dp),
+                    onClick = { followCurrent = true },
+                ) {
+                    Text(
+                        "回到当前歌词",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MiuixTheme.colorScheme.primary,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    )
+                }
+            }
         }
     }
 }
