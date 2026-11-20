@@ -89,6 +89,41 @@ class SettingViewModel : ViewModel() {
     // ============ 自定义音源 ============
     val userApiLog: StateFlow<Boolean> = state(settings.enableUserApiLog, false)
 
+    // ============ 系统能力（对齐原版 utils / 版本更新） ============
+    /** 电池优化白名单状态：true 表示已忽略优化（后台播放更稳）。 */
+    private val _batteryIgnored = MutableStateFlow(
+        com.lingxu.music.core.system.BatteryOptimization.isIgnoring(LxApp.app.applicationContext)
+    )
+    val batteryIgnored: StateFlow<Boolean> = _batteryIgnored
+
+    fun refreshBatteryIgnored() {
+        _batteryIgnored.value =
+            com.lingxu.music.core.system.BatteryOptimization.isIgnoring(LxApp.app.applicationContext)
+    }
+
+    /**
+     * 检查更新：返回版本名与更新日志。
+     * 结果通过回调交给 UI，避免 ViewModel 持有 Activity 上下文。
+     */
+    fun checkUpdate(currentVersion: String, onResult: (String, String) -> Unit) {
+        viewModelScope.launch {
+            val latest = runCatching { LxApp.app.updateRepository.checkLatest() }.getOrNull()
+            if (latest == null) {
+                onResult("检查失败", "无法连接更新源，请稍后重试")
+                return@launch
+            }
+            if (com.lingxu.music.core.repository.UpdateRepository.compareVersion(
+                    latest.versionName, currentVersion
+                ) <= 0
+            ) {
+                onResult("已是最新版本", "当前版本 $currentVersion")
+                return@launch
+            }
+            val log = latest.changelog.ifBlank { "发现新版本 ${latest.versionName}" }
+            onResult("发现新版本 ${latest.versionName}", log)
+        }
+    }
+
     fun cycleTheme() = launch { settings.setTheme(next(themeMode.value, listOf("system", "light", "dark", "monet"))) }
 
     fun cycleLang() = launch { settings.setLang(next(lang.value, listOf("system", "zh_cn", "zh_tw", "en"))) }

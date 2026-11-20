@@ -47,6 +47,12 @@ fun SettingScreen(
     val scope = rememberCoroutineScope()
     var toast by remember { mutableStateOf<String?>(null) }
 
+    // 检查更新结果（独立弹窗，避免复用「备份」标题）
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateTitle by remember { mutableStateOf("") }
+    var updateBody by remember { mutableStateOf("") }
+    var updateChecking by remember { mutableStateOf(false) }
+
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
@@ -397,6 +403,37 @@ fun SettingScreen(
             },
         )
 
+        // ============ 系统能力（对齐原版 utils / 版本更新源） ============
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val batteryIgnored by viewModel.batteryIgnored.collectAsState(initial = false)
+        ArrowPreference(
+            title = "忽略电池优化",
+            summary = if (batteryIgnored) "已加入白名单，后台播放更稳定" else "加入白名单，避免后台播放被系统冻结",
+            onClick = {
+                val ok = com.lingxu.music.core.system.BatteryOptimization.requestIgnore(ctx)
+                if (!ok) toast = "当前系统不支持该功能"
+                viewModel.refreshBatteryIgnored()
+            },
+        )
+        ArrowPreference(
+            title = "检查更新",
+            summary = "检查是否有新版本",
+            onClick = {
+                updateChecking = true
+                showUpdateDialog = true
+                updateTitle = "检查更新中…"
+                updateBody = "正在连接更新源"
+                val current = runCatching {
+                    ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
+                }.getOrNull() ?: ""
+                viewModel.checkUpdate(current) { title, body ->
+                    updateTitle = title
+                    updateBody = body
+                    updateChecking = false
+                }
+            },
+        )
+
         Spacer(Modifier.size(12.dp))
 
         // ============ 关于 ============
@@ -416,18 +453,50 @@ fun SettingScreen(
             fontSize = MiuixTheme.textStyles.body2.fontSize,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         )
+        Spacer(Modifier.size(8.dp))
+        val deviceLines = androidx.compose.runtime.remember {
+            val d = com.lingxu.music.core.system.DeviceInfo
+            listOf(
+                "设备：${d.model()}",
+                "系统：${d.androidVersion()}",
+                "架构：${d.abi()}",
+                "语言：${d.language()}",
+            )
+        }
+        deviceLines.forEach { line ->
+            Text(
+                line,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+        }
 
         Spacer(Modifier.size(24.dp))
     }
     if (toast != null) {
         GlassDialog(onDismissRequest = { toast = null }) {
             Column(Modifier.padding(horizontal = 4.dp)) {
-                Text("备份", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Text("提示", fontSize = MiuixTheme.textStyles.title1.fontSize)
                 Spacer(Modifier.size(12.dp))
                 Text(toast!!)
                 Spacer(Modifier.size(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Button(onClick = { toast = null }) { Text("好") }
+                }
+            }
+        }
+    }
+    if (showUpdateDialog) {
+        GlassDialog(onDismissRequest = { showUpdateDialog = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text(updateTitle, fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text(updateBody)
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (!updateChecking) {
+                        Button(onClick = { showUpdateDialog = false }) { Text("好") }
+                    }
                 }
             }
         }

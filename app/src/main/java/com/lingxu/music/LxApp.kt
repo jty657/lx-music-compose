@@ -13,6 +13,7 @@ import com.lingxu.music.core.repository.BackupRepository
 import com.lingxu.music.core.repository.DislikeRepository
 import com.lingxu.music.core.repository.SettingsRepository
 import com.lingxu.music.core.repository.ShareRepository
+import com.lingxu.music.core.repository.UpdateRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,6 +41,8 @@ class LxApp : Application() {
     lateinit var dislikeRepository: DislikeRepository
         private set
     lateinit var shareRepository: ShareRepository
+        private set
+    lateinit var updateRepository: UpdateRepository
         private set
 
     /** 当前音源能力收集协程（切换音源时重建，避免协程泄漏） */
@@ -71,6 +74,7 @@ class LxApp : Application() {
             myListsRepository.reload()
         }
         shareRepository = ShareRepository(this)
+        updateRepository = UpdateRepository()
         musicRepository = MusicRepository(sdkBridge, engineManager, settings)
         playerRepository = PlayerRepository.get(this)
         // 注入歌词加载器（播放器切歌时自动拉歌词，含翻译）
