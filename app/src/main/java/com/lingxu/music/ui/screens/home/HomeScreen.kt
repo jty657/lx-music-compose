@@ -115,6 +115,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             com.lingxu.music.ui.components.ReportScrollForMiniBar(hotState)
             LazyColumn(Modifier.weight(0.4f), state = hotState) {
                 itemsIndexed(hotSearch) { index, word ->
+                    // 前三名用主色强调、字号放大一档，其余弱化为次要色，形成清晰的榜单层级
+                    val isTop3 = index < 3
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -124,12 +126,16 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     ) {
                         Text(
                             "${index + 1}",
-                            color = MiuixTheme.colorScheme.primary,
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = if (isTop3) MiuixTheme.colorScheme.primary
+                                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            fontSize = if (isTop3) MiuixTheme.textStyles.body1.fontSize
+                                       else MiuixTheme.textStyles.body2.fontSize,
                         )
                         Text(
                             word,
                             modifier = Modifier.padding(start = 12.dp),
+                            color = if (isTop3) MiuixTheme.colorScheme.primary
+                                    else MiuixTheme.colorScheme.onSurface,
                             fontSize = MiuixTheme.textStyles.body1.fontSize,
                         )
                     }

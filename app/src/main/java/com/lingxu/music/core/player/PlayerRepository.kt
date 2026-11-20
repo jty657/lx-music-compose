@@ -70,15 +70,23 @@ data class PlayState(
     /** 定时停止播放剩余秒数，-1 表示未开启 */
     val timeoutExitRemaining: Int = -1,
 ) {
-    /** 当前应高亮的歌词行下标 */
+    /** 当前应高亮的歌词行下标（二分查找：进度每 500ms 更新一次，歌词可达数百行，避免逐行线性扫描） */
     val currentLyricIndex: Int
         get() {
             if (lyricLines.isEmpty()) return -1
-            var idx = -1
-            for (i in lyricLines.indices) {
-                if (lyricLines[i].timeMs <= positionMs) idx = i else break
+            var low = 0
+            var high = lyricLines.lastIndex
+            var found = -1
+            while (low <= high) {
+                val mid = (low + high) ushr 1
+                if (lyricLines[mid].timeMs <= positionMs) {
+                    found = mid
+                    low = mid + 1
+                } else {
+                    high = mid - 1
+                }
             }
-            return idx
+            return found
         }
 }
 

@@ -42,6 +42,12 @@ class SearchViewModel : ViewModel() {
     private var lastQuery: String = ""
     private var lastSource: String = "all"
     private var page: Int = 1
+    /**
+     * 搜索请求序号：每次发起新搜索/换源/切换类型都递增，只有最新请求的结果允许写入状态。
+     * 快速连点搜索或切换音源时，旧请求可能后于新请求返回；没有守卫会用过期结果覆盖当前列表，
+     * 表现为「搜了 B 却显示 A 的结果」。以序号作轻量版本锁，避免为每次请求引入协程取消的复杂度。
+     */
+    private var requestSeq: Int = 0
     var hasMore by mutableStateOf(false)
         private set
 
@@ -59,6 +65,7 @@ class SearchViewModel : ViewModel() {
     }
 
     fun search(text: String, source: String) {
+        val seq = ++requestSeq
         lastQuery = text
         lastSource = source
         page = 1
@@ -70,11 +77,13 @@ class SearchViewModel : ViewModel() {
                 SearchType.MUSIC -> runCatching {
                     LxApp.app.musicRepository.search(text, page, source)
                 }.onSuccess { list ->
+                    if (seq != requestSeq) return@onSuccess
                     results = list.distinctBy { it.id }
                     songLists = emptyList()
                     hasMore = list.isNotEmpty()
                     recordHistory(text)
                 }.onFailure { e ->
+                    if (seq != requestSeq) return@onFailure
                     errorMessage = e.message
                     results = emptyList()
                     hasMore = false
@@ -82,17 +91,20 @@ class SearchViewModel : ViewModel() {
                 SearchType.SONGLIST -> runCatching {
                     LxApp.app.musicRepository.searchSongListAll(text, page)
                 }.onSuccess { pageResult ->
+                    if (seq != requestSeq) return@onSuccess
                     songLists = pageResult.list.distinctBy { "${it.source}_${it.id}" }
                     results = emptyList()
                     hasMore = pageResult.list.isNotEmpty()
                     recordHistory(text)
                 }.onFailure { e ->
+                    if (seq != requestSeq) return@onFailure
                     errorMessage = e.message
                     songLists = emptyList()
                     hasMore = false
                 }
             }
-            loading = false
+            // 只有最新请求有权结束 loading；过期请求不能把新请求的进行中状态清掉
+            if (seq == requestSeq) loading = false
         }
     }
 
@@ -131,6 +143,9 @@ class SearchViewModel : ViewModel() {
     /** 加载下一页 */
     fun loadMore() {
         if (!hasMore || loading) return
+        // 捕获当前批次序号：翻页属于当前这次搜索，期间若发起新搜索则本页结果作废，
+        // 否则「加载更多」的迟到响应会把上一批的旧结果追加到新搜索的列表里。
+        val seq = requestSeq
         val nextPage = page + 1
         viewModelScope.launch {
             loading = true
@@ -139,25 +154,29 @@ class SearchViewModel : ViewModel() {
                 SearchType.MUSIC -> runCatching {
                     LxApp.app.musicRepository.search(lastQuery, nextPage, lastSource)
                 }.onSuccess { list ->
+                    if (seq != requestSeq) return@onSuccess
                     results = (results + list).distinctBy { it.id }
                     hasMore = list.isNotEmpty()
                     page = nextPage
                 }.onFailure { e ->
+                    if (seq != requestSeq) return@onFailure
                     // 保留 hasMore，让用户可以重试，而不是永久失去「加载更多」
                     errorMessage = "加载更多失败：${e.message}"
                 }
                 SearchType.SONGLIST -> runCatching {
                     LxApp.app.musicRepository.searchSongListAll(lastQuery, nextPage)
                 }.onSuccess { pageResult ->
+                    if (seq != requestSeq) return@onSuccess
                     val merged = (songLists + pageResult.list).distinctBy { "${it.source}_${it.id}" }
                     songLists = merged
                     hasMore = pageResult.list.isNotEmpty()
                     page = nextPage
                 }.onFailure { e ->
+                    if (seq != requestSeq) return@onFailure
                     errorMessage = "加载更多失败：${e.message}"
                 }
             }
-            loading = false
+            if (seq == requestSeq) loading = false
         }
     }
 
