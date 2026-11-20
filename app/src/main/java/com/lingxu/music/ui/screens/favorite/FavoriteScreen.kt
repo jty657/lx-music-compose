@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.ui.components.GlassSurface
+import com.lingxu.music.ui.components.EmptyHint
 import androidx.compose.foundation.layout.Arrangement
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
@@ -75,33 +76,8 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         ) {
         Spacer(Modifier.size(8.dp))
 
-        viewModel.errorMessage?.let { err ->
-            Text(
-                err,
-                color = MiuixTheme.colorScheme.error,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-            )
-            Spacer(Modifier.size(4.dp))
-        }
-
         if (favorites.isEmpty()) {
-            Column(
-                Modifier.fillMaxWidth().padding(vertical = 64.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    MiuixIcons.Favorites,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-                )
-                Spacer(Modifier.size(12.dp))
-                Text(
-                    "还没有收藏的歌曲",
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                )
-            }
+            EmptyHint(icon = MiuixIcons.Favorites, text = "还没有收藏的歌曲")
             return@Column
         }
 
@@ -168,6 +144,19 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                         picked?.let { viewModel.addToList(it, music) }
                         addTarget = null
                     }) { Text("加入") }
+                }
+            }
+        }
+    }
+
+    // 错误提示改为可关闭对话框：此前是常驻红字，加入失败后会一直挂在页首且无法关闭。
+    viewModel.errorMessage?.let { err ->
+        GlassDialog(onDismissRequest = { viewModel.clearError() }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text(err, color = MiuixTheme.colorScheme.error, fontSize = MiuixTheme.textStyles.body1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { viewModel.clearError() }) { Text("好") }
                 }
             }
         }

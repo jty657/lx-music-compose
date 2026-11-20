@@ -30,6 +30,7 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.BackIconButton
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.TrackCover
@@ -88,24 +89,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
         Spacer(Modifier.size(8.dp))
 
         if (queue.isEmpty()) {
-            // 空态视觉语言与收藏页/我的列表统一：居中 + 占位图标 + 次要色文案
-            Column(
-                Modifier.fillMaxWidth().padding(vertical = 64.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    MiuixIcons.Play,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-                )
-                Spacer(Modifier.size(12.dp))
-                Text(
-                    "队列是空的",
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                )
-            }
+            EmptyHint(icon = MiuixIcons.Play, text = "队列是空的")
             return@Column
         }
 
@@ -147,10 +131,10 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                         }
                         // 上移/下移：用旋转的 Back 箭头替代裸文字，图标化后触摸区更大、语义更清晰
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            // 图标本身保持 20dp，但点击热区撑到 32dp，避免手指点不准
+                            // 图标本身保持 20dp，点击热区统一到 48dp（Material 无障碍最小目标）
                             Box(
                                 Modifier
-                                    .size(32.dp)
+                                    .size(48.dp)
                                     .clickable(enabled = index > 0) { viewModel.moveUp(index) },
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -166,7 +150,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                             }
                             Box(
                                 Modifier
-                                    .size(32.dp)
+                                    .size(48.dp)
                                     .clickable(enabled = index < queue.lastIndex) { viewModel.moveDown(index) },
                                 contentAlignment = Alignment.Center,
                             ) {

@@ -1,6 +1,7 @@
 package com.lingxu.music.ui.screens.source
 
 import com.lingxu.music.ui.components.BackIconButton
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import androidx.compose.foundation.clickable
@@ -129,26 +130,31 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         }
         Spacer(Modifier.size(4.dp))
 
-        LazyColumn(Modifier.weight(1f)) {
-            items(userApis, key = { it.id }) { api ->
-                GlassSurface(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    onClick = { viewModel.switchSource(api.id) },
-                    onLongClick = {
-                        deletingId = api.id
-                    },
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text(api.name)
-                            Text(
-                                "${api.author} ${api.version}".trim(),
-                                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            )
-                        }
-                        if (currentSource == api.id) {
-                            Text("✓ 使用中", color = MiuixTheme.colorScheme.primary)
+        if (userApis.isEmpty()) {
+            // 空态：首次进入、零导入时不再是一整块空白（全站其它列表页均有空态）
+            EmptyHint(icon = MiuixIcons.File, text = "还没有自定义音源，点上方按钮导入")
+        } else {
+            LazyColumn(Modifier.weight(1f)) {
+                items(userApis, key = { it.id }) { api ->
+                    GlassSurface(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        onClick = { viewModel.switchSource(api.id) },
+                        onLongClick = {
+                            deletingId = api.id
+                        },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text(api.name)
+                                Text(
+                                    "${api.author} ${api.version}".trim(),
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                )
+                            }
+                            if (currentSource == api.id) {
+                                Text("✓ 使用中", color = MiuixTheme.colorScheme.primary)
+                            }
                         }
                     }
                 }

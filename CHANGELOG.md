@@ -2,7 +2,28 @@
 
 本项目为洛雪音乐 Compose 移植版「聆序」。以下记录基于对全部源码的系统审查所执行的优化与美化。
 
-## 第十一轮：正确性与性能综合复审 + 空态/热区美化（v1.4.0，本次）
+## 第十二轮：数据一致性与启动健壮性 + 空态组件化（v1.4.1，本次）
+
+> 项目定位不变：**同时具备「在线」与「本地」功能的音乐播放器**。本轮延续低风险原则，不触碰 QuickJS 引擎、音源协议与 assets 脚本，在线聚合搜索/播放与本地歌单/收藏/队列双模行为均不受影响。全部 `.kt` 改动通过 `scripts/selfcheck.py` 自检，构建由 GitHub Actions 云端验证。
+
+### Bug 修复 / 正确性
+- **备份导入重复 id 会崩溃**（`BackupRepository.kt`）：`favorites` 早已去重，但 `playlists`/`playlistMusics` 仅做白名单过滤未去重；手工编辑或旧版本备份若含重复 id，会以 id 作 LazyColumn 稳定 key 触发 "Duplicate key" 崩溃。补 `distinctBy`（歌单按 id、歌曲按 listId+id）。
+- **暂停时删除当前曲目会突然开播**（`PlayerRepository.kt`）：`removeFromQueue` 删当前项走 `playQueue`，而后者无条件 `player.play()`，导致暂停态被破坏。给 `playQueue` 增加 `autoPlay` 参数（默认 true 保持其它调用方行为），删除场景传 `player.playWhenReady` 沿用删除前播放状态。
+- **快速连续切歌上次播放状态可能写反**（`PlayerRepository.kt`）：多处 `saveLastPlay()` 并发写同一文件、完成顺序不定，旧状态可能最后落盘导致冷启动恢复错曲目。新增 `lastPlayJob`，每次取消在途写只保留最新一次，`clear`/`release` 一并取消。
+
+### 健壮性
+- **启动初始化链一处失败拖垮全局**（`LxApp.kt`）：设置项变化监听（日志开关/音频焦点/倍速/音量）此前嵌在主初始化协程里，前面任一未保护的 `.first()` 读取（DataStore 偏好损坏时首读会抛异常）失败都会让后续监听不注册且表面「正常启动」。改为 4 个独立协程启动并加 `.catch` 兜底；播放模式/上次播放/自动开播等读取逐项 `runCatching` 保护。
+- **HTTP 超时无上限**（`HttpClient.kt`）：`fetch` 的自定义 timeout 只有下限，脚本传超大值会让请求长期挂住占住协程与连接池；改为 `coerceIn(1L, 120_000L)` 加上限。
+
+### 美化 / 可维护性 / 可访问性
+- **新增公共空态组件 `EmptyHint`**（`ui/components/EmptyHint.kt`）：收藏页、播放队列两处「居中 + 占位图标 + 次要色文案」空态抽取为统一组件，留白收敛为 56dp，消除重复并登记进自检符号表。
+- **自定义音源空态**（`SourceScreen.kt`）：零导入时自定义音源列表由一整块空白改为 `EmptyHint`（「还没有自定义音源，点上方按钮导入」），与全站其它列表页一致。
+- **收藏页错误提示可关闭**（`FavoriteScreen.kt` / `FavoriteViewModel.kt`）：加入列表失败的常驻红字改为与榜单详情一致的 `GlassDialog`（可关闭），成功时清除错误，新增 `clearError()`。
+- **播放队列排序热区达标**（`PlayQueueScreen.kt`）：上移/下移图标点击热区 32dp → 48dp（图标视觉尺寸不变），补齐全站 48dp 无障碍统一的最后一处遗漏。
+- **多选态无障碍语义**（`MyListsScreen.kt`）：多选模式下歌曲行图标 `contentDescription` 由 null 改为随选中状态切换「已选中/未选中」，读屏用户可感知。
+- 版本 1.4.0 → 1.4.1（versionCode 14 → 15），README/ANALYSIS 同步。
+
+## 第十一轮：正确性与性能综合复审 + 空态/热区美化（v1.4.0）
 
 > 项目定位不变：**同时具备「在线」与「本地」功能的音乐播放器**。本轮在第十轮基础上做覆盖正确性、性能与可访问性的综合复审，坚持低风险原则，不触碰 QuickJS 引擎、音源协议与 assets 脚本，在线/本地双模行为均不受影响。
 

@@ -244,7 +244,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                 } else {
                                     MiuixIcons.Play
                                 },
-                                contentDescription = null,
+                                // 多选态下选中/未选中此前只靠颜色与图标区分，读屏用户无法感知
+                                contentDescription = if (selectMode) (if (checked) "已选中" else "未选中") else null,
                                 modifier = Modifier.size(28.dp),
                             )
                             Column(Modifier.weight(1f).padding(start = 12.dp)) {

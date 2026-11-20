@@ -17,6 +17,7 @@ import com.lingxu.music.core.repository.UpdateRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -97,6 +98,22 @@ class LxApp : Application() {
             if (url != null) musicInfo.copy(meta = musicInfo.meta.copy(filePath = url)) else musicInfo
         }
 
+        // 设置项变化监听：拆成独立协程并加 catch 兜底。此前它们嵌在主初始化链里，
+        // 一旦前面某处（如 DataStore 偏好文件损坏时的首读）抛异常，后面的监听全部不会注册，
+        // 且表面看 App「正常启动」，问题很隐蔽。独立启动后各监听互不影响。
+        appScope.launch {
+            settings.enableUserApiLog.catch { }.collect { engineManager.scriptLogEnabled = it }
+        }
+        appScope.launch {
+            settings.isHandleAudioFocus.catch { }.collect { playerRepository.setHandleAudioFocus(it) }
+        }
+        appScope.launch {
+            settings.playbackRate.catch { }.collect { playerRepository.setPlaybackRate(it) }
+        }
+        appScope.launch {
+            settings.volume.catch { }.collect { playerRepository.setVolume(it) }
+        }
+
         // 初始化内置 SDK
         appScope.launch {
             val apiSource = runCatching { settings.currentApiSource() }.getOrDefault("kw")
@@ -109,15 +126,19 @@ class LxApp : Application() {
             runCatching { apiSourceRepository.getAll() }
             runCatching { dislikeRepository.load() }
             // 恢复播放模式（原版 player.togglePlayMethod）
-            playerRepository.restorePlayMode(settings.playMode.first())
-            // 恢复上次播放的队列；startupAutoPlay 决定是否直接开播
-            val lastPlay = database.loadLastPlay()
+            runCatching { settings.playMode.first() }.getOrDefault("listLoop").let {
+                playerRepository.restorePlayMode(it)
+            }
+            // 恢复上次播放的队列；startupAutoPlay 决定是否直接开播。
+            // DataStore 偏好文件损坏时 first() 会抛异常，这里逐项兜底，避免整段恢复被跳过。
+            val lastPlay = runCatching { database.loadLastPlay() }.getOrNull()
             if (lastPlay != null) {
                 // 设置里的「保存播放进度」开关此前完全无效：恢复时总是从头播
                 val savePlayTime = runCatching { settings.isSavePlayTime.first() }.getOrDefault(false)
+                val autoPlay = runCatching { settings.startupAutoPlay.first() }.getOrDefault(false)
                 playerRepository.restoreLastPlay(
                     lastPlay,
-                    settings.startupAutoPlay.first(),
+                    autoPlay,
                     if (savePlayTime) lastPlay.positionMs else 0L,
                 )
             }
@@ -133,25 +154,8 @@ class LxApp : Application() {
                     )
                 }
             }
-            // 音频焦点处理开关
-            playerRepository.setHandleAudioFocus(settings.isHandleAudioFocus.first())
-            // 「记录自定义源日志」开关
-            engineManager.scriptLogEnabled = settings.enableUserApiLog.first()
-            appScope.launch {
-                settings.enableUserApiLog.collect { engineManager.scriptLogEnabled = it }
-            }
-            appScope.launch {
-                settings.isHandleAudioFocus.collect { playerRepository.setHandleAudioFocus(it) }
-            }
-            // 倍速与音量
-            playerRepository.setPlaybackRate(settings.playbackRate.first())
-            playerRepository.setVolume(settings.volume.first())
-            appScope.launch {
-                settings.playbackRate.collect { playerRepository.setPlaybackRate(it) }
-            }
-            appScope.launch {
-                settings.volume.collect { playerRepository.setVolume(it) }
-            }
+            // 音频焦点 / 日志开关 / 倍速 / 音量的首值与变化监听已由上方独立协程统一处理，
+            // 这里不再重复读取，避免损坏偏好首读抛异常中断后续的用户音源加载。
             // 如果是用户音源，加载脚本
             if (apiSource.startsWith("user_api")) {
                 loadUserApi(apiSource)

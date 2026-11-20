@@ -86,7 +86,31 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 
 ---
 
-## 三、本轮已执行的优化与美化（第十一轮 · v1.4.0）
+## 三、本轮已执行的优化与美化（第十二轮 · v1.4.1）
+
+> 延续「在线 + 本地」双模定位，本轮做数据一致性、启动健壮性与 UI 组件化的综合复审。坚持低风险原则：不触碰 QuickJS 引擎、音源协议与 assets 脚本，全部改动通过 `scripts/selfcheck.py` 静态自检，云端构建由 GitHub Actions 验证。
+
+**正确性 / Bug 修复（3 项）**
+
+1. **备份导入重复 id 崩溃**（`core/repository/BackupRepository.kt`）：`playlists`/`playlistMusics` 只做 id 白名单过滤未去重，重复 id 会以稳定 key 触发列表页 "Duplicate key" 崩溃。补 `distinctBy`（歌单按 id、歌曲按 listId+id），与 `favorites` 的既有去重策略对齐。
+2. **暂停态删当前歌自动播放**（`core/player/PlayerRepository.kt`）：`removeFromQueue` 走 `playQueue` 无条件 `play()`，破坏暂停状态；给 `playQueue` 加 `autoPlay` 参数（默认 true），删除场景传 `player.playWhenReady`。
+3. **上次播放状态写盘乱序**（同文件）：多处并发 `saveLastPlay()` 完成顺序不定，旧状态可能最后落盘。新增 `lastPlayJob` 取消在途写只保留最新一次，`clear`/`release` 一并取消。
+
+**健壮性（2 项）**
+
+4. **启动初始化链脆弱**（`LxApp.kt`）：4 个设置监听此前嵌在主链里，前序未保护的 `.first()`（DataStore 损坏首读抛异常）失败会让后续监听不注册且无感知。拆为独立协程 + `.catch` 兜底，播放模式/上次播放/自动开播逐项 `runCatching`。
+5. **HTTP 超时无上限**（`core/request/HttpClient.kt`）：`fetch` 自定义 timeout 只设下限，脚本传超大值会长期挂住请求；改 `coerceIn(1L, 120_000L)`。
+
+**UI 美化 / 可维护性 / 可访问性（5 项）**
+
+6. **公共空态组件 `EmptyHint`**（新增 `ui/components/EmptyHint.kt`）：抽取收藏页/播放队列两处空态，留白统一 56dp，登记进自检符号表。
+7. **自定义音源空态**（`SourceScreen.kt`）：零导入空白改为 `EmptyHint` 提示。
+8. **收藏页错误提示可关闭**（`FavoriteScreen.kt`/`FavoriteViewModel.kt`）：常驻红字改为 `GlassDialog`，成功清除错误，新增 `clearError()`。
+9. **播放队列排序热区 32→48dp**（`PlayQueueScreen.kt`）：补齐全站 48dp 无障碍统一最后一处遗漏。
+10. **多选态无障碍语义**（`MyListsScreen.kt`）：选中图标 `contentDescription` 随状态切换「已选中/未选中」。
+11. **【版本】** `versionCode` 14 → 15，`versionName` 1.4.0 → 1.4.1，README/CHANGELOG 同步。
+
+### 上一轮已执行（第十一轮 · v1.4.0）
 
 > 延续「在线 + 本地」双模定位，本轮在第十轮基础上做了一轮覆盖正确性、性能与可访问性的综合复审。坚持低风险原则：不触碰 QuickJS 引擎、音源协议与 assets 脚本，全部改动通过 `scripts/selfcheck.py` 静态自检，云端构建由 GitHub Actions 验证。
 
@@ -188,7 +212,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.3.7（第八轮）：定时停止冷启动恢复 + 倒计时抗漂移 + 迷你条/播放页触控热区与播放模式命中区美化
 - v1.3.8（第九轮）：歌词手动回看不被打断（跟随暂停 + 回到当前入口）+ 长音频时长 H:MM:SS + 搜索翻页重复请求竞态修复
 - v1.3.9（第十轮）：全站可访问性热区达标（返回键/删除键/收藏键/清空/下一首恢复）+ 空态视觉语言统一 + BackIconButton/RetryHint/ListExt 公共抽象抽取
-- **v1.4.0（本轮 · 第十一轮）**：正确性修复（搜索空态/重复错误/PUT-PATCH 取链/版本号 V 前缀/定时溢出）+ 多处 O(N²)→O(N) 与写盘合并 + 规则落盘一致性 + 空态统一与热区达标等美化
+- v1.4.0（第十一轮）：正确性修复（搜索空态/重复错误/PUT-PATCH 取链/版本号 V 前缀/定时溢出）+ 多处 O(N²)→O(N) 与写盘合并 + 规则落盘一致性 + 空态统一与热区达标等美化
+- **v1.4.1（本轮 · 第十二轮）**：备份去重防崩溃 + 暂停删歌/写盘乱序修复 + 启动链健壮性 + HTTP 超时上限 + EmptyHint 空态组件化 + 音源空态/错误对话框/排序热区/多选语义等美化
 
 ---
 

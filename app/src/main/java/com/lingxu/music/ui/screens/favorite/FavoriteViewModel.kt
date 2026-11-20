@@ -32,11 +32,15 @@ class FavoriteViewModel : ViewModel() {
         playerRepo.playQueue(list, 0)
     }
 
+    /** 清除错误提示（供对话框关闭时调用） */
+    fun clearError() { errorMessage = null }
+
     /** 加入「我的列表」（位置取设置项 list.addMusicLocationType） */
     fun addToList(listId: String, musicInfo: MusicInfo) {
         viewModelScope.launch {
             val location = LxApp.app.settings.addMusicLocation.first()
             runCatching { LxApp.app.myListsRepository.addMusics(listId, listOf(musicInfo), location) }
+                .onSuccess { errorMessage = null }
                 .onFailure { errorMessage = "加入列表失败：${it.message}" }
         }
     }

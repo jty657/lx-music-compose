@@ -101,9 +101,14 @@ class BackupRepository(
             // 过滤非法/重复条目（对齐原版 filterMusicList），否则导入的重复 id 会让列表页崩溃；
             // 同时把 listId 做白名单校验，备份里的 id 会直接拼进文件名，不能含路径分隔符。
             val favorites = ListTransfer.filterMusicList(data.favorites)
-            val playlists = data.playlists.filter { it.id.matches(SAFE_ID) }
+            // playlists / playlistMusics 同样要去重 id：UI 列表以 id 作 LazyColumn 稳定 key，
+            // 备份里若含重复 id（手工编辑或旧版本产生）会触发 "Duplicate key" 崩溃。
+            val playlists = data.playlists
+                .filter { it.id.matches(SAFE_ID) }
+                .distinctBy { it.id }
             val playlistMusics = data.playlistMusics
                 .filter { it.listId.matches(SAFE_ID) && it.id.matches(SAFE_ID) }
+                .distinctBy { it.listId to it.id }
 
             db.saveFavorites(favorites)
 

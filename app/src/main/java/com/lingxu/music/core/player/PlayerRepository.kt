@@ -188,11 +188,17 @@ class PlayerRepository(context: Context) {
     /** 持久化回调（由 App 注入）：切歌/暂停时保存，供启动时恢复 */
     var lastPlaySaver: (suspend (PlayState) -> Unit)? = null
 
+    /** 上次播放状态的在途写盘任务：快速连续切歌时只保留最新一次，避免旧状态最后落盘 */
+    private var lastPlayJob: Job? = null
+
     /** 保存当前播放状态（对应原版 player.isSavePlayTime + 上次播放记忆） */
     fun saveLastPlay() {
         val state = _state.value
         if (state.current == null) return
-        scope.launch { lastPlaySaver?.invoke(state) }
+        // 多次触发（切歌/暂停/转场）都写同一个文件，IO 完成顺序不确定；
+        // 取消上一次未完成的写，保证最终落盘的一定是最新状态。
+        lastPlayJob?.cancel()
+        lastPlayJob = scope.launch { lastPlaySaver?.invoke(state) }
     }
 
     /**
@@ -407,7 +413,12 @@ class PlayerRepository(context: Context) {
      */
     private var playGeneration: Int = 0
 
-    fun playQueue(queue: List<MusicInfo>, index: Int) {
+    /**
+     * 播放队列。
+     * @param autoPlay 是否立即开播；删除当前曲目等场景需要沿用删除前的播放状态，
+     *                 避免「暂停时删歌却突然开始播放」。默认 true 保持其它调用方行为不变。
+     */
+    fun playQueue(queue: List<MusicInfo>, index: Int, autoPlay: Boolean = true) {
         if (queue.isEmpty()) return
         playQueueJob?.cancel()
         val gen = ++playGeneration
@@ -448,7 +459,7 @@ class PlayerRepository(context: Context) {
             }
             player.setMediaItems(updated.map { it.toMediaItem() }, safeIndex, 0L)
             player.prepare()
-            player.play()
+            if (autoPlay) player.play()
             loadLyric(resolved)
             // 此处 state 已切到 resolved，保存是安全的；与转场回调中的保存互为兜底
             saveLastPlay()
@@ -515,7 +526,9 @@ class PlayerRepository(context: Context) {
             else -> state.queueIndex
         }
         if (wasCurrent) {
-            playQueue(next, newIndex)
+            // 沿用删除前的播放状态：暂停时删当前歌不应突然开始播放，
+            // 播放中删当前歌则继续播放下一首（语义与「跳到下一首」一致）。
+            playQueue(next, newIndex, autoPlay = player.playWhenReady)
         } else {
             _state.update { it.copy(queue = next, queueIndex = newIndex) }
             runCatching { player.removeMediaItem(index) }
@@ -644,6 +657,7 @@ class PlayerRepository(context: Context) {
     fun clear() {
         playGeneration++
         playQueueJob?.cancel()
+        lastPlayJob?.cancel()
         player.stop()
         player.clearMediaItems()
         lyricJob?.cancel()
@@ -657,6 +671,7 @@ class PlayerRepository(context: Context) {
     fun release() {
         playGeneration++
         playQueueJob?.cancel()
+        lastPlayJob?.cancel()
         lyricJob?.cancel()
         coverJob?.cancel()
         timeoutJob?.cancel()

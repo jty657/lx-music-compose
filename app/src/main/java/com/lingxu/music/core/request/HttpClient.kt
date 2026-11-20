@@ -123,7 +123,9 @@ class HttpClient {
             }
             builder.method(method.uppercase(), body)
 
-            val timeout = (options.timeout ?: 60_000).toLong().coerceAtLeast(1L)
+            // 下限 1ms 防 0/负值；上限 120s 防止脚本用超大 timeout 让请求长期挂住、
+            // 占住协程与连接池（换源循环叠加时可能长时间无响应且无法取消）。
+            val timeout = (options.timeout ?: 60_000).toLong().coerceIn(1L, 120_000L)
             val call = clientForTimeout(timeout).newCall(builder.build())
 
             call.execute().use { resp ->
