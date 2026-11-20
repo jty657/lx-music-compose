@@ -217,11 +217,15 @@ private fun FavoriteCard(
     }
 }
 
-private fun Modifier.clickableNoIndication(onClick: () -> Unit): Modifier =
-    this.then(
+@Composable
+private fun Modifier.clickableNoIndication(onClick: () -> Unit): Modifier {
+    // remember 住 interactionSource，避免每次重组都新建对象导致按压状态丢失
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    return this.then(
         Modifier.clickable(
             indication = null,
-            interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+            interactionSource = interactionSource,
             onClick = onClick,
         ),
     )
+}

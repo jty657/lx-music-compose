@@ -56,7 +56,8 @@ object LrcParser {
                     2 -> frac.toLong() * 10
                     else -> frac.take(3).toLong()
                 }
-                lines.add(LyricLine(min * 60_000 + sec * 1000 + ms - offset, text))
+                // offset 为正且歌词靠前时，ms-offset 可能为负，会导致第 0 秒就高亮首行；钳到 0
+                lines.add(LyricLine((min * 60_000 + sec * 1000 + ms - offset).coerceAtLeast(0L), text))
             }
         }
         return lines.sortedBy { it.timeMs }

@@ -285,6 +285,9 @@ class PlayerRepository(context: Context) {
                         lyricLines = emptyList(),
                     )
                 }
+                // 上次播放要在「state 已切到新曲目」之后保存，否则 next()/prev() 里 seekTo 后
+                // 立刻采样只能拿到切歌前的旧曲目，冷启动恢复时就会定位到错误的歌。
+                saveLastPlay()
                 current?.let { loadLyric(it) }
                 current?.let { loadCover(it) }
                 // 命中不喜欢列表：跳到下一首未命中的歌（对应原版 dislikeList）
@@ -302,13 +305,18 @@ class PlayerRepository(context: Context) {
                             _state.update { it.copy(error = "获取播放链接失败，可尝试换源", loading = false) }
                             return@launch
                         }
+                        // 解析期间用户可能已切歌：只有当前下标仍指向这首歌时，才允许改写播放器。
+                        // 把 replaceMediaItem/play 也纳入校验，避免把旧歌 URI 塞进新歌的位置导致误播。
+                        var stillCurrent = false
                         _state.update { st ->
                             val q = st.queue.toMutableList()
                             if (index in q.indices && q[index].id == resolved.id) {
                                 q[index] = resolved
+                                stillCurrent = true
                                 st.copy(queue = q, current = resolved, error = null)
                             } else st
                         }
+                        if (!stillCurrent) return@launch
                         runCatching {
                             player.replaceMediaItem(index, resolved.toMediaItem())
                             player.prepare()
@@ -374,11 +382,18 @@ class PlayerRepository(context: Context) {
      * 原先各列表页会先 `queue.map { resolvePlayInfo(it) }` 串行解析整队列
      * （30 首歌 = 30 次请求、且可能触发换源搜索），点一下要等很久才开始出声。
      */
+    /** 最近一次 playQueue 的协程：新的播放请求到来时取消旧的，避免后台慢解析后到覆盖用户最新选择 */
+    private var playQueueJob: Job? = null
+
     fun playQueue(queue: List<MusicInfo>, index: Int) {
         if (queue.isEmpty()) return
-        val safeIndex = index.coerceIn(0, queue.lastIndex)
-        scope.launch {
-            val target = queue[safeIndex]
+        playQueueJob?.cancel()
+        // 在线榜单/歌单可能含重复 id，而队列以 id 作 LazyColumn 稳定 key，重复会抛
+        // "Duplicate key" 崩溃。先按 id 去重，再定位目标歌曲去重后的真实下标。
+        val target = queue.getOrNull(index) ?: queue[0]
+        val distinct = queue.distinctBy { it.id }
+        val safeIndex = distinct.indexOfFirst { it.id == target.id }.let { if (it >= 0) it else 0 }
+        playQueueJob = scope.launch {
             val resolved = if (target.meta.filePath.isNullOrBlank()) {
                 _state.update { it.copy(loading = true) }
                 val r = runCatching { resolvePlayInfo(target) }.getOrDefault(target)
@@ -391,7 +406,7 @@ class PlayerRepository(context: Context) {
                 _state.update { it.copy(error = "获取播放链接失败，可尝试换源") }
                 return@launch
             }
-            val updated = queue.toMutableList().also { it[safeIndex] = resolved }
+            val updated = distinct.toMutableList().also { it[safeIndex] = resolved }
             _state.update {
                 it.copy(
                     queue = updated,
@@ -407,6 +422,7 @@ class PlayerRepository(context: Context) {
             player.prepare()
             player.play()
             loadLyric(resolved)
+            // 此处 state 已切到 resolved，保存是安全的；与转场回调中的保存互为兜底
             saveLastPlay()
             ensureResolved(safeIndex + 1)
         }
@@ -541,7 +557,8 @@ class PlayerRepository(context: Context) {
             val target = if (player.currentMediaItemIndex < last) player.currentMediaItemIndex + 1 else 0
             player.seekTo(target, 0L)
         }
-        saveLastPlay()
+        // 不在 seekTo 后立即 saveLastPlay：此刻 state.current 还是切歌前的旧曲目。
+        // onMediaItemTransition 会在 state 更新后统一保存正确曲目。
     }
 
     fun prev() {
@@ -553,7 +570,7 @@ class PlayerRepository(context: Context) {
             val target = if (player.currentMediaItemIndex > 0) player.currentMediaItemIndex - 1 else last
             player.seekTo(target, 0L)
         }
-        saveLastPlay()
+        // 同上：由 onMediaItemTransition 在 state 更新后统一保存，避免写入旧曲目
     }
 
     fun seekTo(positionMs: Long) {

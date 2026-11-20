@@ -54,16 +54,26 @@ class HttpClient {
         runCatching { client.cache?.evictAll() }
     }
 
-    private val client: OkHttpClient by lazy {
+    private val client: OkHttpClient by lazy { buildClient() }
+
+    /** 按 readTimeout 毫秒缓存 client，复用同一 Dispatcher/ConnectionPool，避免每次请求新建 client */
+    private val timeoutClients = java.util.concurrent.ConcurrentHashMap<Long, OkHttpClient>()
+
+    private fun buildClient(readTimeoutMs: Long = 60_000L): OkHttpClient =
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
             .followRedirects(true)
             .apply {
                 // 封面等可缓存资源走磁盘缓存，避免每次冷启动重下
                 cacheDir?.let { cache(okhttp3.Cache(java.io.File(it, "http"), 50L * 1024 * 1024)) }
             }
             .build()
+
+    /** 默认 client 之外，为自定义超时复用固定数量的 client（新建 client 会带独立连接池，故需缓存） */
+    private fun clientForTimeout(timeoutMs: Long): OkHttpClient {
+        if (timeoutMs == 60_000L) return client
+        return timeoutClients.getOrPut(timeoutMs) { buildClient(timeoutMs) }
     }
 
     suspend fun fetch(url: String, options: ScriptRequestOptions = ScriptRequestOptions()): ScriptResponse =
@@ -102,11 +112,8 @@ class HttpClient {
             }
             builder.method(method.uppercase(), body)
 
-            val timeout = options.timeout ?: 60_000
-            val call = client.newBuilder()
-                .readTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
-                .build()
-                .newCall(builder.build())
+            val timeout = (options.timeout ?: 60_000).toLong().coerceAtLeast(1L)
+            val call = clientForTimeout(timeout).newCall(builder.build())
 
             call.execute().use { resp ->
                 val bytes = resp.body?.bytes() ?: ByteArray(0)

@@ -28,10 +28,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
@@ -98,8 +98,12 @@ fun AppRoot() {
         val dark = isInDarkTheme()
         val autoHidePlayBar by LxApp.app.settings.autoHidePlayBar.collectAsState(initial = true)
         // 列表向下滚动时隐藏迷你播放条（对应原版 common.autoHidePlayBar）
-        var miniBarVisible by remember { mutableStateOf(true) }
         val miniBarScroll = remember { mutableStateOf(0) }
+        // 派生状态：直接由滚动量与开关推导，避免 LaunchedEffect 写回 state 造成的切换瞬间闪旧值与多余重组
+        // autoHidePlayBar=false 的语义是「始终显示」，不是「始终隐藏」
+        val miniBarVisible by remember(autoHidePlayBar) {
+            derivedStateOf { !autoHidePlayBar || miniBarScroll.value <= 0 }
+        }
         // 关闭模糊或系统不支持 RenderEffect（API < 31）时，radius 传 0 让玻璃面变成纯 tint
         val effectiveRadius = if (blurEnabled) blurRadius else 0f
         CompositionLocalProvider(
@@ -125,10 +129,6 @@ fun AppRoot() {
                     // 播放页是全屏沉浸页，自带完整播放控制，不再叠加迷你条与底栏
                     val isPlayerScreen = currentScreen == Screen.Player
                     LaunchedEffect(currentScreen) { miniBarScroll.value = 0 }
-                    LaunchedEffect(miniBarScroll.value, autoHidePlayBar) {
-                        // autoHidePlayBar=false 的语义是「始终显示」，不是「始终隐藏」
-                        miniBarVisible = !autoHidePlayBar || miniBarScroll.value <= 0
-                    }
                     if (!isPlayerScreen) {
                         Column(
                             Modifier
@@ -400,10 +400,7 @@ private fun NavItems(navigator: Navigator) {
         items.forEach { (screen, icon, label) ->
             NavigationBarItem(
                 selected = currentTab == screen,
-                onClick = {
-                    navigator.backStack.clear()
-                    navigator.backStack.add(screen)
-                },
+                onClick = { navigator.setRoot(screen) },
                 icon = icon,
                 label = label,
             )

@@ -15,7 +15,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -96,11 +95,11 @@ fun SettingScreen(
     val isHandleAudioFocus by viewModel.isHandleAudioFocus.collectAsState(initial = true)
     val playbackRate by viewModel.playbackRate.collectAsState(initial = 1f)
     val volume by viewModel.volume.collectAsState(initial = 1f)
-    // 滑块拖动中的本地值：落盘已节流，拖动时用它驱动显示，松手后回到持久化值
+    // 滑块拖动中的本地值：落盘已节流，拖动时用它驱动显示。
+    // 不再用 LaunchedEffect 把节流回写的持久化值灌回来——那会在拖动过程中把滑块拽回旧值造成回弹抖动；
+    // 初值取自持久化值，最终值由 onDispose 的 commit* 补写，外部变更在下次进入页面时自然生效。
     var localRate by remember { mutableFloatStateOf(playbackRate) }
     var localVolume by remember { mutableFloatStateOf(volume) }
-    LaunchedEffect(playbackRate) { localRate = playbackRate }
-    LaunchedEffect(volume) { localVolume = volume }
     val timeoutExitPlayed by viewModel.timeoutExitPlayed.collectAsState(initial = true)
     val playState by LxApp.app.playerRepository.state.collectAsState()
     val timeoutRemaining = playState.timeoutExitRemaining
@@ -123,8 +122,8 @@ fun SettingScreen(
     val blurEnabled by viewModel.blurEnabled.collectAsState(initial = true)
     val blurRadius by viewModel.blurRadius.collectAsState(initial = 24f)
     // 拖动中的本地值：每帧写盘会重建 GlassContext 让整屏 backdrop 重画，落盘已节流
+    // 同倍速/音量：不用 LaunchedEffect 回灌持久化值，避免拖动过程中滑块回弹
     var localBlur by remember { mutableFloatStateOf(blurRadius) }
-    LaunchedEffect(blurRadius) { localBlur = blurRadius }
     val userApiLog by viewModel.userApiLog.collectAsState(initial = false)
 
     // 离开设置页时提交倍速/音量节流跳过的最终值，避免拖完立刻返回导致调整丢失

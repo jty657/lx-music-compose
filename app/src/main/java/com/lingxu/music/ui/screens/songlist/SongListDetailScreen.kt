@@ -39,6 +39,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
@@ -115,7 +116,11 @@ fun SongListDetailScreen(
         Spacer(Modifier.size(8.dp))
 
         Row {
-            Button(onClick = { if (musicList.isNotEmpty()) viewModel.playAll(musicList) }) {
+            // 列表尚未加载完成时禁用「播放全部」，避免空列表点击无任何反馈
+            Button(
+                onClick = { if (musicList.isNotEmpty()) viewModel.playAll(musicList) },
+                enabled = musicList.isNotEmpty(),
+            ) {
                 Text("播放全部")
             }
             Spacer(Modifier.size(8.dp))
@@ -154,6 +159,43 @@ fun SongListDetailScreen(
             state = listState,
             modifier = Modifier.weight(1f),
         ) {
+            // 首次加载中且暂无内容：给出明确的进度提示，避免用户分不清是加载中还是无数据
+            if (loading && musicList.isEmpty() && error == null) {
+                item(key = "__songlist_loading__") {
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = 64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            "正在加载歌单…",
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
+                }
+            }
+            // 加载完成、无错误、且（含筛选后）无歌曲：显示空态
+            if (!loading && error == null && shownMusic.isEmpty()) {
+                item(key = "__songlist_empty__") {
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = 64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            MiuixIcons.Favorites,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+                        )
+                        Spacer(Modifier.size(12.dp))
+                        Text(
+                            if (keyword.isBlank()) "这个歌单暂时没有歌曲" else "没有匹配的歌曲",
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
+                }
+            }
             items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

@@ -155,15 +155,8 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
 
         Spacer(Modifier.height(8.dp))
 
-        // 错误提示
-        viewModel.errorMessage?.let { err ->
-            Text(
-                err,
-                color = MiuixTheme.colorScheme.error,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                modifier = Modifier.padding(vertical = 4.dp),
-            )
-        }
+        // 错误提示统一放在结果列表底部的可点「重试项」展示（见下方两个分支），
+        // 这里不再单独渲染红字，避免加载失败时同一句错误文案出现两遍。
 
         // 搜索历史（无结果且输入为空时展示；可在设置里关闭）
         val showHistory by LxApp.app.settings.isShowHistorySearch.collectAsState(initial = true)
@@ -219,6 +212,8 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         val songLists = viewModel.songLists
         if (songLists.isNotEmpty()) {
             val songListState = rememberLazyListState()
+            // 与音乐结果分支一致：歌单结果滚动也要上报，迷你播放条才会随滚动隐藏
+            com.lingxu.music.ui.components.ReportScrollForMiniBar(songListState)
             // 滚到接近底部时自动加载下一页（留 4 项余量，用户不必伸手点按钮）
             AutoLoadMore(songListState, viewModel.hasMore, viewModel.loading) { viewModel.loadMore() }
             LazyColumn(state = songListState, modifier = Modifier.weight(1f)) {

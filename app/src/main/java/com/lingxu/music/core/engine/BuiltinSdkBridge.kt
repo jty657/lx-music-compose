@@ -1021,13 +1021,25 @@ class BuiltinSdkBridge(context: Context) {
                 }.toString()
                 val status = resp.statusCode
                 val statusText = resp.statusMessage
-                executor.execute { callFetchDone(id, true, status, statusText, b64, headersJson) }
+                postFetchDone(id, true, status, statusText, b64, headersJson)
             } catch (e: Exception) {
                 Log.e(TAG, "fetch failed: ${e.message}")
                 val msg = e.message ?: "fetch failed"
-                executor.execute { callFetchDone(id, false, msg, "", "", "{}") }
+                postFetchDone(id, false, msg, "", "", "{}")
             }
         }
+    }
+
+    /**
+     * 把 fetch 完成回调投递回 SDK 线程。destroy() 会关闭 executor，此时仍在途的 fetch
+     * 回调若直接 executor.execute 会抛 RejectedExecutionException 并逃到 fetch 线程；
+     * 这里判断关闭状态并用 runCatching 兜底，让销毁期间的迟到回调安全沉默。
+     */
+    private fun postFetchDone(
+        id: Int, ok: Boolean, status: Any?, statusText: Any?, payload: Any?, headersJson: Any?,
+    ) {
+        if (executor.isShutdown) return
+        runCatching { executor.execute { callFetchDone(id, ok, status, statusText, payload, headersJson) } }
     }
 
     /** 回到 SDK 线程调用 JS 侧 __lxFetchDone（在 SDK 线程执行）；payload 为响应体的 base64 */

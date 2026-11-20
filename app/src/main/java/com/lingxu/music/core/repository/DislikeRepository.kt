@@ -27,9 +27,20 @@ class DislikeRepository(private val context: Context) {
     val rules: StateFlow<List<String>> = _rules.asStateFlow()
 
     suspend fun load() = withContext(Dispatchers.IO) {
-        _rules.value = runCatching {
-            json.decodeFromString<List<String>>(file.readText())
-        }.getOrDefault(emptyList())
+        _rules.value = if (file.exists()) {
+            val text = runCatching { file.readText() }.getOrNull()
+            val parsed = text?.let { t -> runCatching { json.decodeFromString<List<String>>(t) }.getOrNull() }
+            if (parsed != null) {
+                parsed
+            } else {
+                // 损坏文件隔离：解析失败时改名保留现场，绝不原地留着——否则下次 add/persist
+                // 会把「空规则 + 新规则」写回，用户原有不喜欢列表无声丢失（与 AppDatabase 同类修复）
+                runCatching {
+                    file.renameTo(java.io.File(file.parentFile, "${file.name}.corrupt.${System.currentTimeMillis()}"))
+                }
+                emptyList()
+            }
+        } else emptyList()
         Unit
     }
 

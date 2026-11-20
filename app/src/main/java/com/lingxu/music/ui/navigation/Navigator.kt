@@ -71,6 +71,13 @@ class Navigator(
             backStack.add(screen)
         }
     }
+
+    /** 一次性重置为单个根页面：切换 tab 时用，避免 clear()+add() 触发两次快照变更与多余重组 */
+    fun setRoot(screen: Screen) {
+        if (backStack.size == 1 && backStack[0] == screen) return
+        backStack.clear()
+        backStack.add(screen)
+    }
 }
 
 @Composable

@@ -93,7 +93,8 @@ class MyListsRepository(private val db: AppDatabase) {
         val existing = _lists.value.firstOrNull { it.sourceListId == info.id && it.source == info.source }
         if (existing != null) return@withLock existing
         val list = Playlist(
-            id = "userlist_${System.currentTimeMillis()}",
+            // 加随机后缀：仅用毫秒时间戳时，同毫秒连续创建/收藏会撞 id，后者覆盖前者导致列表丢失
+            id = "userlist_${System.currentTimeMillis()}_${(0..999).random()}",
             name = info.name,
             createTime = System.currentTimeMillis(),
             source = info.source,
@@ -111,7 +112,8 @@ class MyListsRepository(private val db: AppDatabase) {
         val existing = _lists.value.firstOrNull { it.sourceListId == sourceListId }
         if (existing != null) return@withLock existing
         val list = Playlist(
-            id = "userlist_${System.currentTimeMillis()}",
+            // 加随机后缀：仅用毫秒时间戳时，同毫秒连续创建/收藏会撞 id，后者覆盖前者导致列表丢失
+            id = "userlist_${System.currentTimeMillis()}_${(0..999).random()}",
             name = name,
             createTime = System.currentTimeMillis(),
             source = source,
@@ -176,9 +178,11 @@ class MyListsRepository(private val db: AppDatabase) {
      * 「请求失败」由异常路径承担，不需要再用空守卫去防。
      */
     suspend fun overwriteOnlineMusics(listId: String, musics: List<MusicInfo>): Int = mutex.withLock {
-        saveMusicsLocked(listId, ListTransfer.filterMusicList(musics))
+        val filtered = ListTransfer.filterMusicList(musics)
+        saveMusicsLocked(listId, filtered)
         persist(_lists.value.map { if (it.id == listId) it.copy(locationUpdateTime = System.currentTimeMillis()) else it })
-        musics.size
+        // 返回实际写入的条数（过滤后），避免进度/提示大于真实写入数
+        filtered.size
     }
 
     suspend fun saveMusics(listId: String, musics: List<MusicInfo>) = mutex.withLock {
