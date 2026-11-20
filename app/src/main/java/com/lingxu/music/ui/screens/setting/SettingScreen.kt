@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.lingxu.music.ui.components.GlassDialog
+import com.lingxu.music.ui.components.GlassTopBar
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
@@ -132,7 +133,14 @@ fun SettingScreen(
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
     ) {
-        Text("设置", fontSize = MiuixTheme.textStyles.title1.fontSize)
+        // 与其它二级页统一顶栏样式（此前设置页是唯一用裸 Text 作标题的页面）
+        GlassTopBar {
+            Text(
+                "设置",
+                fontSize = MiuixTheme.textStyles.title1.fontSize,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+            )
+        }
         Spacer(Modifier.size(12.dp))
 
         // ============ 基本设置 ============

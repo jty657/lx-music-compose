@@ -103,14 +103,16 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
 
         Spacer(Modifier.size(12.dp))
 
-        // 热搜（可在设置里关闭）
+        // 热搜（可在设置里关闭）。热搜与榜单并存：热搜占较小权重，榜单占剩余空间，
+        // 避免此前「有热搜时榜单被完全屏蔽、用户看不到排行榜」的问题。
         val showHotSearch by LxApp.app.settings.isShowHotSearch.collectAsState(initial = true)
-        if (showHotSearch && hotSearch.isNotEmpty()) {
+        val showHot = showHotSearch && hotSearch.isNotEmpty()
+        if (showHot) {
             Text("热搜", fontSize = MiuixTheme.textStyles.title1.fontSize)
             Spacer(Modifier.size(4.dp))
             val hotState = rememberLazyListState()
             com.lingxu.music.ui.components.ReportScrollForMiniBar(hotState)
-            LazyColumn(Modifier.weight(1f), state = hotState) {
+            LazyColumn(Modifier.weight(0.4f), state = hotState) {
                 itemsIndexed(hotSearch) { index, word ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -132,9 +134,10 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     }
                 }
             }
-        } else {
-            // 榜单
-            Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
+            Spacer(Modifier.size(12.dp))
+        }
+        // 榜单（始终显示）
+        Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
             Spacer(Modifier.size(4.dp))
             // 失败/空态给出可重试的提示（此前只有标题 + 空列表，用户以为没有榜单）
             if (boards.isEmpty() && !viewModel.loading) {
@@ -157,13 +160,12 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             }
             val boardState = rememberLazyListState()
             com.lingxu.music.ui.components.ReportScrollForMiniBar(boardState)
-            LazyColumn(Modifier.weight(1f), state = boardState) {
+            LazyColumn(Modifier.weight(if (showHot) 0.6f else 1f), state = boardState) {
                 items(boards, key = { it.id }) { board ->
                     GlassSurface(
     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
     onClick = {
-                            val (source, bangId, name,
-) = viewModel.boardTarget(board)
+                            val (source, bangId, name) = viewModel.boardTarget(board)
                             navigator.push(Screen.BoardList(source, bangId, name))
                         },
                     ) {
@@ -174,7 +176,6 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     }
                 }
             }
-        }
     }
 }
 

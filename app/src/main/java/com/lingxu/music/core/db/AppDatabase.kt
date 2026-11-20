@@ -72,16 +72,13 @@ class AppDatabase(private val context: Context) {
     private val _apiSources = MutableStateFlow<List<ApiSourceMeta>>(emptyList())
     val apiSources: Flow<List<ApiSourceMeta>> = _apiSources.asStateFlow()
 
+    @Volatile
     private var apiSourcesLoaded = false
 
     suspend fun loadApiSources(): List<ApiSourceMeta> = withContext(Dispatchers.IO) {
         if (apiSourcesLoaded) return@withContext _apiSources.value
         val file = java.io.File(dataDir, FILE_API_SOURCE_LIST)
-        val list = if (file.exists()) {
-            runCatching {
-                JSON.decodeFromString<List<ApiSourceMeta>>(file.readText())
-            }.getOrElse { emptyList() }
-        } else emptyList()
+        val list = file.readJsonOrNull { JSON.decodeFromString<List<ApiSourceMeta>>(it) } ?: emptyList()
         apiSourcesLoaded = true
         _apiSources.value = list
         list
@@ -129,15 +126,13 @@ class AppDatabase(private val context: Context) {
     private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
     val playlists: Flow<List<Playlist>> = _playlists.asStateFlow()
 
+    @Volatile
     private var playlistsLoaded = false
 
     suspend fun loadPlaylists(): List<Playlist> = withContext(Dispatchers.IO) {
         if (playlistsLoaded) return@withContext _playlists.value
         val file = java.io.File(dataDir, FILE_PLAYLIST)
-        val list = if (file.exists()) {
-            runCatching { JSON.decodeFromString<List<Playlist>>(file.readText()) }
-                .getOrElse { emptyList() }
-        } else emptyList()
+        val list = file.readJsonOrNull { JSON.decodeFromString<List<Playlist>>(it) } ?: emptyList()
         playlistsLoaded = true
         _playlists.value = list
         list
@@ -250,4 +245,22 @@ private fun java.io.File.writeAtomicText(text: String) {
         writeText(text)
         tmp.delete()
     }
+}
+
+/**
+ * 读取并解析 JSON 文件；解析失败时把损坏文件改名隔离（保留现场），返回 null 让调用方回退空数据。
+ * 关键：不能让损坏文件原地留存——否则下次写入会把「空数据」当作正常状态覆盖掉，
+ * 用户原本的数据就无声丢失了。改名后用户仍可在 filesDir 里找到 .corrupt 备份尝试人工恢复。
+ * @param parser 把文本解析成目标类型的函数（如 { JSON.decodeFromString<List<Playlist>>(it) }）
+ */
+private fun <T> java.io.File.readJsonOrNull(parser: (String) -> T): T? {
+    val text = if (exists()) runCatching { readText() }.getOrNull() ?: return quarantine()
+    else return null
+    return runCatching { parser(text) }.getOrNull() ?: quarantine()
+}
+
+/** 把损坏文件改名隔离后返回 null（Nothing? 是所有类型的子类型，调用处无需类型推断） */
+private fun java.io.File.quarantine(): Nothing? {
+    runCatching { renameTo(java.io.File(parentFile, "$name.corrupt.${System.currentTimeMillis()}")) }
+    return null
 }

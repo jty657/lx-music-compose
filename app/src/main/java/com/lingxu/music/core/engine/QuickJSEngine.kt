@@ -190,8 +190,12 @@ class QuickJSEngine(
     private fun createEnvObj(context: QuickJSContext) {
         val global = context.getGlobalObject()
         global.setProperty("__lx_native_call__") { args: Array<Any?> ->
-            if (key == args[0]) {
-                callNative(args[1] as String, args[2] as String)
+            // 安全取值：脚本传参异常时不能让异常打断 JS 线程（否则后续所有调用失效）
+            val callKey = args.getOrNull(0) as? String
+            if (key == callKey) {
+                val action = args.getOrNull(1) as? String
+                val data = args.getOrNull(2) as? String
+                if (action != null && data != null) callNative(action, data)
             }
             null
         }

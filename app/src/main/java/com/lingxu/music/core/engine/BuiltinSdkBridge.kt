@@ -198,6 +198,11 @@ class BuiltinSdkBridge(context: Context) {
     }
     private val timers = ConcurrentHashMap<Int, ScheduledFuture<*>>()
 
+    /** HTTP fetch 线程池：此前每次请求都新建裸线程，高频搜索会线程泛滥 */
+    private val fetchExecutor = Executors.newFixedThreadPool(4) { r ->
+        Thread(r, "BuiltinSDKFetch").apply { isDaemon = true }
+    }
+
     private var jsContext: QuickJSContext? = null
     private var sdkObject: JSObject? = null
 
@@ -375,6 +380,7 @@ class BuiltinSdkBridge(context: Context) {
         timers.values.forEach { runCatching { it.cancel(false) } }
         timers.clear()
         timerExecutor.shutdownNow()
+        fetchExecutor.shutdownNow()
         executor.shutdown()
     }
 
@@ -500,9 +506,14 @@ class BuiltinSdkBridge(context: Context) {
     /** 歌单搜索聚合（all = 并发各源） */
     suspend fun searchSongListAll(text: String, page: Int, limit: Int = 15): SongListPage {
         val sources = listOf("kw", "kg", "tx", "wy", "mg")
-        val results = sources.map { s ->
-            runCatching { searchSongList(text, page, s, limit) }
-                .getOrElse { SongListPage(source = s) }
+        // 并发聚合各源（与 search 一致）：串行时最坏要等 5× 单源超时
+        val results = kotlinx.coroutines.coroutineScope {
+            sources.map { s ->
+                async {
+                    runCatching { searchSongList(text, page, s, limit) }
+                        .getOrElse { SongListPage(source = s) }
+                }
+            }.awaitAll()
         }
         return SongListPage(
             list = results.flatMap { it.list }.distinctBy { "${it.source}_${it.id}" },
@@ -986,7 +997,7 @@ class BuiltinSdkBridge(context: Context) {
      * 不跨线程持 JS 函数引用）。
      */
     private fun startFetch(id: Int, url: String, optionsJson: String) {
-        Thread {
+        fetchExecutor.execute {
             try {
                 val opt = json.parseToJsonElement(optionsJson) as? JsonObject ?: JsonObject(emptyMap())
                 val method = (opt["method"] as? JsonPrimitive)?.content ?: "get"
@@ -1008,7 +1019,7 @@ class BuiltinSdkBridge(context: Context) {
                 val msg = e.message ?: "fetch failed"
                 executor.execute { callFetchDone(id, false, msg, "", "", "{}") }
             }
-        }.apply { isDaemon = true }.start()
+        }
     }
 
     /** 回到 SDK 线程调用 JS 侧 __lxFetchDone（在 SDK 线程执行）；payload 为响应体的 base64 */

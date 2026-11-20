@@ -122,13 +122,18 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                     animationSpec = tween(durationMillis = 260),
                     label = "coverScale",
                 )
-                // 播放中封面缓慢呼吸（±1.5%），暂停时停在 1.0，让「在不在播」一眼可辨
+                // 播放中封面缓慢呼吸（±1.5%），暂停时用有限动画平滑停在 1.0。
+                // 暂停时若仍用 infiniteRepeatable 会一直空转重复，浪费每帧调度。
                 val breathScale by animateFloatAsState(
                     targetValue = if (state.isPlaying) 1.015f else 1f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse,
-                    ),
+                    animationSpec = if (state.isPlaying) {
+                        infiniteRepeatable(
+                            animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse,
+                        )
+                    } else {
+                        tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                    },
                     label = "coverBreath",
                 )
                 TrackCover(

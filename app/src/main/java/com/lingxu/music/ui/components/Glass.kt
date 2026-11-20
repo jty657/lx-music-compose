@@ -7,6 +7,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -169,7 +171,9 @@ fun GlassDialog(
                         if (dark) Color(0xFF232323) else Color(0xFFF7F7F7),
                         shape,
                     )
-                    .border(1.dp, glassBorder(dark), shape),
+                    .border(1.dp, glassBorder(dark), shape)
+                    // 选项多的弹窗在小屏上会溢出，允许纵向滚动避免内容被截断
+                    .verticalScroll(rememberScrollState()),
             ) {
                 content()
             }
