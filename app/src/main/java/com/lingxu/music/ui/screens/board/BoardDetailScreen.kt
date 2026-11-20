@@ -172,11 +172,10 @@ fun BoardDetailScreen(
         ) {
             items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(
-    modifier = Modifier
+                    modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
-    onClick = { viewModel.play(musicList, music,
-) },
+                    onClick = { viewModel.play(musicList, music) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))

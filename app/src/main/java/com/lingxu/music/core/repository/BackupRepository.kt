@@ -44,7 +44,10 @@ class BackupRepository(
         private const val EXPORT_PREFIX = "lingxu-backup-"
     }
 
-    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
+    // encodeDefaults=true：把 version 真正写进备份文件，否则版本检查形同虚设
+    // （version 是默认值，encodeDefaults=false 时不会序列化）。旧备份无该字段时，
+    // 反序列化仍回落到默认值 VERSION，保持向后兼容。
+    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
 
     /** 导入完成后的回调：让内存缓存失效重建（备份是直接写 db 的，不刷新会被旧缓存覆盖） */
     var onImported: (suspend () -> Unit)? = null
@@ -75,15 +78,17 @@ class BackupRepository(
         val result = runCatching {
             val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
                 ?: error("无法读取所选文件")
+            // 结构校验：损坏文件（如 "{}"）会被 kotlinx 解码成「version=默认值 + 三类数据全空」的对象。
+            // 注意 BackupData.version 有默认值 VERSION，老版本备份（未开 encodeDefaults）本就不含该字段，
+            // 所以既不能用「缺 version」也不能用「version<=0」判定损坏——两者都会误伤正常备份或放过空文件。
+            // 唯一可靠的判据是「三类数据全空」：一份有内容的备份不可能三者皆空；
+            // 而用户主动导出空数据时本来也无内容可恢复，拒绝导入同样安全。
             val data = json.decodeFromString<BackupData>(text)
+            if (data.favorites.isEmpty() && data.playlists.isEmpty() && data.playlistMusics.isEmpty()) {
+                error("备份文件内容为空或已损坏，未做任何改动")
+            }
             if (data.version > BackupData.VERSION) {
                 error("备份文件版本(v${data.version})比当前 App(v${BackupData.VERSION})更新，请先升级 App")
-            }
-            // 结构校验：损坏文件（如 "{}"）也能被 kotlinx 解码成全默认的空备份，
-            // 直接导入会把用户的收藏与歌单全部清空。三类数据全空视为非法备份，拒绝导入。
-            // 版本 0 表示连 version 字段都没有，一并按损坏处理。
-            if (data.version <= 0 && data.favorites.isEmpty() && data.playlists.isEmpty() && data.playlistMusics.isEmpty()) {
-                error("备份文件内容为空或已损坏，未做任何改动")
             }
 
             // 过滤非法/重复条目（对齐原版 filterMusicList），否则导入的重复 id 会让列表页崩溃；

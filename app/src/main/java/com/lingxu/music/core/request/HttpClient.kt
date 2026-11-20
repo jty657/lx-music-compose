@@ -47,10 +47,9 @@ class HttpClient {
     /** 当前磁盘缓存占用（字节） */
     fun diskCacheSizeBytes(): Long = runCatching { client.cache?.size() ?: 0L }.getOrDefault(0L)
 
-    /** 清空磁盘缓存（封面等） */
+    /** 清空磁盘缓存（封面等）。只清空条目，不调用 delete()——后者会关闭底层缓存，导致之后所有缓存写入永久失效。 */
     fun clearDiskCache() {
         runCatching { client.cache?.evictAll() }
-        runCatching { client.cache?.delete() }
     }
 
     private val client: OkHttpClient by lazy {

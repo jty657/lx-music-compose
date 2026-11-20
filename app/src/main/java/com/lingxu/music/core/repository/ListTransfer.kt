@@ -27,7 +27,8 @@ data class ListTransferData(
 /** 单列表导入导出（SAF 文件读写） */
 object ListTransfer {
 
-    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
+    // encodeDefaults=true：把 version 写进分享文件，版本检查才真正生效；旧文件无该字段时回落默认值，兼容
+    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
 
     /** 导出歌单到用户选定的 uri */
     suspend fun export(context: Context, uri: Uri, name: String, musics: List<MusicInfo>): Result<Int> =

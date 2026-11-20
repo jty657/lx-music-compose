@@ -138,33 +138,33 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         }
         // 榜单（始终显示）
         Text("排行榜", fontSize = MiuixTheme.textStyles.title1.fontSize)
-            Spacer(Modifier.size(4.dp))
-            // 失败/空态给出可重试的提示（此前只有标题 + 空列表，用户以为没有榜单）
-            if (boards.isEmpty() && !viewModel.loading) {
-                if (viewModel.error != null) {
-                    Text(
-                        "加载失败，点击重试",
-                        color = MiuixTheme.colorScheme.error,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        modifier = Modifier
-                            .clickable { viewModel.loadBoards() }
-                            .padding(vertical = 8.dp),
-                    )
-                } else {
-                    Text(
-                        "暂无榜单",
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    )
-                }
+        Spacer(Modifier.size(4.dp))
+        // 失败/空态给出可重试的提示（此前只有标题 + 空列表，用户以为没有榜单）
+        if (boards.isEmpty() && !viewModel.loading) {
+            if (viewModel.error != null) {
+                Text(
+                    "加载失败，点击重试",
+                    color = MiuixTheme.colorScheme.error,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    modifier = Modifier
+                        .clickable { viewModel.loadBoards() }
+                        .padding(vertical = 8.dp),
+                )
+            } else {
+                Text(
+                    "暂无榜单",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
             }
-            val boardState = rememberLazyListState()
-            com.lingxu.music.ui.components.ReportScrollForMiniBar(boardState)
-            LazyColumn(Modifier.weight(if (showHot) 0.6f else 1f), state = boardState) {
+        }
+        val boardState = rememberLazyListState()
+        com.lingxu.music.ui.components.ReportScrollForMiniBar(boardState)
+        LazyColumn(Modifier.weight(if (showHot) 0.6f else 1f), state = boardState) {
                 items(boards, key = { it.id }) { board ->
                     GlassSurface(
-    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-    onClick = {
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        onClick = {
                             val (source, bangId, name) = viewModel.boardTarget(board)
                             navigator.push(Screen.BoardList(source, bangId, name))
                         },

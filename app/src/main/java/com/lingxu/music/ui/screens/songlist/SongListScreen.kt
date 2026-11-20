@@ -190,10 +190,9 @@ fun SongListScreen(
         ) {
             items(list, key = { "${it.source}_${it.id}" }) { item ->
                 GlassSurface(
-    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-    onClick = {
-                        navigator.push(Screen.SongListDetail(item.source, item.id, item.name,
-))
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    onClick = {
+                        navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                     },
                     onLongClick = { viewModel.collect(item) },
                 ) {

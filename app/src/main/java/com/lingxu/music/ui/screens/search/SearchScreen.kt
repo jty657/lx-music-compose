@@ -109,8 +109,6 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         ) {
         Spacer(Modifier.height(8.dp))
 
-        Spacer(Modifier.height(8.dp))
-
         // 音源选择（横向滚动：6 个按钮挤在固定 Row 里会溢出屏幕）
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -216,8 +214,8 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             LazyColumn(state = songListState, modifier = Modifier.weight(1f)) {
                 items(songLists, key = { "${it.source}_${it.id}" }) { item ->
                     GlassSurface(
-    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-    onClick = {
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        onClick = {
                             navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                         },
                     ) {
@@ -287,7 +285,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         LazyColumn(state = resultState, modifier = Modifier.weight(1f)) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
-    music = music,
+                    music = music,
                     isFavorite = music.id in viewModel.favoriteIds,
                     onClick = {
                         scope.launch {

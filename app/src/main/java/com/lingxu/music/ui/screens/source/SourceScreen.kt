@@ -110,11 +110,8 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
         SourceConst.ONLINE.forEach { source ->
             GlassSurface(
-    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-    onClick = {
-                    viewModel.switchSource(source,
-)
-                },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                onClick = { viewModel.switchSource(source) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                     Text(
@@ -136,11 +133,8 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         LazyColumn(Modifier.weight(1f)) {
             items(userApis, key = { it.id }) { api ->
                 GlassSurface(
-    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-    onClick = {
-                        viewModel.switchSource(api.id,
-)
-                    },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    onClick = { viewModel.switchSource(api.id) },
                     onLongClick = {
                         deletingId = api.id
                     },

@@ -263,84 +263,84 @@ private fun MiniPlayerBar(navigator: Navigator) {
                 },
             ),
     ) {
-    Column(Modifier.fillMaxWidth()) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .padding(bottom = 6.dp)
-            .clickable {
-                if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
-            },
-    ) {
-        TrackCover(url = state.coverUrl ?: current.meta.picUrl, size = 44.dp, corner = 10.dp)
-        Spacer(Modifier.size(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                current.name,
-                fontSize = MiuixTheme.textStyles.body1.fontSize,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                current.singer,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Icon(
-            if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
-            contentDescription = if (state.isPlaying) "暂停" else "播放",
-            modifier = Modifier
-                .size(36.dp)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                    onClick = { LxApp.app.playerRepository.togglePlay() },
-                ),
-        )
-        Spacer(Modifier.size(8.dp))
-        Icon(
-            MiuixIcons.Layers,
-            contentDescription = "播放队列",
-            modifier = Modifier
-                .size(28.dp)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                    onClick = {
-                        if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 6.dp)
+                    .clickable {
+                        if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
                     },
-                ),
-        )
-    }
-    // 细进度线：给迷你条一个不占位的播放进度反馈
-    val progress = if (state.durationMs > 0) {
-        (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-            .padding(bottom = 2.dp)
-            .height(2.dp)
-            .clip(RoundedCornerShape(1.dp))
-            .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f)),
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth(progress)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(1.dp))
-                .background(MiuixTheme.colorScheme.primary),
-        )
-    }
-    }
+            ) {
+                TrackCover(url = state.coverUrl ?: current.meta.picUrl, size = 44.dp, corner = 10.dp)
+                Spacer(Modifier.size(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        current.name,
+                        fontSize = MiuixTheme.textStyles.body1.fontSize,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        current.singer,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Icon(
+                    if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
+                    contentDescription = if (state.isPlaying) "暂停" else "播放",
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            onClick = { LxApp.app.playerRepository.togglePlay() },
+                        ),
+                )
+                Spacer(Modifier.size(8.dp))
+                Icon(
+                    MiuixIcons.Layers,
+                    contentDescription = "播放队列",
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            onClick = {
+                                if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
+                            },
+                        ),
+                )
+            }
+            // 细进度线：给迷你条一个不占位的播放进度反馈
+            val progress = if (state.durationMs > 0) {
+                (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .padding(bottom = 2.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f)),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(MiuixTheme.colorScheme.primary),
+                )
+            }
+        }
     }
 }
 

@@ -127,6 +127,14 @@ fun SettingScreen(
     LaunchedEffect(blurRadius) { localBlur = blurRadius }
     val userApiLog by viewModel.userApiLog.collectAsState(initial = false)
 
+    // 离开设置页时补写倍速/音量节流跳过的最终值，避免用户拖完立刻返回导致设置丢失
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.commitPlaybackRate()
+            viewModel.commitVolume()
+        }
+    }
+
     Column(
         Modifier
             .fillMaxSize()

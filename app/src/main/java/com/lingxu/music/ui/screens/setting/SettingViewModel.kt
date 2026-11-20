@@ -148,27 +148,45 @@ class SettingViewModel : ViewModel() {
     fun setVolume(value: Float) = launch { settings.setVolume(value.coerceIn(0f, 1f)) }
     /**
      * 倍速/音量：滑块每帧都会回调，拖动中只更新播放器，落盘节流到 120ms 一次。
-     * 松手时由 [commitPlaybackRate]/[commitVolume] 确保最终值落盘。
+     * 节流跳过的最后一次值存入 pending，离开页面时由 [commitPlaybackRate]/[commitVolume] 补写，
+     * 否则用户拖完就退出的最终值会丢失（此前这两个 commit 定义了却从未被调用）。
      */
+    private var pendingRate: Float? = null
+    private var pendingVolume: Float? = null
+
     fun setPlaybackRateAndApply(value: Float) {
         val rate = value.coerceIn(0.5f, 3f)
+        pendingRate = rate
         LxApp.app.playerRepository.setPlaybackRate(rate)
-        if (throttle("rate", 120)) launch { settings.setPlaybackRate(rate) }
+        if (throttle("rate", 120)) {
+            pendingRate = null
+            launch { settings.setPlaybackRate(rate) }
+        }
     }
 
     fun setVolumeAndApply(value: Float) {
         val vol = value.coerceIn(0f, 1f)
+        pendingVolume = vol
         LxApp.app.playerRepository.setVolume(vol)
-        if (throttle("volume", 120)) launch { settings.setVolume(vol) }
+        if (throttle("volume", 120)) {
+            pendingVolume = null
+            launch { settings.setVolume(vol) }
+        }
     }
 
-    fun commitPlaybackRate(value: Float) {
-        val rate = value.coerceIn(0.5f, 3f)
-        launch { settings.setPlaybackRate(rate) }
+    /** 离开设置页时补写节流跳过的最终值 */
+    fun commitPlaybackRate() {
+        val value = pendingRate ?: return
+        pendingRate = null
+        clearThrottle("rate")
+        launch { settings.setPlaybackRate(value) }
     }
 
-    fun commitVolume(value: Float) {
-        launch { settings.setVolume(value.coerceIn(0f, 1f)) }
+    fun commitVolume() {
+        val value = pendingVolume ?: return
+        pendingVolume = null
+        clearThrottle("volume")
+        launch { settings.setVolume(value) }
     }
 
     fun setTimeoutExit(minutes: Int) = launch {
