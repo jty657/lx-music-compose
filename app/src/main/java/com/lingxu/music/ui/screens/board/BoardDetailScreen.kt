@@ -33,6 +33,7 @@ import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.ContentMaxWidth
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
@@ -178,23 +179,7 @@ fun BoardDetailScreen(
             // 搜索关键词无匹配：给出专属空态，避免过滤后一片空白
             if (!loading && error == null && musicList.isNotEmpty() && shownMusic.isEmpty()) {
                 item(key = "__board_search_empty__") {
-                    Column(
-                        Modifier.fillMaxWidth().padding(vertical = 64.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Icon(
-                            MiuixIcons.Favorites,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-                        )
-                        Spacer(Modifier.size(12.dp))
-                        Text(
-                            "没有匹配的歌曲",
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
+                    EmptyHint(icon = MiuixIcons.Favorites, text = "没有匹配的歌曲")
                 }
             }
             items(shownMusic, key = { it.id }) { music ->

@@ -43,6 +43,7 @@ import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.ContentMaxWidth
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
@@ -218,23 +219,10 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
             }
 
             if (shownMusics.isEmpty()) {
-                Column(
-                    Modifier.fillMaxWidth().padding(vertical = 56.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        MiuixIcons.Favorites,
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-                    )
-                    Spacer(Modifier.size(12.dp))
-                    Text(
-                        if (musics.isEmpty()) "这个列表还没有歌曲" else "没有匹配的歌曲",
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    )
-                }
+                EmptyHint(
+                    icon = MiuixIcons.Favorites,
+                    text = if (musics.isEmpty()) "这个列表还没有歌曲" else "没有匹配的歌曲",
+                )
             }
 
             LazyColumn(
@@ -576,24 +564,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
     onDelete: (Playlist) -> Unit,
 ) {
     if (lists.isEmpty()) {
-        // 与列表内空态、收藏页统一视觉语言：居中 + 占位图标 + 次要色文案
-        Column(
-            Modifier.fillMaxWidth().padding(vertical = 64.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                MiuixIcons.Favorites,
-                contentDescription = null,
-                modifier = Modifier.size(40.dp),
-                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-            )
-            Spacer(Modifier.size(12.dp))
-            Text(
-                "还没有列表，点右上角「新建」或去歌单广场收藏",
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-            )
-        }
+        // 与列表内空态、收藏页统一视觉语言：复用 EmptyHint（含入场淡入与减弱动效降级）
+        EmptyHint(icon = MiuixIcons.Favorites, text = "还没有列表，点右上角「新建」或去歌单广场收藏")
         return
     }
     LazyColumn(

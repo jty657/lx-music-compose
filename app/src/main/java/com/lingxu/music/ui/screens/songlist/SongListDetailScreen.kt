@@ -31,6 +31,7 @@ import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.ContentMaxWidth
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
@@ -167,23 +168,10 @@ fun SongListDetailScreen(
             // 加载完成、无错误、且（含筛选后）无歌曲：显示空态
             if (!loading && error == null && shownMusic.isEmpty()) {
                 item(key = "__songlist_empty__") {
-                    Column(
-                        Modifier.fillMaxWidth().padding(vertical = 64.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Icon(
-                            MiuixIcons.Favorites,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-                        )
-                        Spacer(Modifier.size(12.dp))
-                        Text(
-                            if (keyword.isBlank()) "这个歌单暂时没有歌曲" else "没有匹配的歌曲",
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
+                    EmptyHint(
+                        icon = MiuixIcons.Favorites,
+                        text = if (keyword.isBlank()) "这个歌单暂时没有歌曲" else "没有匹配的歌曲",
+                    )
                 }
             }
             items(shownMusic, key = { it.id }) { music ->
