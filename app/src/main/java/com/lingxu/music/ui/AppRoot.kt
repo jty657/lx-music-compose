@@ -420,7 +420,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
                     .padding(horizontal = 14.dp)
                     .padding(bottom = 2.dp)
                     .height(2.dp)
-                    .clip(RoundedCornerShape(1.dp))
+                    .clip(RoundedCornerShape(Dimens.Hairline))
                     .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f))
                     // 读屏用户也能获知播放进度，而不只是一个装饰性细线
                     .semantics {
@@ -432,7 +432,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
                     Modifier
                         .fillMaxWidth(progress)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(1.dp))
+                        .clip(RoundedCornerShape(Dimens.Hairline))
                         .background(MiuixTheme.colorScheme.primary),
                 )
             }

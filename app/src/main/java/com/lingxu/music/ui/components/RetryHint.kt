@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.lingxu.music.ui.theme.Dimens
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -32,7 +33,7 @@ fun RetryHint(
         modifier = modifier
             // 命中区兜底 48dp，视觉仍是紧凑的 error 文字；放在 clip 之前避免被圆角裁掉
             .minimumInteractiveComponentSize()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Dimens.CornerS))
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 12.dp),
     )
