@@ -521,6 +521,7 @@ private fun LyricView(
                     showRoma = showRoma,
                     showTranslation = showTranslation,
                     horizontal = horizontal,
+                    reduceMotion = reduceMotion,
                     onSeek = { timeMs ->
                         // 点歌词跳转是主动定位：恢复自动跟随，让列表跟着新的播放位置继续走
                         followCurrent = true
@@ -570,18 +571,23 @@ private fun LyricLineRow(
     showRoma: Boolean,
     showTranslation: Boolean,
     horizontal: Alignment.Horizontal,
+    reduceMotion: Boolean = false,
     onSeek: (Long) -> Unit,
 ) {
+    // 歌词行高亮过渡在减弱动效时瞬时到位：颜色、透明度随系统开关一起降级，
+    // 尤其是 1.4x 的当前行缩放（每切一句歌词都会触发、transform 类动画），
+    // 对前庭敏感用户是持续可见的位移，应与同文件封面/按钮动画保持一致。
+    val lyricDuration = if (reduceMotion) 0 else 260
     val color by animateColorAsState(
         targetValue = if (isCurrent) MiuixTheme.colorScheme.primary
         else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-        animationSpec = tween(260),
+        animationSpec = tween(lyricDuration),
         label = "lyricColor",
     )
     // 非当前行半透明、当前行全亮，配合颜色与缩放形成层次
     val lineAlpha by animateFloatAsState(
         targetValue = if (isCurrent) 1f else 0.55f,
-        animationSpec = tween(260),
+        animationSpec = tween(lyricDuration),
         label = "lyricAlpha",
     )
     // 当前行放大：用 graphicsLayer 的 transform 而不是改 fontSize。
@@ -590,7 +596,7 @@ private fun LyricLineRow(
     // transformOrigin 跟随对齐方向，避免居/左对齐时放大内容从中心外溢。
     val scale by animateFloatAsState(
         targetValue = if (zoomActive && isCurrent) 1.4f else 1f,
-        animationSpec = tween(260),
+        animationSpec = tween(lyricDuration),
         label = "lyricScale",
     )
     val originX = if (horizontal == Alignment.CenterHorizontally) 0.5f else 0f
