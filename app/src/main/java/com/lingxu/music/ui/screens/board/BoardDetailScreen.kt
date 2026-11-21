@@ -123,11 +123,8 @@ fun BoardDetailScreen(
             if (error != null) {
                 RetryHint(text = "加载失败，点击重试", onClick = { load(1) })
             } else {
-                Text(
-                    "暂无歌曲",
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                )
+                // 与全站空态统一：居中 + 占位图标 + 留白，替代原左对齐的一行小字
+                EmptyHint(icon = MiuixIcons.Favorites, text = "暂无歌曲")
             }
             return@Column
         }

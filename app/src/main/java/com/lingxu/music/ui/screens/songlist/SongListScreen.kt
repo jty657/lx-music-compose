@@ -33,6 +33,7 @@ import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SongListTag
 import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.ContentMaxWidth
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
@@ -162,11 +163,8 @@ fun SongListScreen(
             if (error != null) {
                 RetryHint(text = "加载失败，点击重试", onClick = { load(1) })
             } else {
-                Text(
-                    "暂无歌单",
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                )
+                // 与全站空态统一：居中 + 占位图标 + 留白，替代原左对齐的一行小字
+                EmptyHint(icon = MiuixIcons.Favorites, text = "暂无歌单")
             }
             return@Column
         }
