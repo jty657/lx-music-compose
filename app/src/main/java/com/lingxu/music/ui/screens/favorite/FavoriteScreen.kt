@@ -188,7 +188,7 @@ private fun FavoriteCard(
     GlassSurface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = Dimens.ItemGap),
         onClick = onPlay,
         onLongClick = onAddToList,
     ) {

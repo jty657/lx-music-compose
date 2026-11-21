@@ -1,6 +1,10 @@
 package com.lingxu.music.ui.screens.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -60,6 +64,7 @@ import top.yukonga.miuix.kmp.icon.extended.Search
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.FavoritesFill
+import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.TextField
@@ -235,13 +240,36 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                         },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                            Icon(MiuixIcons.Favorites, contentDescription = null, modifier = Modifier.size(28.dp))
+                            // 歌单结果此前用「收藏」图标做占位，语义上完全不相关（点了也不会收藏）。
+                            // 换成 Layers（歌单/合集），与首页「我的列表」「歌单广场」同一图标语言，
+                            // 并用柔和的次要色圆底托住，避免和右侧可点的收藏按钮混淆。
+                            Box(
+                                Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(Dimens.CornerM))
+                                    .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    MiuixIcons.Layers,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                )
+                            }
                             Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                Text(item.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                                Text(
+                                    item.name,
+                                    fontSize = MiuixTheme.textStyles.main.fontSize,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                                 Text(
                                     "${item.author} · ${SourceConst.displayName(item.source)}",
                                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }

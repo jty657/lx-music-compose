@@ -162,10 +162,12 @@ fun TrackCover(
                 contentScale = ContentScale.Crop,
             )
         } else {
-            // 封面加载中/失败时的音符占位，比纯色块更有辨识度
+            // 封面加载中/失败时的音符占位，比纯色块更有辨识度。
+            // 字号按封面尺寸线性取 40%，但设上限 48sp：播放页封面可达 288dp，
+            // 40% 会得到 115sp 的巨型音符，与列表页的小封面比例完全脱节。
             Text(
                 "♪",
-                fontSize = (size.value * 0.4f).sp,
+                fontSize = (size.value * 0.4f).coerceAtMost(48f).sp,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
             )
         }
