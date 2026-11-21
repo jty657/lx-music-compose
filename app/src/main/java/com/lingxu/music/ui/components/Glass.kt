@@ -152,6 +152,9 @@ fun GlassSurface(
     // 外层 .clip(shape) 会把涟漪裁进圆角内，不会溢出边界。
     val indication = LocalIndication.current
     val pressed by interaction.collectIsPressedAsState()
+    // 减弱动效（系统「移除动画」）时，按压缩放与底色过渡都瞬时到位，避免「关不掉」的过渡。
+    // 声明提前到 fill 之前，供底色 tween 与按压缩放共用。
+    val noAnim = animationsDisabled()
     // 选中态（搜索页音源 chip 等）由 tint 表达：颜色渐变而非硬切，选中/取消更连贯
     val baseFill = tint ?: glassFill(dark)
     val fill by animateColorAsState(
@@ -168,11 +171,11 @@ fun GlassSurface(
         } else {
             baseFill
         },
-        animationSpec = tween(durationMillis = MotionFastMs),
+        // 减弱动效下底色瞬时到位，与下方按压缩放的 noAnim 降级保持一致
+        animationSpec = tween(durationMillis = if (noAnim) 0 else MotionFastMs),
         label = "glassFill",
     )
     // 按压缩放：只动 transform，不触发重新布局；系统关动画时不动（避免「关不掉」的缩放）
-    val noAnim = animationsDisabled()
     val scale by animateFloatAsState(
         // 0.985 而非 0.98：卡片面积大，2% 的收缩已经很「实」，1.5% 更接近 iOS/MIUI 的轻触感
         targetValue = if (pressed && onClick != null && !noAnim) 0.985f else 1f,
@@ -269,7 +272,8 @@ fun GlassDialog(
     val scrimColor = if (dark) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.32f)
     val scrimAlpha by animateFloatAsState(
         targetValue = if (shown && !closing) 1f else 0f,
-        animationSpec = tween(durationMillis = MotionFastMs),
+        // 减弱动效下遮罩瞬时到位，与窗口 alpha、面板进出、关闭延迟的 noAnim 处理保持一致
+        animationSpec = tween(durationMillis = if (noAnim) 0 else MotionFastMs),
         label = "dialogScrim",
     )
     Dialog(
