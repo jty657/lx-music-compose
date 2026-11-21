@@ -19,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -42,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +53,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -70,7 +74,9 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
+import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
+import com.lingxu.music.ui.theme.MotionFastMs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -105,6 +111,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
     val reduceMotion = LocalReduceMotion.current
     var showMore by remember { mutableStateOf(false) }
+    // 播放模式行横向滚动状态：只用于「右侧是否还有内容」的渐隐提示
+    val modeScrollState = rememberScrollState()
 
     // 拖动进度条时，用本地值展示，避免被 500ms 的位置更新覆盖导致回弹
     var dragValue by remember { mutableStateOf<Float?>(null) }
@@ -165,7 +173,14 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                             scaleX = coverScale * breathScale
                             scaleY = coverScale * breathScale
                         }
-                        .shadow(14.dp, RoundedCornerShape(CoverCorner)),
+                        // 阴影颜色跟随主题：默认黑色阴影在深色背景上完全不可见，
+                        // 封面像「贴」在背景上；深色下改用主色低透明度做「光晕」，浅色保持中性阴影。
+                        .shadow(
+                            elevation = 14.dp,
+                            shape = RoundedCornerShape(CoverCorner),
+                            ambientColor = MiuixTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            spotColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.55f),
+                        ),
                 )
             }
 
@@ -340,36 +355,64 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    // 播放模式：5 个长文案（「列表循环播放」「禁用歌曲切换」…）横排总宽明显超过屏宽，
-                    // 原先的固定 Row 没有滚动容器，窄屏/大字号下末尾两项会被父级裁掉、根本选不到。
-                    // 这里改为横向可滚动，并给选中项加主色胶囊底：选中态不再只靠文字颜色区分。
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                    ) {
-                        PlayMode.ALL.forEach { mode ->
-                            val selected = state.playMode == mode
-                            // 选中态底色随模式切换渐变，而不是硬切（180ms）
-                            val modeBg by animateColorAsState(
-                                targetValue = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.14f)
-                                else androidx.compose.ui.graphics.Color.Transparent,
-                                animationSpec = tween(durationMillis = 180),
-                                label = "modeBg",
-                            )
-                            Text(
-                                PlayMode.label(mode),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(modeBg)
-                                    .clickable { viewModel.setMode(mode) }
-                                    // 纵向 11dp + 文字高度 ≈ 44dp，命中率不低于系统建议下限
-                                    .padding(horizontal = 12.dp, vertical = 11.dp),
-                                color = if (selected) MiuixTheme.colorScheme.primary
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    // 播放模式：5 个长文案（「列表循环播放」「禁用歌曲切换」…）横排总宽明显超过屏宽。
+                    // 此前是可横向滚动的 Row，但没有任何「还能往右滑」的视觉提示，用户
+                    // 不知道末尾还有「禁用歌曲切换」。这里在右侧叠一层与背景同色的渐隐，
+                    // 只有真的能继续滚动时才显示（滚到尽头自动消失），遵循可发现性而无额外操作。
+                    Box(Modifier.fillMaxWidth()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(modeScrollState),
+                        ) {
+                            PlayMode.ALL.forEach { mode ->
+                                val selected = state.playMode == mode
+                                // 选中态底色随模式切换渐变，而不是硬切
+                                val modeBg by animateColorAsState(
+                                    targetValue = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.14f)
+                                    else androidx.compose.ui.graphics.Color.Transparent,
+                                    animationSpec = tween(durationMillis = MotionFastMs),
+                                    label = "modeBg",
+                                )
+                                Text(
+                                    PlayMode.label(mode),
+                                    // 胶囊形：与搜索页的筛选 chip 保持同一形态语言
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(Dimens.CornerM))
+                                        .background(modeBg)
+                                        .clickable { viewModel.setMode(mode) }
+                                        // 纵向 11dp + 文字高度 ≈ 44dp，命中率不低于系统建议下限
+                                        .padding(horizontal = 12.dp, vertical = 11.dp),
+                                    color = if (selected) MiuixTheme.colorScheme.primary
+                                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                )
+                            }
+                        }
+                        // 右侧渐隐：暗示「右边还有」。只在未滚到底时出现，滚到底后淡出，
+                        // 避免常驻遮挡最后一个 chip。
+                        val canScrollForward by remember {
+                            derivedStateOf { modeScrollState.canScrollForward }
+                        }
+                        // 用 BoxScope 版本：外层是 Column，直接调 ColumnScope 重载会解析失败
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = canScrollForward,
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                            enter = fadeIn(tween(MotionFastMs)),
+                            exit = fadeOut(tween(MotionFastMs)),
+                        ) {
+                            Box(
+                                Modifier
+                                    .width(36.dp)
+                                    .height(44.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            0f to androidx.compose.ui.graphics.Color.Transparent,
+                                            1f to MiuixTheme.colorScheme.surface,
+                                        ),
+                                    ),
                             )
                         }
                     }
@@ -524,15 +567,25 @@ private fun LyricLineRow(
         animationSpec = tween(260),
         label = "lyricAlpha",
     )
+    // 当前行放大：用 graphicsLayer 的 transform 而不是改 fontSize。
+    // 改字号会让行高随动画逐帧变化 → LazyColumn 反复重新测量，切行时整列表抖动，
+    // 大字号 + 长歌词下尤其明显。transform 只影响绘制，不触发布局。
+    // transformOrigin 跟随对齐方向，避免居/左对齐时放大内容从中心外溢。
     val scale by animateFloatAsState(
         targetValue = if (zoomActive && isCurrent) 1.4f else 1f,
         animationSpec = tween(260),
         label = "lyricScale",
     )
+    val originX = if (horizontal == Alignment.CenterHorizontally) 0.5f else 0f
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer { alpha = lineAlpha }
+            .graphicsLayer {
+                alpha = lineAlpha
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(originX, 0.5f)
+            }
             // 点歌词跳到对应时间（对应原版「点歌词调进度」）
             .clickable { onSeek(line.timeMs) }
             .padding(vertical = 5.dp),
@@ -540,7 +593,7 @@ private fun LyricLineRow(
     ) {
         Text(
             line.text,
-            fontSize = baseSp * scale,
+            fontSize = baseSp,
             color = color,
         )
         if (showRoma) {
