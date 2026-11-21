@@ -428,7 +428,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                     },
                                 )
                             }
-                            .padding(vertical = 10.dp),
+                            // 纯文字选项热区补到约 48dp（可达性下限），字号与视觉不变
+                            .padding(vertical = 14.dp),
                     )
                     Spacer(Modifier.size(4.dp))
                 }
@@ -449,7 +450,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                 scope.launch { viewModel.setMusics(openList!!, sorted) }
                                 showSort = false
                             }
-                            .padding(vertical = 10.dp),
+                            // 排序选项热区补到约 48dp（可达性下限），字号与视觉不变
+                            .padding(vertical = 14.dp),
                     )
                 }
                 Spacer(Modifier.size(8.dp))
@@ -463,7 +465,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                             // 列表名可以直接含路径分隔符，导出前净化（原版 utils.filterFileName）
                             if (target != null) exportLauncher.launch("${sanitizeFileName(target.name)}.json")
                         }
-                        .padding(vertical = 10.dp),
+                        // 热区补到约 48dp（可达性下限），字号与视觉不变
+                        .padding(vertical = 14.dp),
                 )
                 Spacer(Modifier.size(8.dp))
                 Text(
@@ -481,7 +484,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                             }
                             showSort = false
                         }
-                        .padding(vertical = 10.dp),
+                        // 热区补到约 48dp（可达性下限），字号与视觉不变
+                        .padding(vertical = 14.dp),
                 )
             }
         }
@@ -547,7 +551,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                         exitSelect()
                                     }
                                 }
-                                .padding(vertical = 10.dp),
+                                // 目标列表项热区补到约 48dp（可达性下限），字号与视觉不变
+                                .padding(vertical = 14.dp),
                         )
                     }
                 }

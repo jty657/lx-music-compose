@@ -641,7 +641,8 @@ fun SettingScreen(
                                 viewModel.setTimeoutExit(min)
                                 showTimeoutExit = false
                             }
-                            .padding(vertical = 10.dp),
+                            // 纯文字选项热区补到约 48dp（与搜索页/不喜欢列表同类项一致），字号不变
+                            .padding(vertical = 14.dp),
                     )
                 }
                 if (timeoutRemaining > 0) {
@@ -655,7 +656,8 @@ fun SettingScreen(
                                 viewModel.setTimeoutExit(0)
                                 showTimeoutExit = false
                             }
-                            .padding(vertical = 10.dp),
+                            // 同上：热区补到约 48dp
+                            .padding(vertical = 14.dp),
                     )
                 }
             }

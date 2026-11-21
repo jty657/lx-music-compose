@@ -264,7 +264,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                             .padding(start = 8.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { viewModel.next() }
-                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                            // 纯文字按钮热区补到约 48dp（可达性下限），字号与视觉不变
+                            .padding(horizontal = 8.dp, vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
