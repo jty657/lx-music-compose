@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -108,7 +110,15 @@ private fun Bar(scale: Float, color: Color) {
     Box(
         Modifier
             .width(BarWidth)
-            .height(BarHeight * scale)
+            // 固定布局高度，律动只改 transform 的 scaleY：每帧只走绘制层，
+            // 不再因 height 变化触发 measure/layout（队列滚动时可避免整行重排）。
+            // transformOrigin 设在底边，与外层 Row 的 Bottom 对齐配合，
+            // 视觉与原先的 height 缩放一致（从底部向上起伏）。
+            .height(BarHeight)
+            .graphicsLayer {
+                scaleY = scale
+                transformOrigin = TransformOrigin(0.5f, 1f)
+            }
             .clip(RoundedCornerShape(1.5.dp))
             .background(color),
     )
