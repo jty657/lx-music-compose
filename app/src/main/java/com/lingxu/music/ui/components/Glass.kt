@@ -301,9 +301,18 @@ fun GlassDialog(
         ) {
             AnimatedVisibility(
                 visible = shown && !closing,
-                enter = fadeIn(tween(MotionFastMs)) +
-                    scaleIn(initialScale = 0.94f, animationSpec = Motion.emphasized()),
-                exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.96f, animationSpec = tween(120)),
+                // 减弱动效下：淡入淡出时长归零 + 缩放幅度归零（1f→1f 视觉静止），
+                // 与窗口 alpha、scrim、关闭延迟的 noAnim 处理保持一致，面板直接到位不播动画。
+                enter = fadeIn(tween(if (noAnim) 0 else MotionFastMs)) +
+                    scaleIn(
+                        initialScale = if (noAnim) 1f else 0.94f,
+                        animationSpec = Motion.emphasized(),
+                    ),
+                exit = fadeOut(tween(if (noAnim) 0 else 100)) +
+                    scaleOut(
+                        targetScale = if (noAnim) 1f else 0.96f,
+                        animationSpec = tween(if (noAnim) 0 else 120),
+                    ),
             ) {
                 Box(
                     modifier = modifier

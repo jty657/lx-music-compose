@@ -263,7 +263,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                     Box(
                         Modifier
                             .padding(start = 8.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(Dimens.CornerS))
                             .clickable { viewModel.next() }
                             // 纯文字按钮热区补到约 48dp（可达性下限），字号与视觉不变
                             .padding(horizontal = 8.dp, vertical = 14.dp),
@@ -410,8 +410,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         androidx.compose.animation.AnimatedVisibility(
                             visible = canScrollForward,
                             modifier = Modifier.align(Alignment.CenterEnd),
-                            enter = fadeIn(tween(MotionFastMs)),
-                            exit = fadeOut(tween(MotionFastMs)),
+                            enter = fadeIn(tween(if (reduceMotion) 0 else MotionFastMs)),
+                            exit = fadeOut(tween(if (reduceMotion) 0 else MotionFastMs)),
                         ) {
                             Box(
                                 Modifier
@@ -550,7 +550,7 @@ private fun LyricView(
                 slideOutVertically(tween(if (reduceMotion) 0 else 120)) { it / 2 },
         ) {
             GlassSurface(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(Dimens.CardCorner),
                 onClick = { followCurrent = true },
             ) {
                 Text(
