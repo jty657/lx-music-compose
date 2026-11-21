@@ -103,6 +103,13 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                 GlassSurface(
                     // animateItem：上移/下移/移除时条目平滑让位，而不是瞬移
                     modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
+                    // 当前曲目整卡用主色淡染 + 主色描边（对应原版播放列表的「正在播放」底色），
+                    // 此前只把歌名染成主色，一行里 3 个元素都是黑色文字，扫视时很难定位。
+                    tint = if (index == currentIndex) {
+                        MiuixTheme.colorScheme.primary.copy(alpha = 0.10f)
+                    } else {
+                        null
+                    },
                     onClick = { viewModel.playAt(index) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {

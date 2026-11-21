@@ -14,9 +14,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.offset
@@ -334,16 +337,34 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    // 播放模式：热区加大到 40dp 高，提升点按命中率
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 播放模式：5 个长文案（「列表循环播放」「禁用歌曲切换」…）横排总宽明显超过屏宽，
+                    // 原先的固定 Row 没有滚动容器，窄屏/大字号下末尾两项会被父级裁掉、根本选不到。
+                    // 这里改为横向可滚动，并给选中项加主色胶囊底：选中态不再只靠文字颜色区分。
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                    ) {
                         PlayMode.ALL.forEach { mode ->
+                            val selected = state.playMode == mode
+                            // 选中态底色随模式切换渐变，而不是硬切（180ms）
+                            val modeBg by animateColorAsState(
+                                targetValue = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.14f)
+                                else androidx.compose.ui.graphics.Color.Transparent,
+                                animationSpec = tween(durationMillis = 180),
+                                label = "modeBg",
+                            )
                             Text(
                                 PlayMode.label(mode),
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(modeBg)
                                     .clickable { viewModel.setMode(mode) }
-                                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                                color = if (state.playMode == mode) MiuixTheme.colorScheme.primary
+                                    // 纵向 11dp + 文字高度 ≈ 44dp，命中率不低于系统建议下限
+                                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                                color = if (selected) MiuixTheme.colorScheme.primary
                                 else MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                             )

@@ -1,27 +1,33 @@
 package com.lingxu.music.ui.screens.home
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.Board
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.navigation.LocalNavigator
@@ -46,12 +52,14 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val apiSource by LxApp.app.settings.apiSource.collectAsState(initial = "")
     LaunchedEffect(apiSource) { viewModel.refresh() }
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        // 音源入口
+        // 音源入口：主页唯一的「作用域级」入口，用主色淡染区分于下方并列的两张功能卡，
+        // 否则三张卡材质完全一致，扫视时看不出主次（原版首页也是音源区最重）。
         GlassSurface(
             modifier = Modifier.fillMaxWidth(),
+            tint = MiuixTheme.colorScheme.primary.copy(alpha = 0.08f),
             onClick = { navigator.push(Screen.Source) },
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(14.dp)) {
                 IconWrap(MiuixIcons.File)
                 Column(Modifier.padding(start = 12.dp)) {
                     Text("音源管理", fontSize = MiuixTheme.textStyles.main.fontSize)
@@ -152,17 +160,22 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         // 与榜单详情、歌单详情的加载提示保持一致。
         if (boards.isEmpty()) {
             when {
-                viewModel.loading -> Text(
-                    "正在加载榜单…",
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                )
+                // 加载中：给 3 个与真实卡片同高的骨架块（静态半透明，不做闪烁动画），
+                // 既占住版面避免「空白 → 突然出现列表」的跳变，也不会在低端机上多一份逐帧绘制。
+                viewModel.loading -> Column(Modifier.fillMaxWidth()) {
+                    repeat(3) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f)),
+                        )
+                    }
+                }
                 viewModel.error != null -> RetryHint(text = "加载失败，点击重试", onClick = { viewModel.loadBoards() })
-                else -> Text(
-                    "暂无榜单",
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                )
+                else -> EmptyHint(icon = MiuixIcons.Music, text = "暂无榜单")
             }
         }
         val boardState = rememberLazyListState()
