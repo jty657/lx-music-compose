@@ -141,10 +141,12 @@ fun TrackCover(
     }
     val bitmap = rememberCoverBitmap(url, targetPx)
     val image = remember(bitmap) { bitmap?.asImageBitmap() }
-    // 图片就绪后淡入，避免占位色块直接硬切成图
+    // 减弱动效时初值即为「已显示」，避免占位音符先透明再淡入的过渡闪烁
+    val reduceMotion = com.lingxu.music.ui.theme.LocalReduceMotion.current
+    // 图片就绪后淡入，避免占位色块直接硬切成图；减弱动效时瞬时到位
     val alpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (image != null) 1f else 0f,
-        animationSpec = androidx.compose.animation.core.tween(180),
+        targetValue = if (image != null || reduceMotion) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(if (reduceMotion) 0 else 180),
         label = "coverAlpha",
     )
     Box(

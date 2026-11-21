@@ -47,6 +47,7 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -65,6 +66,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     val lists by viewModel.lists.collectAsState()
     val scope = rememberCoroutineScope()
+    val reduceMotion = LocalReduceMotion.current
 
     var showCreate by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
@@ -303,11 +305,14 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
             }
 
             // 多选操作栏：进入/退出多选时淡入并展开，避免底栏突然把列表顶短一截；
-            // 窄屏 + 大字号下 4 个按钮会挤出屏幕，横向可滚动保证「移除」始终可达
+            // 窄屏 + 大字号下 4 个按钮会挤出屏幕，横向可滚动保证「移除」始终可达。
+            // 减弱动效时淡入与展开都瞬时到位，避免高度变化干扰前庭敏感用户。
             AnimatedVisibility(
                 visible = selectMode,
-                enter = fadeIn(tween(160)) + expandVertically(tween(200)),
-                exit = fadeOut(tween(120)) + shrinkVertically(tween(160)),
+                enter = fadeIn(tween(if (reduceMotion) 0 else 160)) +
+                    expandVertically(tween(if (reduceMotion) 0 else 200)),
+                exit = fadeOut(tween(if (reduceMotion) 0 else 120)) +
+                    shrinkVertically(tween(if (reduceMotion) 0 else 160)),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

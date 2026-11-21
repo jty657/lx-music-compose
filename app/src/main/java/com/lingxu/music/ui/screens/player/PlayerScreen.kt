@@ -534,13 +534,16 @@ private fun LyricView(
         // 手动回看时浮出「回到当前歌词」入口，点击后恢复自动跟随并把当前行滑回居中。
         // 放在 LazyColumn 之后（BoxWithConstraints 内叠层），不占用列表布局、不遮挡歌词。
         // 用 AnimatedVisibility 淡入上浮，避免回看时按钮突然出现打断阅读。
+        // 减弱动效时淡入与位移都瞬时到位，避免按钮上浮干扰前庭敏感用户。
         AnimatedVisibility(
             visible = !followCurrent && currentIndex >= 0,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 10.dp),
-            enter = fadeIn(tween(180)) + slideInVertically { it / 2 },
-            exit = fadeOut(tween(120)) + slideOutVertically { it / 2 },
+            enter = fadeIn(tween(if (reduceMotion) 0 else 180)) +
+                slideInVertically(tween(if (reduceMotion) 0 else 180)) { it / 2 },
+            exit = fadeOut(tween(if (reduceMotion) 0 else 120)) +
+                slideOutVertically(tween(if (reduceMotion) 0 else 120)) { it / 2 },
         ) {
             GlassSurface(
                 shape = RoundedCornerShape(20.dp),
