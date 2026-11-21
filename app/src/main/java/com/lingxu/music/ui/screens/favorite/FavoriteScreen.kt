@@ -92,6 +92,7 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             items(favorites, key = { it.id }) { music ->
                 FavoriteCard(
+                    modifier = Modifier.animateItem(),
                     music = music,
                     onPlay = {
                         scope.launch { viewModel.play(music) }
@@ -172,9 +173,10 @@ private fun FavoriteCard(
     showSource: Boolean = true,
     showInterval: Boolean = true,
     showAlbumName: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     GlassSurface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         onClick = onPlay,

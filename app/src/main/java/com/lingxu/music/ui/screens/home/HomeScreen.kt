@@ -170,7 +170,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         LazyColumn(Modifier.weight(if (showHot) 0.6f else 1f), state = boardState) {
                 items(boards, key = { it.id }) { board ->
                     GlassSurface(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
                         onClick = {
                             val (source, bangId, name) = viewModel.boardTarget(board)
                             navigator.push(Screen.BoardList(source, bangId, name))

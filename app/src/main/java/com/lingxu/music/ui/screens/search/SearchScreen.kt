@@ -228,7 +228,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             LazyColumn(state = songListState, modifier = Modifier.weight(1f)) {
                 items(songLists, key = { "${it.source}_${it.id}" }) { item ->
                     GlassSurface(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
                         onClick = {
                             navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                         },
@@ -314,6 +314,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         LazyColumn(state = resultState, modifier = Modifier.weight(1f)) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
+                    modifier = Modifier.animateItem(),
                     music = music,
                     isFavorite = music.id in viewModel.favoriteIds,
                     onClick = {
@@ -353,9 +354,10 @@ private fun SearchResultCard(
     isFavorite: Boolean,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     GlassSurface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         onClick = onClick,

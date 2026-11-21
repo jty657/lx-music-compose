@@ -1,6 +1,13 @@
 package com.lingxu.music.ui.screens.mylist
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +21,7 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -228,7 +236,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 items(shownMusics, key = { it.id }) { music ->
                     val checked = music.id in selected
                     GlassSurface(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
                         onClick = {
                             if (selectMode) {
                                 selected = if (checked) selected - music.id else selected + music.id
@@ -284,11 +292,19 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 }
             }
 
-            // 多选操作栏
-            if (selectMode) {
+            // 多选操作栏：进入/退出多选时淡入并展开，避免底栏突然把列表顶短一截；
+            // 窄屏 + 大字号下 4 个按钮会挤出屏幕，横向可滚动保证「移除」始终可达
+            AnimatedVisibility(
+                visible = selectMode,
+                enter = fadeIn(tween(160)) + expandVertically(tween(200)),
+                exit = fadeOut(tween(120)) + shrinkVertically(tween(160)),
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(top = 8.dp),
                 ) {
                     Button(onClick = {
                         selected = if (selected.size == shownMusics.size) emptySet()
@@ -565,7 +581,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
     ) {
         items(lists, key = { it.id }) { list ->
             GlassSurface(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
                 onClick = { onOpen(list) },
                 onLongClick = { onRename(list) },
             ) {

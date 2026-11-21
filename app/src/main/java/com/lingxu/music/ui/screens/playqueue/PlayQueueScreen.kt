@@ -33,6 +33,7 @@ import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.PlayingIndicator
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
@@ -100,16 +101,25 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
             // key 只用稳定的歌曲 id：带上 index 会在排序/移除后导致整表重组与封面重载
             itemsIndexed(queue, key = { _, item -> item.id }) { index, music ->
                 GlassSurface(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    // animateItem：上移/下移/移除时条目平滑让位，而不是瞬移
+                    modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
                     onClick = { viewModel.playAt(index) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                        Icon(
-                            MiuixIcons.Play,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = if (index == currentIndex) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
+                        if (index == currentIndex) {
+                            // 当前曲目：三条律动音柱（暂停时静帧），比单纯染色更易识别
+                            PlayingIndicator(
+                                playing = state.isPlaying,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        } else {
+                            Icon(
+                                MiuixIcons.Play,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            )
+                        }
                         Spacer(Modifier.size(10.dp))
                         TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
                         Spacer(Modifier.size(10.dp))

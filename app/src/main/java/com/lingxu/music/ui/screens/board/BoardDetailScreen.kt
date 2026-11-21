@@ -197,6 +197,7 @@ fun BoardDetailScreen(
                 GlassSurface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateItem()
                         .padding(vertical = 4.dp),
                     onClick = { viewModel.play(musicList, music) },
                 ) {
