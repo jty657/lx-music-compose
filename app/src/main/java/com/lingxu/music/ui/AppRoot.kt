@@ -474,7 +474,9 @@ private fun MiniBarAction(
         // 与播放页一致：播放/暂停图标淡入淡出，不硬切
         androidx.compose.animation.Crossfade(
             targetState = icon,
-            animationSpec = tween(durationMillis = 180),
+            // 减弱动效下图标瞬时切换：Crossfade 是纯装饰性淡入淡出，
+            // 与同函数按压缩放、播放页封面/文字入场的静帧降级保持一致。
+            animationSpec = tween(durationMillis = if (reduceMotion) 0 else 180),
             label = "miniBarIcon",
         ) { shownIcon ->
             Icon(shownIcon, contentDescription = description, modifier = Modifier.size(iconSize))

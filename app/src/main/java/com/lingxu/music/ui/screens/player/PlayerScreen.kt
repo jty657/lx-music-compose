@@ -681,7 +681,8 @@ private fun PlayerIconButton(
         // 播放/暂停图标淡入淡出切换，避免同一位置硬切造成「闪一下」
         Crossfade(
             targetState = icon,
-            animationSpec = tween(durationMillis = 180),
+            // 减弱动效下瞬时切换（静帧降级）；图标淡变是纯装饰，不需要保留
+            animationSpec = tween(durationMillis = if (reduceMotion) 0 else 180),
             label = "playerIcon",
         ) { shownIcon ->
             Icon(shownIcon, contentDescription = contentDescription, modifier = Modifier.size(size))
@@ -712,7 +713,8 @@ private fun PlayerMainButton(playing: Boolean, onClick: () -> Unit) {
         } else {
             MiuixTheme.colorScheme.primary
         },
-        animationSpec = tween(durationMillis = 160),
+        // 减弱动效下底色瞬时到位，与同函数按压缩放的静帧降级保持一致
+        animationSpec = tween(durationMillis = if (reduceMotion) 0 else 160),
         label = "mainBtnBg",
     )
     Box(
@@ -733,7 +735,8 @@ private fun PlayerMainButton(playing: Boolean, onClick: () -> Unit) {
     ) {
         Crossfade(
             targetState = playing,
-            animationSpec = tween(durationMillis = 180),
+            // 减弱动效下瞬时切换（静帧降级），与主键缩放/底色的降级一致
+            animationSpec = tween(durationMillis = if (reduceMotion) 0 else 180),
             label = "mainBtnIcon",
         ) { isPlaying ->
             Icon(
