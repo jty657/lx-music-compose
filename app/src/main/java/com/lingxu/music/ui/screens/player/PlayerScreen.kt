@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -387,10 +388,12 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                                     PlayMode.label(mode),
                                     // 胶囊形：与搜索页的筛选 chip 保持同一形态语言
                                     modifier = Modifier
+                                        // 命中区兜底 48dp：11dp padding 时文字高约 44dp，未达 Material 建议下限；
+                                        // 与 FilterChip/RetryHint 一致，视觉仍是紧凑胶囊
+                                        .minimumInteractiveComponentSize()
                                         .clip(RoundedCornerShape(Dimens.CornerM))
                                         .background(modeBg)
                                         .clickable { viewModel.setMode(mode) }
-                                        // 纵向 11dp + 文字高度 ≈ 44dp，命中率不低于系统建议下限
                                         .padding(horizontal = 12.dp, vertical = 11.dp),
                                     color = if (selected) MiuixTheme.colorScheme.primary
                                     else MiuixTheme.colorScheme.onSurfaceVariantSummary,
