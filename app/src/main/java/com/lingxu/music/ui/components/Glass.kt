@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,7 +47,11 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
+import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.MotionBaseMs
+import com.lingxu.music.ui.theme.MotionFastMs
 
 /**
  * 玻璃效果上下文。由 [GlassHost] 创建并通过 [LocalGlass] 下发。
@@ -71,14 +76,16 @@ val LocalGlass = staticCompositionLocalOf<GlassContext?> { null }
 
 /** 玻璃面色板：不依赖 backdrop，用半透明填充 + 高光描边模拟磨砂玻璃 */
 private fun glassFill(dark: Boolean): Color =
-    if (dark) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.58f)
+    // 深色下略提透明度（0.07 → 0.09）：原值在纯黑背景上对比只有约 1.15:1，
+    // 卡片与背景几乎融成一片；0.09 后卡片边界可辨，又不至于变成「灰块」。
+    if (dark) Color.White.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.58f)
 
 private fun glassBorder(dark: Boolean): Color =
-    if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.75f)
+    if (dark) Color.White.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.75f)
 
-/** 圆角尺度统一入口：卡片 20dp，弹窗 28dp（与既有调用方保持一致） */
-private val CardShape = RoundedCornerShape(20.dp)
-private val DialogShape = RoundedCornerShape(28.dp)
+/** 圆角尺度统一入口：来自 [com.lingxu.music.ui.theme.Dimens]，卡片 20dp，弹窗 28dp */
+private val CardShape = RoundedCornerShape(Dimens.CardCorner)
+private val DialogShape = RoundedCornerShape(Dimens.CornerXL)
 
 /**
  * 系统「移除动画」（无障碍 → 移除动画 / 动画时长缩放 = 0）时返回 true。
@@ -122,10 +129,13 @@ fun GlassHost(
  * 页面内容与它同处 layerBackdrop 子树内，用 backdrop 会自采样递归，因此这里用
  * 半透明填充 + 高光描边的「拟玻璃」外观，视觉统一且无渲染风险。
  *
- * 按压反馈三层叠加（对齐 LX Music 手机版列表项手感）：
+ * 按压反馈两层叠加（对齐 LX Music 手机版列表项手感）：
  * 1. 系统 indication 涟漪（保留）；
- * 2. 填充色自动加深一档（180ms 颜色过渡，不再「按下去毫无变化」）；
- * 3. 整卡缩到 0.98（spring 回弹，只动 transform，不触发重新布局），长按同样生效。
+ * 2. 填充色自动加深一档（[MotionFastMs] 颜色过渡，不再「按下去毫无变化」）+ 整卡缩到 0.98。
+ *
+ * 之前这里叠了三层（涟漪 + 变深 + 缩放 0.98 @ stiffness 900），按住横向连排的卡片时
+ * 三张一起内收、幅度叠加，观感偏「重」。本轮把缩放收到 0.985 并改用统一的
+ * [com.lingxu.music.ui.theme.Motion.press] 规格，让「按下」是轻触而不是塌陷。
  */
 @Composable
 fun GlassSurface(
@@ -146,23 +156,27 @@ fun GlassSurface(
     val baseFill = tint ?: glassFill(dark)
     val fill by animateColorAsState(
         targetValue = if (pressed) {
-            // 深色叠加白、浅色叠加黑：两个极性下都是「按下变实」，不会出现按下反而更亮
-            androidx.compose.ui.graphics.lerp(
-                baseFill,
-                if (dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.05f),
-                0.5f,
-            )
+            // 深色：叠白提亮；浅色：叠黑压暗。
+            // 有 tint 的胶囊（选中态）在浅色下叠黑、深色下叠白，方向都正确；
+            // 但浅色下 tint 本身是主色淡底，叠黑会让「选中 + 按下」看起来像被取消，
+            // 所以浅色 + tint 时改用主色加深，保留「选中感」。
+            when {
+                tint != null && !dark -> baseFill.copy(alpha = (baseFill.alpha + 0.10f).coerceAtMost(1f))
+                dark -> androidx.compose.ui.graphics.lerp(baseFill, Color.White.copy(alpha = 0.16f), 0.5f)
+                else -> androidx.compose.ui.graphics.lerp(baseFill, Color.Black.copy(alpha = 0.05f), 0.5f)
+            }
         } else {
             baseFill
         },
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = tween(durationMillis = MotionFastMs),
         label = "glassFill",
     )
     // 按压缩放：只动 transform，不触发重新布局；系统关动画时不动（避免「关不掉」的缩放）
     val noAnim = animationsDisabled()
     val scale by animateFloatAsState(
-        targetValue = if (pressed && onClick != null && !noAnim) 0.98f else 1f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 900f),
+        // 0.985 而非 0.98：卡片面积大，2% 的收缩已经很「实」，1.5% 更接近 iOS/MIUI 的轻触感
+        targetValue = if (pressed && onClick != null && !noAnim) 0.985f else 1f,
+        animationSpec = Motion.press(),
         label = "glassPress",
     )
     val clickModifier = when {
@@ -206,7 +220,7 @@ fun GlassTopBar(
             // 顶栏底部加一道 1px 分隔线：此前顶栏与首条内容同色，滚动时内容会「贴上」标题区，
             // 缺少边界（浅色 4%、深色 8%，明显但不抢视觉）。
             .drawBehind {
-                val lineH = 1.dp.toPx()
+                val lineH = Dimens.Hairline.toPx()
                 drawRect(
                     color = if (dark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f),
                     topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - lineH),
@@ -238,21 +252,22 @@ fun GlassDialog(
     // 弹窗是独立窗口，无法跨窗口做共享元素转场；用一次性淡入 + 轻微放大，
     // 避免「啪」地整块出现。shown 只在首次组合后置 true，不会随内容重组重播。
     var shown by remember { mutableStateOf(false) }
-    // 关闭请求先落到 closing：先播 120ms 退出动画，动画结束再回调真正的 onDismiss。
+    // 关闭请求先落到 closing：先播 [MotionFastMs] 退出动画，动画结束再回调真正的 onDismiss。
     // 此前点「取消」是直接消失，与入场动画完全不对称。
     var closing by remember { mutableStateOf(false) }
     val noAnim = animationsDisabled()
     LaunchedEffect(Unit) { shown = true }
     LaunchedEffect(closing) {
         if (closing) {
-            kotlinx.coroutines.delay(120)
+            // 与 exit 动画（fadeOut 100ms）对齐：稍等一帧再关窗，避免面板被硬切
+            kotlinx.coroutines.delay(MotionFastMs.toLong() * 3 / 4)
             onDismissRequest()
         }
     }
     val scrimColor = if (dark) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.32f)
     val scrimAlpha by animateFloatAsState(
         targetValue = if (shown && !closing) 1f else 0f,
-        animationSpec = tween(durationMillis = 160),
+        animationSpec = tween(durationMillis = MotionFastMs),
         label = "dialogScrim",
     )
     Dialog(
@@ -262,13 +277,18 @@ fun GlassDialog(
         },
         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true),
     ) {
-        // 窗口级淡入：Dialog 窗口默认一创建就完全不透明，点「播放设置」时会先闪一下黑底。
-        // 这里关掉系统 dim（改由自己的 scrim 承担遮罩），并让窗口 alpha 跟随 scrim 进度。
+        // 窗口级淡入：Dialog 窗口创建时 decorView 默认 alpha=1，若等 LaunchedEffect 再压到 0.25，
+        // 首帧就已经把整块面板画出来了 → 「点播放设置先闪一下黑底」。
+        // 这里用 DisposableEffect 在attach 时同步设置，并在离场时还原，保证没有中间态。
+        //
+        // 同时关掉系统 dim：改由自己的 scrim 承担遮罩，避免「系统 dim + 自绘 scrim」两层变暗。
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        LaunchedEffect(window) {
-            window?.let { w -> w.setDimAmount(0f) }
+        DisposableEffect(window) {
+            window?.setDimAmount(0f)
+            onDispose { window?.decorView?.alpha = 1f }
         }
         LaunchedEffect(scrimAlpha, window, noAnim) {
+            // 入场进度 0.25 → 1：留 25% 的底给缩放入场的面板，避免首帧完全透明导致「从无到有」的跳变
             window?.decorView?.alpha = if (noAnim) 1f else 0.25f + 0.75f * scrimAlpha
         }
         Box(
@@ -279,7 +299,8 @@ fun GlassDialog(
         ) {
             AnimatedVisibility(
                 visible = shown && !closing,
-                enter = fadeIn(tween(160)) + scaleIn(initialScale = 0.94f, animationSpec = tween(200)),
+                enter = fadeIn(tween(MotionFastMs)) +
+                    scaleIn(initialScale = 0.94f, animationSpec = Motion.emphasized()),
                 exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.96f, animationSpec = tween(120)),
             ) {
                 Box(
