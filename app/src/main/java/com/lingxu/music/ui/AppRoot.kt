@@ -450,8 +450,10 @@ private fun MiniBarAction(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    // 与全站一致：系统要求减弱动效时按压缩放退化为静帧，只保留点击热区与 Crossfade 图标切换。
+    val reduceMotion = LocalReduceMotion.current
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.86f else 1f,
+        targetValue = if (pressed && !reduceMotion) 0.86f else 1f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
         label = "miniBarPress",
     )

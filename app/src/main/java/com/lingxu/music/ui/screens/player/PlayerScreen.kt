@@ -134,16 +134,18 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
             // 切歌时封面淡入 + 轻微缩放，给「换了一首」一个明确的视觉反馈；
             // 用 id 做键，同一首歌刷新封面（如搜索结果 picUrl -> 兜底大图）不会闪一下
             key(state.current?.id) {
-                var coverShown by remember { mutableStateOf(false) }
+                // 减弱动效时初值即为「已显示」，避免首帧先把封面压到透明/缩小再弹回的闪烁
+                var coverShown by remember { mutableStateOf(reduceMotion) }
                 LaunchedEffect(Unit) { coverShown = true }
+                val coverDuration = if (reduceMotion) 0 else 260
                 val coverAlpha by animateFloatAsState(
                     targetValue = if (coverShown) 1f else 0f,
-                    animationSpec = tween(durationMillis = 260),
+                    animationSpec = tween(durationMillis = coverDuration),
                     label = "coverAlpha",
                 )
                 val coverScale by animateFloatAsState(
                     targetValue = if (coverShown) 1f else 0.94f,
-                    animationSpec = tween(durationMillis = 260),
+                    animationSpec = tween(durationMillis = coverDuration),
                     label = "coverScale",
                 )
                 // 播放中封面缓慢呼吸（±1.5%），暂停时用有限动画平滑停在 1.0。
@@ -188,16 +190,19 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
             // 歌名/歌手：切歌时轻微上移淡入，和封面一起构成一组过渡
             key(state.current?.id) {
-                var textShown by remember { mutableStateOf(false) }
+                // 同封面：减弱动效时直接呈现最终态，去掉入场位移与延迟
+                var textShown by remember { mutableStateOf(reduceMotion) }
                 LaunchedEffect(Unit) { textShown = true }
+                val textDuration = if (reduceMotion) 0 else 260
+                val textDelay = if (reduceMotion) 0 else 40
                 val textAlpha by animateFloatAsState(
                     targetValue = if (textShown) 1f else 0f,
-                    animationSpec = tween(durationMillis = 260, delayMillis = 40),
+                    animationSpec = tween(durationMillis = textDuration, delayMillis = textDelay),
                     label = "textAlpha",
                 )
                 val textOffsetY by animateDpAsState(
                     targetValue = if (textShown) 0.dp else 10.dp,
-                    animationSpec = tween(durationMillis = 260, delayMillis = 40),
+                    animationSpec = tween(durationMillis = textDuration, delayMillis = textDelay),
                     label = "textOffsetY",
                 )
                 Column(
@@ -625,11 +630,13 @@ private fun PlayerIconButton(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
-    // Miuix 的 Icon 没有按压态，这里自己做：按下缩到 0.88，松手弹回，给按钮明确的触感
+    // Miuix 的 Icon 没有按压态，这里自己做：按下缩到 0.88，松手弹回，给按钮明确的触感。
+    // 与 PlayerMainButton / BackIconButton 一致：减弱动效时退化为静帧，不做缩放。
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.88f else 1f,
+        targetValue = if (pressed && !reduceMotion) 0.88f else 1f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
         label = "btnScale",
     )
