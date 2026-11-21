@@ -381,7 +381,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                                 val modeBg by animateColorAsState(
                                     targetValue = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.14f)
                                     else androidx.compose.ui.graphics.Color.Transparent,
-                                    animationSpec = tween(durationMillis = MotionFastMs),
+                                    // 减弱动效下选中底色瞬时到位，与同一 Box 内渐隐提示（下方
+                                    // canScrollForward 的 fadeIn/fadeOut）的降级保持一致。
+                                    animationSpec = tween(durationMillis = if (reduceMotion) 0 else MotionFastMs),
                                     label = "modeBg",
                                 )
                                 Text(
