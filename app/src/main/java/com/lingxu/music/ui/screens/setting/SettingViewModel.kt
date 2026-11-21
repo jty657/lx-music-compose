@@ -3,6 +3,7 @@ package com.lingxu.music.ui.screens.setting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lingxu.music.LxApp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -102,25 +103,30 @@ class SettingViewModel : ViewModel() {
     }
 
     /**
-     * 检查更新：返回版本名与更新日志。
+     * 检查更新：返回版本名、更新日志与下载地址。
      * 结果通过回调交给 UI，避免 ViewModel 持有 Activity 上下文。
      */
-    fun checkUpdate(currentVersion: String, onResult: (String, String) -> Unit) {
-        viewModelScope.launch {
+    private var updateJob: Job? = null
+
+    fun checkUpdate(currentVersion: String, onResult: (title: String, body: String, downloadUrl: String) -> Unit) {
+        // 连点时取消上一次在途请求：否则多个请求并发，先返回的旧结果可能覆盖后一次，
+        // 且 UI 会在已有结果后又被迟到的响应改写。
+        updateJob?.cancel()
+        updateJob = viewModelScope.launch {
             val latest = runCatching { LxApp.app.updateRepository.checkLatest() }.getOrNull()
             if (latest == null) {
-                onResult("检查失败", "无法连接更新源，请稍后重试")
+                onResult("检查失败", "无法连接更新源，请稍后重试", "")
                 return@launch
             }
             if (com.lingxu.music.core.repository.UpdateRepository.compareVersion(
                     latest.versionName, currentVersion
                 ) <= 0
             ) {
-                onResult("已是最新版本", "当前版本 $currentVersion")
+                onResult("已是最新版本", "当前版本 $currentVersion", "")
                 return@launch
             }
             val log = latest.changelog.ifBlank { "发现新版本 ${latest.versionName}" }
-            onResult("发现新版本 ${latest.versionName}", log)
+            onResult("发现新版本 ${latest.versionName}", log, latest.downloadUrl)
         }
     }
 

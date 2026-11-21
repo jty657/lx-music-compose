@@ -52,6 +52,7 @@ fun SettingScreen(
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateTitle by remember { mutableStateOf("") }
     var updateBody by remember { mutableStateOf("") }
+    var updateUrl by remember { mutableStateOf("") }
     var updateChecking by remember { mutableStateOf(false) }
 
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -443,12 +444,14 @@ fun SettingScreen(
                 showUpdateDialog = true
                 updateTitle = "检查更新中…"
                 updateBody = "正在连接更新源"
+                updateUrl = ""
                 val current = runCatching {
                     ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
                 }.getOrNull() ?: ""
-                viewModel.checkUpdate(current) { title, body ->
+                viewModel.checkUpdate(current) { title, body, url ->
                     updateTitle = title
                     updateBody = body
+                    updateUrl = url
                     updateChecking = false
                 }
             },
@@ -507,6 +510,7 @@ fun SettingScreen(
         }
     }
     if (showUpdateDialog) {
+        val updateCtx = androidx.compose.ui.platform.LocalContext.current
         GlassDialog(onDismissRequest = { showUpdateDialog = false }) {
             Column(Modifier.padding(horizontal = 4.dp)) {
                 Text(updateTitle, fontSize = MiuixTheme.textStyles.title1.fontSize)
@@ -515,6 +519,22 @@ fun SettingScreen(
                 Spacer(Modifier.size(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     if (!updateChecking) {
+                        // 发现新版本且拿到下载地址时给出直达入口；此前只显示一句「好」，
+                        // 用户即便知道有新版本也无从下载。
+                        if (updateUrl.isNotBlank()) {
+                            Button(onClick = {
+                                runCatching {
+                                    updateCtx.startActivity(
+                                        android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(updateUrl),
+                                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                                showUpdateDialog = false
+                            }) { Text("前往下载") }
+                            Spacer(Modifier.size(8.dp))
+                        }
                         Button(onClick = { showUpdateDialog = false }) { Text("好") }
                     }
                 }
