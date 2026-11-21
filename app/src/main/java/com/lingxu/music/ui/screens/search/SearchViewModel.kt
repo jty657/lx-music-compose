@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** 搜索类型：音乐 / 歌单（对应原版 search.type） */
@@ -120,7 +121,11 @@ class SearchViewModel : ViewModel() {
     }
 
     private suspend fun recordHistory(text: String) {
-        val next = (listOf(text) + history.filterNot { it == text }).take(30)
+        // 对齐原版 core/search/search.ts addHistoryWord：未开启「显示搜索历史」时不记录，
+        // 避免用户在设置里关掉后仍被悄悄保存。
+        if (!LxApp.app.settings.isShowHistorySearch.first()) return
+        // 原版历史上限 15 条（store/search/action.ts：长度 >= 15 时截断到 14 再 unshift）
+        val next = (listOf(text) + history.filterNot { it == text }).take(15)
         history = next
         LxApp.app.database.saveSearchHistory(next)
     }

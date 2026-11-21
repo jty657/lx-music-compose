@@ -62,21 +62,21 @@ class SettingViewModel : ViewModel() {
     }
 
     // ============ 歌词 ============
-    val showLyricTranslation: StateFlow<Boolean> = state(settings.showLyricTranslation, true)
+    val showLyricTranslation: StateFlow<Boolean> = state(settings.showLyricTranslation, false)
     val showLyricRoma: StateFlow<Boolean> = state(settings.showLyricRoma, false)
     val lyricAlign: StateFlow<String> = state(settings.lyricAlign, "left")
     val lyricFontSize: StateFlow<Float> = state(settings.lyricFontSize, 1f)
     val isZoomActiveLrc: StateFlow<Boolean> = state(settings.isZoomActiveLrc, false)
 
     // ============ 搜索 ============
-    val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, true)
-    val isShowHistorySearch: StateFlow<Boolean> = state(settings.isShowHistorySearch, true)
+    val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, false)
+    val isShowHistorySearch: StateFlow<Boolean> = state(settings.isShowHistorySearch, false)
 
     // ============ 列表 ============
     val isShowSource: StateFlow<Boolean> = state(settings.isShowSource, true)
     val isShowAlbumName: StateFlow<Boolean> = state(settings.isShowAlbumName, false)
     val isShowInterval: StateFlow<Boolean> = state(settings.isShowInterval, true)
-    val addMusicLocation: StateFlow<String> = state(settings.addMusicLocation, "bottom")
+    val addMusicLocation: StateFlow<String> = state(settings.addMusicLocation, "top")
 
     // ============ 液态玻璃 ============
     val blurEnabled: StateFlow<Boolean> = state(settings.blurEnabled, true)

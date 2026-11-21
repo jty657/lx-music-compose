@@ -2,7 +2,34 @@
 
 本项目为洛雪音乐 Compose 移植版「聆序」。以下记录基于对全部源码的系统审查所执行的优化与美化。
 
-## 第十三轮：更新检查可用性修复 + 下载入口（v1.4.2，本次）
+## 第十四轮：对照原版 lx-music-mobile v1.9.2 的行为对齐（v1.4.3，本次）
+
+> 本轮以 `lyswhut/lx-music-mobile`（v1.9.2）源码为基准逐模块核对，只改「与原版不一致」之处，不触碰 QuickJS 引擎、assets 脚本与音源协议。每项均标注原版出处。项目定位不变：**同时具备「在线」与「本地」功能的音乐播放器**。
+
+### 默认设置对齐（原版 `src/config/defaultSetting.ts`）
+- `list.addMusicLocationType` 默认 **`top`**：此前本项目默认 `bottom`，导致「添加到列表/收藏」落到末尾，与原版相反。
+- `player.isShowLyricTranslation` 默认 **`false`**：此前默认 `true`，新装用户会直接看到翻译歌词。
+- `search.isShowHotSearch` / `search.isShowHistorySearch` 默认 **`false`**：此前默认 `true`。
+- `SettingViewModel` 的 UI 初值同步，避免首帧显示与落盘值不一致。
+
+### 播放器语义对齐
+- **定时退出到点退出应用**（原版 `timeoutExit.exit()` → `exitApp`）：此前到点仅 `pause()`。现未开启「播完当前曲再退」时到点 `finishAffinity()` 退出应用；开启时仍等当前曲播完再停。
+- **「禁用歌曲切换」模式播完不切歌**（原版 `getNextPlayMusicInfo` 对 `none` 返回 null）：ExoPlayer 在 `REPEAT_MODE_OFF` 下会自动进入下一项，现回退到刚播完的曲目再暂停，不再「跳到下一首后暂停」。
+- **播放出错 5 秒后自动切下一首**（原版 `playerEvent.addDelayNextTimeout(5000)` 与 `player__error` 文案）：此前出错仅显示提示并卡在该曲。切歌/清空/释放会取消待执行的自动切歌。
+- **播放模式文案**（原版 `lang/zh-cn.json`）：列表循环播放 / 顺序播放 / 随机播放 / 单曲循环播放 / 禁用歌曲切换（第五项原版即「禁用歌曲切换」，并非「单曲播放」）。
+
+### 搜索与规则对齐
+- **搜索历史**：上限 30 → **15**（原版 `store/search/action.ts`）；未开启「显示搜索历史」时**不再记录**（原版 `addHistoryWord` 守卫）。
+- **不喜欢列表匹配忽略大小写**（原版 `utils/dislikeManage.ts` 统一 `toLocaleLowerCase`）：英文歌名大小写不同也能命中。
+
+### 已确认但本轮未改（高风险/大工程，列入后续）
+- 随机播放算法：原版为「每次随机（可重复）+ 记忆上一随机」，本项目用 ExoPlayer shuffle（体验相近、语义不同）。
+- 「稍后播放 / 播放历史 / 临时列表」：原版 `tempPlayList`、`playedList`、`LIST_IDS.TEMP`，本项目暂无。
+- 备份格式：原版为「列表数组 + 设置 + 不喜欢」结构，与本项目 JSON 不兼容，需专门做导入映射。
+- 主题系统、桌面歌词、下载、逐字歌词：原版独有的大功能，需分批移植。
+- 版本 1.4.2 → 1.4.3（versionCode 16 → 17）。
+
+## 第十三轮：更新检查可用性修复 + 下载入口（v1.4.2）
 
 > 项目定位不变：**同时具备「在线」与「本地」功能的音乐播放器**。本轮只改更新检查链路与设置页提示，不触碰 QuickJS 引擎、音源协议与 assets 脚本，在线/本地双模行为不受影响。全部 `.kt` 改动通过 `scripts/selfcheck.py` 自检，构建由 GitHub Actions 云端验证。
 

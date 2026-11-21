@@ -103,11 +103,16 @@ class DislikeRepository(private val context: Context) {
     }
 
     private fun matches(rule: String, name: String, singer: String): Boolean {
-        val sep = rule.indexOf('@')
+        // 对齐原版 utils/dislikeManage.ts：规则与歌曲名/歌手统一转小写后比较，
+        // 否则英文歌名「Hello」与规则「hello」会漏判（原版 toLocaleLowerCase 处理）。
+        val r = rule.lowercase()
+        val n = name.lowercase()
+        val s = singer.lowercase()
+        val sep = r.indexOf('@')
         return when {
-            sep < 0 -> name == rule
-            sep == 0 -> singer == rule.substring(1)
-            else -> name == rule.substring(0, sep) && singer == rule.substring(sep + 1)
+            sep < 0 -> n == r
+            sep == 0 -> s == r.substring(1)
+            else -> n == r.substring(0, sep) && s == r.substring(sep + 1)
         }
     }
 }

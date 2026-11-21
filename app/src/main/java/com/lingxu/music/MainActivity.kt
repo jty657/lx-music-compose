@@ -29,6 +29,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // 定时退出到点：对齐原版 timeoutExit.exit() 的 exitApp 分支——直接退出应用回到桌面，
+        // 而不是仅暂停播放。每次回到前台刷新引用，避免持有已销毁的 Activity。
+        LxApp.app.playerRepository.onTimeoutExit = { finishAffinity() }
+    }
+
     private fun requestNeededPermissions() {
         val permissions = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= 33) {

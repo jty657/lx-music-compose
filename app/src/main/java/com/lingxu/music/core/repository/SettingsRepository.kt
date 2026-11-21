@@ -79,7 +79,8 @@ class SettingsRepository(private val context: Context) {
 
     val quality: Flow<String> = context.dataStore.data.map { it[KEY_QUALITY] ?: "128k" }
     val playMode: Flow<String> = context.dataStore.data.map { it[KEY_PLAY_MODE] ?: "listLoop" }
-    val showLyricTranslation: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_LYRIC_TRANSLATION] ?: true }
+    // 默认值与原版 defaultSetting（'player.isShowLyricTranslation': false）保持一致
+    val showLyricTranslation: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_LYRIC_TRANSLATION] ?: false }
     val showLyricRoma: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_LYRIC_ROMA] ?: false }
     val startupAutoPlay: Flow<Boolean> = context.dataStore.data.map { it[KEY_STARTUP_AUTO_PLAY] ?: false }
     val isSavePlayTime: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SAVE_PLAY_TIME] ?: false }
@@ -97,15 +98,17 @@ class SettingsRepository(private val context: Context) {
 
     // ================= search =================
 
-    val isShowHotSearch: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_HOT_SEARCH] ?: true }
-    val isShowHistorySearch: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_HISTORY_SEARCH] ?: true }
+    // 默认值与原版 defaultSetting 保持一致：热搜/历史默认关闭（'search.isShowHotSearch': false 等）
+    val isShowHotSearch: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_HOT_SEARCH] ?: false }
+    val isShowHistorySearch: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_HISTORY_SEARCH] ?: false }
 
     // ================= list =================
 
     val isShowSource: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_SOURCE] ?: true }
     val isShowAlbumName: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_ALBUM_NAME] ?: false }
     val isShowInterval: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_INTERVAL] ?: true }
-    val addMusicLocation: Flow<String> = context.dataStore.data.map { it[KEY_ADD_MUSIC_LOCATION] ?: ADD_LOCATION_BOTTOM }
+    // 原版 'list.addMusicLocationType' 默认 'top'（添加到列表顶部）
+    val addMusicLocation: Flow<String> = context.dataStore.data.map { it[KEY_ADD_MUSIC_LOCATION] ?: ADD_LOCATION_TOP }
 
     // ================= glass =================
 

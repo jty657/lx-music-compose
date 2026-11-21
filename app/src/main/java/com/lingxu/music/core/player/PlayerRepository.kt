@@ -34,12 +34,13 @@ object PlayMode {
     val ALL = listOf(LIST_LOOP, RANDOM, LIST, SINGLE_LOOP, SINGLE)
 
     fun label(mode: String): String = when (mode) {
-        LIST_LOOP -> "列表循环"
+        // 文案对齐原版 lang/zh-cn.json（play_list_loop / play_single_loop / play_single）
+        LIST_LOOP -> "列表循环播放"
         RANDOM -> "随机播放"
         LIST -> "顺序播放"
-        SINGLE_LOOP -> "单曲循环"
-        SINGLE -> "单曲播放"
-        else -> "列表循环"
+        SINGLE_LOOP -> "单曲循环播放"
+        SINGLE -> "禁用歌曲切换"
+        else -> "列表循环播放"
     }
 }
 
@@ -136,6 +137,13 @@ class PlayerRepository(context: Context) {
 
     private var timeoutJob: Job? = null
 
+    /**
+     * 定时退出到点时的「退出应用」回调（由 MainActivity 注入）。
+     * 对齐原版 timeoutExit.exit()：未开启「播完当前曲再退」时，到点直接退出应用，
+     * 而不是只暂停播放。
+     */
+    var onTimeoutExit: (() -> Unit)? = null
+
     /** 是否正在等待当前歌曲播完再停 */
     private var pendingTimeoutStop = false
 
@@ -174,6 +182,8 @@ class PlayerRepository(context: Context) {
             } else {
                 player.pause()
                 _state.update { it.copy(timeoutExitRemaining = -1) }
+                // 对齐原版：未开启「播完再退」时到点直接退出应用（而不仅是暂停）
+                onTimeoutExit?.invoke()
             }
         }
     }
@@ -234,6 +244,9 @@ class PlayerRepository(context: Context) {
     private var lyricJob: Job? = null
     private var coverJob: Job? = null
 
+    /** 播放出错后的「5 秒自动切下一首」任务（对齐原版 playerEvent.addDelayNextTimeout） */
+    private var errorNextJob: Job? = null
+
     /** 歌词加载器（由 App 注入，避免 core 层反向依赖） */
     var lyricLoader: (suspend (MusicInfo) -> LyricInfo?)? = null
 
@@ -272,10 +285,24 @@ class PlayerRepository(context: Context) {
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 _state.update { it.copy(error = error.message ?: "播放失败", loading = false) }
+                // 对齐原版：音频加载出错 5 秒后自动切下一首（lang 里 player__error 即「5 秒后切换下一首」），
+                // 否则某一首取不到播放链接时，播放会永久停在这一首。
+                errorNextJob?.cancel()
+                errorNextJob = scope.launch {
+                    delay(5000)
+                    if (_state.value.error != null) {
+                        // 先清错误再切歌：next() 会触发 onMediaItemTransition 并取消本协程，
+                        // 若把清除放在 next() 之后，错误提示会残留在界面上。
+                        _state.update { it.copy(error = null) }
+                        next()
+                    }
+                }
             }
 
             /** 切歌时同步当前曲目与下标（手动、自动、循环、随机都走这里） */
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                // 切歌即视为离开上一首的错误态，取消待执行的「出错自动下一首」
+                errorNextJob?.cancel()
                 // 定时停止：等当前歌曲播完再停模式下，切歌即暂停
                 // 单曲循环下重播的 reason 是 REPEAT 而不是 AUTO，漏掉会让定时停止永不生效
                 if (pendingTimeoutStop &&
@@ -291,11 +318,18 @@ class PlayerRepository(context: Context) {
                 val shouldPlay = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
                     reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT ||
                     _state.value.isPlaying
-                // 单曲播放：放完当前这首就停（原版 'single' 在 getNextPlayMusicInfo 落到 default → null）
+                // 单曲播放（原版 'none'）：播完当前曲即停，不切下一首。
+                // ExoPlayer 在 REPEAT_MODE_OFF 下会自动进入下一项，这里回退到刚播完的曲目再暂停，
+                // 否则用户会看到「跳到下一首后暂停」，与原版「停在当前曲」不符。
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO &&
                     _state.value.playMode == PlayMode.SINGLE
                 ) {
                     player.pause()
+                    val prevIndex = player.previousMediaItemIndex
+                    if (prevIndex >= 0) {
+                        runCatching { player.seekTo(prevIndex, 0L) }
+                        return
+                    }
                 }
                 _state.update {
                     it.copy(
@@ -658,6 +692,7 @@ class PlayerRepository(context: Context) {
         playGeneration++
         playQueueJob?.cancel()
         lastPlayJob?.cancel()
+        errorNextJob?.cancel()
         player.stop()
         player.clearMediaItems()
         lyricJob?.cancel()
@@ -674,6 +709,7 @@ class PlayerRepository(context: Context) {
         lastPlayJob?.cancel()
         lyricJob?.cancel()
         coverJob?.cancel()
+        errorNextJob?.cancel()
         timeoutJob?.cancel()
         resolvingIndexes.clear()
         player.release()
