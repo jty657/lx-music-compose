@@ -242,6 +242,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 showTranslation = showLrcTranslation,
                 showRoma = showLrcRoma,
                 centered = lyricAlign == "center",
+                reduceMotion = reduceMotion,
                 onSeek = { viewModel.seekTo(it) },
             )
 
@@ -453,6 +454,7 @@ private fun LyricView(
     showTranslation: Boolean = true,
     showRoma: Boolean = false,
     centered: Boolean = false,
+    reduceMotion: Boolean = false,
     onSeek: (Long) -> Unit = {},
 ) {
     val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
@@ -478,10 +480,16 @@ private fun LyricView(
         val edgePadPx = with(LocalDensity.current) { edgePad.roundToPx() }
         // 用弹簧缓动替换默认的瞬时滚动：歌词跟着唱「滑」到位，而不是一格一格跳。
         // followCurrent 作为 key：恢复跟随时立即把当前行滑回居中位置。
+        // 注意：animateScrollToItem 是协程动画，不受 Compose「动画时长缩放」影响 —— 系统
+        // 开启「移除动画」时它仍会滑动。这里显式短路为瞬时跳转，与前庭无障碍要求一致。
         LaunchedEffect(currentIndex, edgePadPx, currentId, followCurrent) {
             if (currentIndex >= 0 && followCurrent) {
                 // +1 跳过首部占位 item
-                listState.animateScrollToItem(currentIndex + 1, scrollOffset = -edgePadPx)
+                if (reduceMotion) {
+                    listState.scrollToItem(currentIndex + 1, scrollOffset = -edgePadPx)
+                } else {
+                    listState.animateScrollToItem(currentIndex + 1, scrollOffset = -edgePadPx)
+                }
             }
         }
         LazyColumn(
