@@ -11,7 +11,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -87,6 +86,7 @@ import com.lingxu.music.ui.screens.source.SourceScreen
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LxTheme
 import com.lingxu.music.ui.theme.LocalReduceMotion
+import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.isInDarkTheme
 import com.lingxu.music.ui.theme.motionMs
 import com.lingxu.music.ui.theme.rememberReduceMotion
@@ -305,7 +305,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
     val state by LxApp.app.playerRepository.state.collectAsState()
     val current = state.current ?: return
     val glass = LocalGlass.current
-    val pieceShape = RoundedCornerShape(20.dp)
+    val pieceShape = RoundedCornerShape(Dimens.CardCorner)
     val dark = glass?.dark ?: isInDarkTheme()
 
     Box(
@@ -454,7 +454,7 @@ private fun MiniBarAction(
     val reduceMotion = LocalReduceMotion.current
     val scale by animateFloatAsState(
         targetValue = if (pressed && !reduceMotion) 0.86f else 1f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        animationSpec = Motion.press(),
         label = "miniBarPress",
     )
     Box(
@@ -489,7 +489,7 @@ private fun GlassBottomBar(glass: GlassContext, navigator: Navigator) {
             .padding(horizontal = 12.dp)
             .drawBackdrop(
                 backdrop = glass.content,
-                shape = { RoundedCornerShape(28.dp) },
+                shape = { RoundedCornerShape(Dimens.CornerXL) },
                 effects = {
                     vibrancy()
                     blur(glass.radius.dp.toPx())

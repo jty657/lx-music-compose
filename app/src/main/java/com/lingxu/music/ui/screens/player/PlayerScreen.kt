@@ -5,7 +5,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -77,6 +76,7 @@ import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
+import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.MotionFastMs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -658,7 +658,7 @@ private fun PlayerIconButton(
     val reduceMotion = LocalReduceMotion.current
     val scale by animateFloatAsState(
         targetValue = if (pressed && !reduceMotion) 0.88f else 1f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        animationSpec = Motion.press(),
         label = "btnScale",
     )
     // 热区至少 48dp（Material 无障碍最小目标）；主播放键本身 64dp 则保持原尺寸。
@@ -702,7 +702,8 @@ private fun PlayerMainButton(playing: Boolean, onClick: () -> Unit) {
     val reduceMotion = LocalReduceMotion.current
     val scale by animateFloatAsState(
         targetValue = if (pressed && !reduceMotion) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        // 主播放键属于「低频、明显」档，沿用原 420 刚度的 emphasized（见 Motion.kt 分档定义）
+        animationSpec = Motion.emphasized(),
         label = "mainBtnScale",
     )
     val bg by animateColorAsState(
