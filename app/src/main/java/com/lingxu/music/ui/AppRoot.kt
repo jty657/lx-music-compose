@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -79,7 +80,10 @@ import com.lingxu.music.ui.screens.search.SearchScreen
 import com.lingxu.music.ui.screens.setting.SettingScreen
 import com.lingxu.music.ui.screens.source.SourceScreen
 import com.lingxu.music.ui.theme.LxTheme
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.isInDarkTheme
+import com.lingxu.music.ui.theme.motionMs
+import com.lingxu.music.ui.theme.rememberReduceMotion
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
@@ -110,6 +114,8 @@ fun AppRoot() {
     LxTheme(themeMode = themeMode, fontScale = fontScale) {
         val navigator = rememberNavigator()
         val dark = isInDarkTheme()
+        // 系统「动画时长缩放 = 关闭」时降级为静帧动效（无障碍 + 低端机省电）
+        val reduceMotion = rememberReduceMotion()
         // 状态栏图标极性跟随应用实际主题：深色主题用浅色图标，避免深色图标压在深色内容上不可读。
         // enableEdgeToEdge 默认按 XML 的浅色主题推断，这里按运行时主题纠正（含用户 App 内切换）。
         val context = LocalContext.current
@@ -131,6 +137,7 @@ fun AppRoot() {
         CompositionLocalProvider(
             LocalNavigator provides navigator,
             LocalMiniBarScroll provides miniBarScroll,
+            LocalReduceMotion provides reduceMotion,
         ) {
             GlassHost(
                 dark = dark,
@@ -190,6 +197,8 @@ private fun MainScaffold(
     Scaffold(modifier = modifier.fillMaxSize()) { padding ->
         val current = navigator.backStack.last()
         val playState by LxApp.app.playerRepository.state.collectAsState()
+        // 页面转场用：系统要求减弱动效时退化为纯淡入淡出
+        val reduceMotion = LocalReduceMotion.current
         // 系统返回键：非根页时回退一级
         BackHandler(enabled = navigator.backStack.size > 1) {
             navigator.pop()
@@ -208,16 +217,31 @@ private fun MainScaffold(
                 .padding(padding)
                 .padding(bottom = bottomInset),
         ) {
-            // 页面切换加一点位移+淡入，避免硬切换；
-            // 返回时反向：上一页从左侧滑入、当前页向右滑出，让「前进/后退」的方向感一致
+            // 页面切换：位移 + 淡入，避免硬切换；
+            // 返回时反向：上一页从左侧滑入、当前页向右滑出，让「前进/后退」的方向感一致。
+            // 位移幅度取屏宽 1/4（原先 1/16 几乎看不出方向），缓动用 FastOutSlowIn 收尾更「跟手」；
+            // 系统要求减弱动效时退化为纯淡入淡出，不做位移。
             AnimatedContent(
                 targetState = current,
                 transitionSpec = {
                     val back = navigator.lastWasPop
-                    val enter = fadeIn(tween(160)) +
-                        slideInHorizontally { if (back) -it / 16 else it / 16 }
-                    val exit = fadeOut(tween(120)) +
-                        slideOutHorizontally { if (back) it / 16 else -it / 16 }
+                    val shift = if (reduceMotion) 0 else 4
+                    val enter = fadeIn(tween(240.motionMs(reduceMotion), easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(tween(240.motionMs(reduceMotion), easing = FastOutSlowInEasing)) {
+                            when {
+                                shift == 0 -> 0
+                                back -> -it / shift
+                                else -> it / shift
+                            }
+                        }
+                    val exit = fadeOut(tween(160.motionMs(reduceMotion))) +
+                        slideOutHorizontally(tween(200.motionMs(reduceMotion), easing = FastOutSlowInEasing)) {
+                            when {
+                                shift == 0 -> 0
+                                back -> it / shift
+                                else -> -it / shift
+                            }
+                        }
                     enter togetherWith exit
                 },
                 label = "screen",

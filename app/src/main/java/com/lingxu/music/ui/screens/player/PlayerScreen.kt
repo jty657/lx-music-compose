@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,6 +70,7 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -101,6 +103,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val showLrcRoma by LxApp.app.settings.showLyricRoma.collectAsState(initial = false)
     val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
     val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
+    val reduceMotion = LocalReduceMotion.current
     var showMore by remember { mutableStateOf(false) }
 
     // 拖动进度条时，用本地值展示，避免被 500ms 的位置更新覆盖导致回弹
@@ -136,10 +139,12 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                     label = "coverScale",
                 )
                 // 播放中封面缓慢呼吸（±1.5%），暂停时用有限动画平滑停在 1.0。
-                // 暂停时若仍用 infiniteRepeatable 会一直空转重复，浪费每帧调度。
+                // 暂停时若仍用 infiniteRepeatable 会一直空转重复，浪费每帧调度；
+                // 系统要求减弱动效时同样不做无限循环，直接停在 1.0。
+                val breathEnabled = state.isPlaying && !reduceMotion
                 val breathScale by animateFloatAsState(
-                    targetValue = if (state.isPlaying) 1.015f else 1f,
-                    animationSpec = if (state.isPlaying) {
+                    targetValue = if (breathEnabled) 1.015f else 1f,
+                    animationSpec = if (breathEnabled) {
                         infiniteRepeatable(
                             animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
                             repeatMode = RepeatMode.Reverse,
@@ -291,15 +296,13 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                     Spacer(Modifier.height(4.dp))
 
                     // 主控制：上一首 / 播放暂停 / 下一首
+                    // 主键改为 64dp 圆形主色底：此前它与其它图标键同形，只靠尺寸区分，
+                    // 视觉重量不足以承担「播放页唯一焦点」。
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         PlayerIconButton(MiuixIcons.Back, 32.dp, "上一首") { viewModel.prev() }
-                        Spacer(Modifier.size(28.dp))
-                        PlayerIconButton(
-                            if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
-                            64.dp,
-                            if (state.isPlaying) "暂停" else "播放",
-                        ) { viewModel.togglePlay() }
-                        Spacer(Modifier.size(28.dp))
+                        Spacer(Modifier.size(20.dp))
+                        PlayerMainButton(playing = state.isPlaying) { viewModel.togglePlay() }
+                        Spacer(Modifier.size(20.dp))
                         PlayerIconButton(MiuixIcons.Forward, 32.dp, "下一首") { viewModel.next() }
                     }
 
@@ -601,6 +604,62 @@ private fun PlayerIconButton(
             label = "playerIcon",
         ) { shownIcon ->
             Icon(shownIcon, contentDescription = contentDescription, modifier = Modifier.size(size))
+        }
+    }
+}
+
+/**
+ * 主播放 / 暂停键：64dp 圆形主色底 + 反色图标，按下时整圆缩放并加深底色。
+ *
+ * 与次级图标键的 0.88 缩放形成层次（主键幅度更大、底色变深），
+ * 系统要求减弱动效时只保留颜色变化，不做缩放。
+ */
+@Composable
+private fun PlayerMainButton(playing: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !reduceMotion) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        label = "mainBtnScale",
+    )
+    val bg by animateColorAsState(
+        targetValue = if (pressed) {
+            MiuixTheme.colorScheme.primary.copy(alpha = 0.82f)
+        } else {
+            MiuixTheme.colorScheme.primary
+        },
+        animationSpec = tween(durationMillis = 160),
+        label = "mainBtnBg",
+    )
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(bg)
+            .clickable(
+                indication = null,
+                interactionSource = interaction,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Crossfade(
+            targetState = playing,
+            animationSpec = tween(durationMillis = 180),
+            label = "mainBtnIcon",
+        ) { isPlaying ->
+            Icon(
+                if (isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
+                contentDescription = if (isPlaying) "暂停" else "播放",
+                tint = MiuixTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(30.dp),
+            )
         }
     }
 }

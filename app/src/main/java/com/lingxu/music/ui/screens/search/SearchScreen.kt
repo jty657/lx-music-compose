@@ -39,6 +39,7 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
@@ -137,21 +138,24 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
 
         Spacer(Modifier.height(8.dp))
 
-        // 搜索类型切换（对应原版 音乐/歌单）
+        // 搜索类型切换（对应原版 音乐/歌单）。
+        // 原先两个 Button 容器相同，只靠文字颜色区分选中态，扫视时看不出当前在哪一栏；
+        // 改为与上方音源 chip 同一套「选中 = 主色淡底 + 主色文字」的玻璃胶囊。
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = { viewModel.setType(SearchType.MUSIC) }) {
-                Text(
-                    "音乐",
-                    color = if (viewModel.searchType == SearchType.MUSIC) MiuixTheme.colorScheme.primary
-                    else MiuixTheme.colorScheme.onSurface,
-                )
-            }
-            Button(onClick = { viewModel.setType(SearchType.SONGLIST) }) {
-                Text(
-                    "歌单",
-                    color = if (viewModel.searchType == SearchType.SONGLIST) MiuixTheme.colorScheme.primary
-                    else MiuixTheme.colorScheme.onSurface,
-                )
+            listOf(SearchType.MUSIC to "音乐", SearchType.SONGLIST to "歌单").forEach { (type, label) ->
+                val selected = viewModel.searchType == type
+                GlassSurface(
+                    tint = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f) else null,
+                    onClick = { viewModel.setType(type) },
+                ) {
+                    Text(
+                        label,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = if (selected) MiuixTheme.colorScheme.primary
+                        else MiuixTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+                    )
+                }
             }
         }
 
@@ -268,23 +272,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         ) {
             // 歌单搜索无结果：此前会 fall through 到音乐分支误显「没有找到相关音乐」，
             // 这里给出对应歌单的空态后直接返回，避免误导。
-            Column(
-                Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    MiuixIcons.Favorites,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "没有找到相关歌单",
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-            }
+            EmptyHint(icon = MiuixIcons.Favorites, text = "没有找到相关歌单")
             return@Column
         }
 
@@ -293,23 +281,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         AutoLoadMore(resultState, viewModel.hasMore, viewModel.loading) { viewModel.loadMore() }
         // 搜索后无结果：给出明确空态，避免只剩一片空白让用户以为卡住
         if (results.isEmpty() && !viewModel.loading && viewModel.hasSearched && viewModel.errorMessage == null) {
-            Column(
-                Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    MiuixIcons.Search,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "没有找到相关音乐",
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-            }
+            EmptyHint(icon = MiuixIcons.Search, text = "没有找到相关音乐")
         }
         LazyColumn(state = resultState, modifier = Modifier.weight(1f)) {
             items(results, key = { it.id }) { music ->

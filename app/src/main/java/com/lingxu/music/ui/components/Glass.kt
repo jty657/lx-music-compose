@@ -46,6 +46,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.lingxu.music.ui.theme.LocalReduceMotion
 
 /**
  * 玻璃效果上下文。由 [GlassHost] 创建并通过 [LocalGlass] 下发。
@@ -87,16 +88,7 @@ private val DialogShape = RoundedCornerShape(28.dp)
  * 对这类动效显式短路，既省掉每帧调度，也保证「关掉动画 = 立刻到位」。
  */
 @Composable
-private fun animationsDisabled(): Boolean {
-    val view = LocalView.current
-    return remember(view) {
-        android.provider.Settings.Global.getFloat(
-            view.context.contentResolver,
-            android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f,
-        ) == 0f
-    }
-}
+private fun animationsDisabled(): Boolean = LocalReduceMotion.current
 
 /**
  * 玻璃容器：创建 backdrop 并向下游提供 [LocalGlass]。

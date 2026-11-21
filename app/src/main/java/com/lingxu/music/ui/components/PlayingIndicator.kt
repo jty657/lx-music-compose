@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private val BarWidth = 3.dp
@@ -49,7 +50,8 @@ fun PlayingIndicator(
         },
         contentAlignment = Alignment.Center,
     ) {
-        if (playing) {
+        val reduceMotion = LocalReduceMotion.current
+        if (playing && !reduceMotion) {
             val transition = rememberInfiniteTransition(label = "playingBars")
             // 三条不同时长：相位差让律动看起来更自然，而不是整排一起上下
             val first by transition.animateFloat(
@@ -88,13 +90,14 @@ fun PlayingIndicator(
                 Bar(third, color)
             }
         } else {
+            // 暂停态；或系统要求减弱动效时——用一帧静态波形（高度错落）表达「正在出声」，
+            // 保留辨识度，但不需要每帧调度动画。
+            val heights = if (playing) listOf(0.62f, 0.95f, 0.78f) else listOf(0.45f, 0.45f, 0.45f)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                Bar(0.45f, color.copy(alpha = 0.75f))
-                Bar(0.45f, color.copy(alpha = 0.75f))
-                Bar(0.45f, color.copy(alpha = 0.75f))
+                heights.forEach { h -> Bar(h, if (playing) color else color.copy(alpha = 0.75f)) }
             }
         }
     }
