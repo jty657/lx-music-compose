@@ -40,12 +40,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -64,6 +67,8 @@ import com.lingxu.music.ui.components.GlassContext
 import com.lingxu.music.ui.components.GlassHost
 import com.lingxu.music.ui.components.LocalGlass
 import com.lingxu.music.ui.components.TrackCover
+import com.lingxu.music.ui.navigation.LocalBottomBarHeight
+import com.lingxu.music.ui.navigation.LocalMiniBarHeight
 import com.lingxu.music.ui.navigation.LocalMiniBarScroll
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Navigator
@@ -79,6 +84,7 @@ import com.lingxu.music.ui.screens.player.PlayerScreen
 import com.lingxu.music.ui.screens.search.SearchScreen
 import com.lingxu.music.ui.screens.setting.SettingScreen
 import com.lingxu.music.ui.screens.source.SourceScreen
+import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LxTheme
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.isInDarkTheme
@@ -134,10 +140,16 @@ fun AppRoot() {
         }
         // 关闭模糊或系统不支持 RenderEffect（API < 31）时，radius 传 0 让玻璃面变成纯 tint
         val effectiveRadius = if (blurEnabled) blurRadius else 0f
+        // 底栏/迷你条实测高度：初始值取常规字号下的经验值，测量后立刻被覆盖，
+        // 保证首帧不会因为 0dp 而抖动一下。
+        val bottomBarHeight = remember { mutableStateOf(76.dp) }
+        val miniBarHeight = remember { mutableStateOf(56.dp) }
         CompositionLocalProvider(
             LocalNavigator provides navigator,
             LocalMiniBarScroll provides miniBarScroll,
             LocalReduceMotion provides reduceMotion,
+            LocalBottomBarHeight provides bottomBarHeight.value,
+            LocalMiniBarHeight provides miniBarHeight.value,
         ) {
             GlassHost(
                 dark = dark,
@@ -169,17 +181,24 @@ fun AppRoot() {
                                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                             ) {
-                                MiniPlayerBar(navigator)
+                                // 高度上报给 MainScaffold 预留底部留白（字体缩放后会变高）
+                                val d = androidx.compose.ui.platform.LocalDensity.current
+                                Box(Modifier.onSizeChanged { miniBarHeight.value = with(d) { it.height.toDp() } }) {
+                                    MiniPlayerBar(navigator)
+                                }
                             }
-                            if (blurEnabled) {
-                                val glass = LocalGlass.current
-                                if (glass != null) {
-                                    GlassBottomBar(glass, navigator)
+                            val dBar = androidx.compose.ui.platform.LocalDensity.current
+                            Box(Modifier.onSizeChanged { bottomBarHeight.value = with(dBar) { it.height.toDp() } }) {
+                                if (blurEnabled) {
+                                    val glass = LocalGlass.current
+                                    if (glass != null) {
+                                        GlassBottomBar(glass, navigator)
+                                    } else {
+                                        PlainBottomBar(navigator)
+                                    }
                                 } else {
                                     PlainBottomBar(navigator)
                                 }
-                            } else {
-                                PlainBottomBar(navigator)
                             }
                         }
                     }
@@ -205,11 +224,17 @@ private fun MainScaffold(
         }
         // 底部留白：播放页是全屏沉浸页，无需为底栏留白；
         // 其余页面为导航栏 + （有歌曲时的）迷你播放条预留空间。
+        //
+        // 此前写死 76dp / 132dp：底栏高度会随「字体缩放」（设置页可调到 150%）与 Miuix
+        // NavigationBar 自身高度变化，迷你条的歌名/歌手两行也会撑高，固定值在大字号下
+        // 会让最后一条列表项被底栏压住。改为读取实际测得的底栏/迷你条高度。
         val isPlayer = current == Screen.Player
+        val bottomBarHeight = LocalBottomBarHeight.current
+        val miniBarHeight = LocalMiniBarHeight.current
         val bottomInset = when {
             isPlayer -> 0.dp
-            playState.current != null -> 132.dp
-            else -> 76.dp
+            playState.current != null -> bottomBarHeight + miniBarHeight
+            else -> bottomBarHeight
         }
         Box(
             Modifier
@@ -219,27 +244,29 @@ private fun MainScaffold(
         ) {
             // 页面切换：位移 + 淡入，避免硬切换；
             // 返回时反向：上一页从左侧滑入、当前页向右滑出，让「前进/后退」的方向感一致。
-            // 位移幅度取屏宽 1/4（原先 1/16 几乎看不出方向），缓动用 FastOutSlowIn 收尾更「跟手」；
-            // 系统要求减弱动效时退化为纯淡入淡出，不做位移。
+            // 位移幅度取容器宽的 1/4，但封顶 96dp：纯比例在平板上等于 200dp+ 的大幅横扫，
+            // 与手机端不是一个观感；封顶后大屏上是「轻微侧移 + 淡变」，小屏保留原有的方向感。
+            // 缓动用 FastOutSlowIn 收尾更「跟手」；系统要求减弱动效时退化为纯淡入淡出，不做位移。
+            val shiftPx = with(androidx.compose.ui.platform.LocalDensity.current) { 96.dp.roundToPx() }
             AnimatedContent(
                 targetState = current,
                 transitionSpec = {
                     val back = navigator.lastWasPop
-                    val shift = if (reduceMotion) 0 else 4
+                    val shift = if (reduceMotion) 0 else shiftPx
                     val enter = fadeIn(tween(240.motionMs(reduceMotion), easing = FastOutSlowInEasing)) +
                         slideInHorizontally(tween(240.motionMs(reduceMotion), easing = FastOutSlowInEasing)) {
                             when {
                                 shift == 0 -> 0
-                                back -> -it / shift
-                                else -> it / shift
+                                back -> -minOf(it / 4, shift)
+                                else -> minOf(it / 4, shift)
                             }
                         }
                     val exit = fadeOut(tween(160.motionMs(reduceMotion))) +
                         slideOutHorizontally(tween(200.motionMs(reduceMotion), easing = FastOutSlowInEasing)) {
                             when {
                                 shift == 0 -> 0
-                                back -> it / shift
-                                else -> -it / shift
+                                back -> minOf(it / 4, shift)
+                                else -> -minOf(it / 4, shift)
                             }
                         }
                     enter togetherWith exit
@@ -482,9 +509,31 @@ private fun GlassBottomBar(glass: GlassContext, navigator: Navigator) {
     }
 }
 
+/**
+ * 无模糊底栏（关闭模糊 / API < 31 降级）。
+ *
+ * 此前直接返回 [NavItems]，背景由 Scaffold 决定：浅色下是白底压在白列表上，
+ * 滚动内容与底栏之间没有任何边界。这里补一层不透明表面 + 1dp 顶部分隔线，
+ * 与 [GlassTopBar] 的「底部 1px 分隔」呼应，保证降级路径也有层次。
+ */
 @Composable
 private fun PlainBottomBar(navigator: Navigator) {
-    NavItems(navigator)
+    val dark = isInDarkTheme()
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val lineH = Dimens.Hairline.toPx()
+                drawRect(
+                    color = if (dark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    size = androidx.compose.ui.geometry.Size(size.width, lineH),
+                )
+            }
+            .background(if (dark) Color(0xFF141414) else Color(0xFFF7F7F7)),
+    ) {
+        NavItems(navigator)
+    }
 }
 
 @Composable

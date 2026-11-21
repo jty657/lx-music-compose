@@ -2,6 +2,7 @@ package com.lingxu.music.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.unit.dp
 
 /** 页面路由 */
 sealed class Screen(val route: String) {
@@ -101,3 +102,13 @@ fun rememberNavigator(): Navigator {
     }
     return androidx.compose.runtime.remember { Navigator(backStack) }
 }
+
+/**
+ * 底栏与迷你播放条的**实测高度**。
+ *
+ * Miuix 的 `NavigationBar` 高度随字体缩放变化（本 App 允许 1.5x），迷你条内容
+ * （歌名 + 歌手两行 + 进度线）也会撑高。此前 `AppRoot` 用固定 76dp / 132dp 预留底部空间，
+ * 大字号下最后一条列表项会被底栏遮住。改为由底栏/迷你条自己把测得高度写回这两个 Local。
+ */
+val LocalBottomBarHeight = androidx.compose.runtime.compositionLocalOf { 0.dp }
+val LocalMiniBarHeight = androidx.compose.runtime.compositionLocalOf { 0.dp }
