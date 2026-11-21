@@ -1,12 +1,14 @@
 package com.lingxu.music.ui.screens.mylist
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -268,16 +271,12 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                 Box(
                                     Modifier
                                         .size(48.dp)
-                                        .clickable(
-                                            indication = null,
-                                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                            onClick = {
-                                                scope.launch {
-                                                    viewModel.removeMusic(listId, music.id)
-                                                    musics = musics.filterNot { it.id == music.id }
-                                                }
-                                            },
-                                        ),
+                                        .deletePressClickable {
+                                            scope.launch {
+                                                viewModel.removeMusic(listId, music.id)
+                                                musics = musics.filterNot { it.id == music.id }
+                                            }
+                                        },
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
@@ -598,11 +597,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
                     Box(
                         Modifier
                             .size(48.dp)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                onClick = { onDelete(list) },
-                            ),
+                            .deletePressClickable { onDelete(list) },
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -744,4 +739,24 @@ private fun parseIntervalSeconds(value: String?): Long {
     var seconds = 0L
     for (p in parts) seconds = seconds * 60 + p
     return seconds
+}
+
+/**
+ * 删除/移除图标的点击修饰：48dp 热区由调用点的 size 提供，这里补按压缩放反馈。
+ * 与收藏页删除按钮及全站 BackIconButton 同一手感：
+ * 只动 transform（不触发重新布局），减弱动效时退化为静帧。
+ */
+@Composable
+private fun Modifier.deletePressClickable(onClick: () -> Unit): Modifier {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !reduceMotion) 0.85f else 1f,
+        animationSpec = Motion.press(),
+        label = "deletePress",
+    )
+    return this
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .clickable(indication = null, interactionSource = interactionSource, onClick = onClick)
 }

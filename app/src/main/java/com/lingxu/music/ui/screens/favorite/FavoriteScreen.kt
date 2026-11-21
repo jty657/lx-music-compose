@@ -1,8 +1,10 @@
 package com.lingxu.music.ui.screens.favorite
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,6 +42,7 @@ import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -241,11 +245,21 @@ private fun FavoriteCard(
 private fun Modifier.clickableNoIndication(onClick: () -> Unit): Modifier {
     // remember 住 interactionSource，避免每次重组都新建对象导致按压状态丢失
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    return this.then(
-        Modifier.clickable(
+    val pressed by interactionSource.collectIsPressedAsState()
+    // 与全站图标按钮（BackIconButton / PlayerIconButton）一致的按压缩放：
+    // 此前删除图标 indication=null 且无任何反馈，是全站唯一「点下去毫无变化」的可点元素。
+    // 只动 transform（不触发重新布局）；减弱动效时退化为静帧。
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !reduceMotion) 0.85f else 1f,
+        animationSpec = Motion.press(),
+        label = "deletePress",
+    )
+    return this
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .clickable(
             indication = null,
             interactionSource = interactionSource,
             onClick = onClick,
-        ),
-    )
+        )
 }
