@@ -35,6 +35,8 @@ import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TopBarTitle
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
+import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.Motion
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -182,7 +184,11 @@ fun SongListDetailScreen(
             }
             items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(
-                    modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = Motion.itemFade(),
+                        placementSpec = Motion.itemPlacement(),
+                        fadeOutSpec = Motion.itemFade(),
+                    ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
                     onClick = { viewModel.play(musicList, music) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
