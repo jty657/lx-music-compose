@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,6 +30,7 @@ import com.lingxu.music.core.model.appendDistinctById
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.BackIconButton
+import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
@@ -104,6 +106,8 @@ fun SongListDetailScreen(
         Column(
             Modifier
                 .fillMaxSize()
+                // 大屏宽度上限：内容不再被拉伸到 1000dp+，手机端完全无变化
+                .widthIn(max = ContentMaxWidth)
                 .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
         ) {
         Spacer(Modifier.size(8.dp))

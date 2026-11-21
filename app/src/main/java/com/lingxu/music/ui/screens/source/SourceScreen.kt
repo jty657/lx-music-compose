@@ -1,6 +1,7 @@
 package com.lingxu.music.ui.screens.source
 
 import com.lingxu.music.ui.components.BackIconButton
+import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -80,6 +82,8 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         Column(
             Modifier
                 .fillMaxSize()
+                // 大屏宽度上限：内容不再被拉伸到 1000dp+，手机端完全无变化
+                .widthIn(max = ContentMaxWidth)
                 .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
         ) {
         Spacer(Modifier.size(8.dp))

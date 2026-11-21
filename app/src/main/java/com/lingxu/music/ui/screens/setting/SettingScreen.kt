@@ -1,14 +1,18 @@
 package com.lingxu.music.ui.screens.setting
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
@@ -140,9 +144,13 @@ fun SettingScreen(
         }
     }
 
+    // 设置页内容很长且是单列偏好项，平板上会拉成一条超宽横线：限制内容宽度并居中。
+    // 手机竖屏（<840dp）下 widthIn 不产生任何效果，等价于原布局。
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
     Column(
         Modifier
-            .fillMaxSize()
+            .widthIn(max = ContentMaxWidth)
+            .fillMaxHeight()
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
     ) {
@@ -652,6 +660,7 @@ fun SettingScreen(
                 }
             }
         }
+    }
     }
 }
 

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.Board
+import com.lingxu.music.ui.components.ContentWidthLimit
 import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.RetryHint
@@ -53,6 +54,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     // 在设置/音源页切了音源后，首页的榜单/热搜也随之刷新
     val apiSource by LxApp.app.settings.apiSource.collectAsState(initial = "")
     LaunchedEffect(apiSource) { viewModel.refresh() }
+    // 内容宽度上限：平板上不再把卡片拉成 1000dp 长条（手机端完全无变化）
+    ContentWidthLimit(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         // 音源入口：主页唯一的「作用域级」入口，用主色淡染区分于下方并列的两张功能卡，
         // 否则三张卡材质完全一致，扫视时看不出主次（原版首页也是音源区最重）。
@@ -204,6 +207,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     }
                 }
             }
+    }
     }
 }
 
