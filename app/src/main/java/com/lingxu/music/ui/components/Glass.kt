@@ -259,8 +259,10 @@ fun GlassDialog(
     LaunchedEffect(Unit) { shown = true }
     LaunchedEffect(closing) {
         if (closing) {
-            // 与 exit 动画（fadeOut 100ms）对齐：稍等一帧再关窗，避免面板被硬切
-            kotlinx.coroutines.delay(MotionFastMs.toLong() * 3 / 4)
+            // 与 exit 动画（fadeOut 100ms）对齐：稍等一帧再关窗，避免面板被硬切。
+            // 但手写 delay 不遵循系统「动画时长缩放」：关闭动画的设备上必须立即关窗，
+            // 否则会空等 MotionFastMs*3/4 才 dismiss，与「关掉动画=立刻到位」矛盾。
+            if (!noAnim) kotlinx.coroutines.delay(MotionFastMs.toLong() * 3 / 4)
             onDismissRequest()
         }
     }

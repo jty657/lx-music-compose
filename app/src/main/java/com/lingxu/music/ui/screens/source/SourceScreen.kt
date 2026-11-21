@@ -141,7 +141,8 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             LazyColumn(Modifier.weight(1f)) {
                 items(userApis, key = { it.id }) { api ->
                     GlassSurface(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        // 与全站其它列表一致：导入/删除音源时条目平滑让位，不瞬移。
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).animateItem(),
                         onClick = { viewModel.switchSource(api.id) },
                         onLongClick = {
                             deletingId = api.id
