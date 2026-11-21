@@ -8,10 +8,16 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,8 +43,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -196,12 +208,17 @@ private fun MainScaffold(
                 .padding(padding)
                 .padding(bottom = bottomInset),
         ) {
-            // 页面切换加一点位移+淡入，避免硬切换
+            // 页面切换加一点位移+淡入，避免硬切换；
+            // 返回时反向：上一页从左侧滑入、当前页向右滑出，让「前进/后退」的方向感一致
             AnimatedContent(
                 targetState = current,
                 transitionSpec = {
-                    (fadeIn(tween(160)) + slideInHorizontally { it / 16 }) togetherWith
-                        (fadeOut(tween(120)) + slideOutHorizontally { -it / 16 })
+                    val back = navigator.lastWasPop
+                    val enter = fadeIn(tween(160)) +
+                        slideInHorizontally { if (back) -it / 16 else it / 16 }
+                    val exit = fadeOut(tween(120)) +
+                        slideOutHorizontally { if (back) it / 16 else -it / 16 }
+                    enter togetherWith exit
                 },
                 label = "screen",
             ) { screen ->
@@ -237,6 +254,8 @@ private fun MiniPlayerBar(navigator: Navigator) {
     val state by LxApp.app.playerRepository.state.collectAsState()
     val current = state.current ?: return
     val glass = LocalGlass.current
+    val pieceShape = RoundedCornerShape(20.dp)
+    val dark = glass?.dark ?: isInDarkTheme()
 
     Box(
         Modifier
@@ -247,7 +266,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
                 if (glass != null && glass.radius > 0f) {
                     Modifier.drawBackdrop(
                         backdrop = glass.content,
-                        shape = { RoundedCornerShape(20.dp) },
+                        shape = { pieceShape },
                         effects = {
                             vibrancy()
                             blur(glass.radius.dp.toPx())
@@ -269,7 +288,20 @@ private fun MiniPlayerBar(navigator: Navigator) {
                         },
                     )
                 } else {
+                    // 关闭模糊或系统低于 API 31 时，原先这里没有任何背景，
+                    // 歌名/歌手会直接压在滚动内容上难以阅读；补一层近不透明表面 + 细描边。
                     Modifier
+                        .clip(pieceShape)
+                        .background(
+                            if (dark) Color(0xFF1C1C1E).copy(alpha = 0.94f)
+                            else Color.White.copy(alpha = 0.94f),
+                        )
+                        .border(
+                            1.dp,
+                            if (dark) Color.White.copy(alpha = 0.12f)
+                            else Color.Black.copy(alpha = 0.06f),
+                            pieceShape,
+                        )
                 },
             ),
     ) {
@@ -301,50 +333,36 @@ private fun MiniPlayerBar(navigator: Navigator) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // 触控热区统一到 48dp（Material 无障碍最小Target），图标视觉尺寸不变：
-                // 外层 Box 提供 48dp 可点区域，内层 Icon 保持原尺寸，避免放大后视觉过冲。
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            onClick = { LxApp.app.playerRepository.togglePlay() },
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
-                        contentDescription = if (state.isPlaying) "暂停" else "播放",
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
+                // 触控热区统一到 48dp（Material 无障碍最小Target），图标视觉尺寸不变；
+                // 同时给出与播放页一致的按压缩放反馈
+                MiniBarAction(
+                    icon = if (state.isPlaying) MiuixIcons.Pause else MiuixIcons.Play,
+                    description = if (state.isPlaying) "暂停" else "播放",
+                    iconSize = 24.dp,
+                    onClick = { LxApp.app.playerRepository.togglePlay() },
+                )
                 Spacer(Modifier.size(2.dp))
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            onClick = {
-                                if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
-                            },
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        MiuixIcons.Layers,
-                        contentDescription = "播放队列",
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+                MiniBarAction(
+                    icon = MiuixIcons.Layers,
+                    description = "播放队列",
+                    iconSize = 22.dp,
+                    onClick = {
+                        if (navigator.backStack.last() != Screen.PlayQueue) navigator.push(Screen.PlayQueue)
+                    },
+                )
             }
-            // 细进度线：给迷你条一个不占位的播放进度反馈
-            val progress = if (state.durationMs > 0) {
+            // 细进度线：给迷你条一个不占位的播放进度反馈。
+            // positionMs 每 500ms 才更新一次，直接赋值会「跳格」；用等速补间把两次更新连起来。
+            val rawProgress = if (state.durationMs > 0) {
                 (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
             } else {
                 0f
             }
+            val progress by animateFloatAsState(
+                targetValue = rawProgress,
+                animationSpec = tween(durationMillis = 500, easing = LinearEasing),
+                label = "miniProgress",
+            )
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -352,7 +370,12 @@ private fun MiniPlayerBar(navigator: Navigator) {
                     .padding(bottom = 2.dp)
                     .height(2.dp)
                     .clip(RoundedCornerShape(1.dp))
-                    .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f)),
+                    .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f))
+                    // 读屏用户也能获知播放进度，而不只是一个装饰性细线
+                    .semantics {
+                        progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
+                        contentDescription = "播放进度"
+                    },
             ) {
                 Box(
                     Modifier
@@ -362,6 +385,46 @@ private fun MiniPlayerBar(navigator: Navigator) {
                         .background(MiuixTheme.colorScheme.primary),
                 )
             }
+        }
+    }
+}
+
+/** 迷你播放条上的图标按钮：48dp 热区 + 按下缩放的触感反馈 */
+@Composable
+private fun MiniBarAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    iconSize: Dp,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
+        label = "miniBarPress",
+    )
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                indication = null,
+                interactionSource = interaction,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        // 与播放页一致：播放/暂停图标淡入淡出，不硬切
+        androidx.compose.animation.Crossfade(
+            targetState = icon,
+            animationSpec = tween(durationMillis = 180),
+            label = "miniBarIcon",
+        ) { shownIcon ->
+            Icon(shownIcon, contentDescription = description, modifier = Modifier.size(iconSize))
         }
     }
 }

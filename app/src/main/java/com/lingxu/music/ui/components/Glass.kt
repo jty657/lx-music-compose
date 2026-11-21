@@ -1,5 +1,13 @@
 package com.lingxu.music.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,7 +24,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,6 +114,12 @@ fun GlassSurface(
     // 用系统默认 indication 给卡片按压反馈；此前 indication=null 导致全 App 点击无任何涟漪。
     // 外层 .clip(shape) 会把涟漪裁进圆角内，不会溢出边界。
     val indication = LocalIndication.current
+    // 选中态（搜索页音源 chip 等）由 tint 表达：颜色渐变而非硬切，选中/取消更连贯
+    val fill by animateColorAsState(
+        targetValue = tint ?: glassFill(dark),
+        animationSpec = tween(durationMillis = 180),
+        label = "glassFill",
+    )
     val clickModifier = when {
         onClick != null && onLongClick != null -> Modifier.combinedClickable(
             interactionSource = interaction,
@@ -119,7 +137,7 @@ fun GlassSurface(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(tint ?: glassFill(dark), shape)
+            .background(fill, shape)
             .border(1.dp, glassBorder(dark), shape)
             .then(clickModifier),
         content = content,
@@ -158,28 +176,42 @@ fun GlassDialog(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val dark = LocalGlass.current?.dark ?: false
+    // 弹窗是独立窗口，无法跨窗口做共享元素转场；用一次性淡入 + 轻微放大，
+    // 避免「啪」地整块出现。shown 只在首次组合后置 true，不会随内容重组重播。
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val scrimColor = if (dark) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.32f)
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(durationMillis = 160),
+        label = "dialogScrim",
+    )
     Dialog(onDismissRequest = onDismissRequest) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    if (dark) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.32f),
-                ),
+                .background(scrimColor.copy(alpha = scrimColor.alpha * scrimAlpha)),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = modifier
-                    .padding(24.dp)
-                    .clip(shape)
-                    .background(
-                        if (dark) Color(0xFF232323) else Color(0xFFF7F7F7),
-                        shape,
-                    )
-                    .border(1.dp, glassBorder(dark), shape)
-                    // 选项多的弹窗在小屏上会溢出，允许纵向滚动避免内容被截断
-                    .verticalScroll(rememberScrollState()),
+            AnimatedVisibility(
+                visible = shown,
+                enter = fadeIn(tween(160)) + scaleIn(initialScale = 0.94f, animationSpec = tween(200)),
+                exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.96f, animationSpec = tween(120)),
             ) {
-                content()
+                Box(
+                    modifier = modifier
+                        .padding(24.dp)
+                        .clip(shape)
+                        .background(
+                            if (dark) Color(0xFF232323) else Color(0xFFF7F7F7),
+                            shape,
+                        )
+                        .border(1.dp, glassBorder(dark), shape)
+                        // 选项多的弹窗在小屏上会溢出，允许纵向滚动避免内容被截断
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    content()
+                }
             }
         }
     }

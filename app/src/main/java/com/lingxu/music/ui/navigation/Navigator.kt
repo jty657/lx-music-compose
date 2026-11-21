@@ -54,17 +54,30 @@ val LocalMiniBarScroll = staticCompositionLocalOf<androidx.compose.runtime.Mutab
 class Navigator(
     val backStack: MutableList<Screen>,
 ) {
+    /**
+     * 最近一次导航是否为「返回」。
+     *
+     * 仅用于页面转场方向：返回时新页面应从左侧滑入、旧页面向右滑出，
+     * 与「前进」方向相反。用普通 var（非 snapshot state）即可——转场开始时读一次，
+     * 不需要触发重组。
+     */
+    var lastWasPop: Boolean = false
+        private set
+
     fun push(screen: Screen) {
+        lastWasPop = false
         backStack.add(screen)
     }
 
     fun pop() {
         if (backStack.size > 1) {
+            lastWasPop = true
             backStack.removeAt(backStack.lastIndex)
         }
     }
 
     fun replace(screen: Screen) {
+        lastWasPop = false
         if (backStack.isNotEmpty()) {
             backStack[backStack.lastIndex] = screen
         } else {
@@ -75,6 +88,7 @@ class Navigator(
     /** 一次性重置为单个根页面：切换 tab 时用，避免 clear()+add() 触发两次快照变更与多余重组 */
     fun setRoot(screen: Screen) {
         if (backStack.size == 1 && backStack[0] == screen) return
+        lastWasPop = false
         backStack.clear()
         backStack.add(screen)
     }

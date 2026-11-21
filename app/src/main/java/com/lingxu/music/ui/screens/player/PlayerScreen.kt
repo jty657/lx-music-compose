@@ -1,5 +1,7 @@
 package com.lingxu.music.ui.screens.player
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
@@ -8,6 +10,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -446,23 +452,25 @@ private fun LyricView(
 
         // 手动回看时浮出「回到当前歌词」入口，点击后恢复自动跟随并把当前行滑回居中。
         // 放在 LazyColumn 之后（BoxWithConstraints 内叠层），不占用列表布局、不遮挡歌词。
-        if (!followCurrent && currentIndex >= 0) {
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 10.dp),
+        // 用 AnimatedVisibility 淡入上浮，避免回看时按钮突然出现打断阅读。
+        AnimatedVisibility(
+            visible = !followCurrent && currentIndex >= 0,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 10.dp),
+            enter = fadeIn(tween(180)) + slideInVertically { it / 2 },
+            exit = fadeOut(tween(120)) + slideOutVertically { it / 2 },
+        ) {
+            GlassSurface(
+                shape = RoundedCornerShape(20.dp),
+                onClick = { followCurrent = true },
             ) {
-                GlassSurface(
-                    shape = RoundedCornerShape(20.dp),
-                    onClick = { followCurrent = true },
-                ) {
-                    Text(
-                        "回到当前歌词",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MiuixTheme.colorScheme.primary,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    )
-                }
+                Text(
+                    "回到当前歌词",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MiuixTheme.colorScheme.primary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                )
             }
         }
     }
@@ -565,7 +573,14 @@ private fun PlayerIconButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(size))
+        // 播放/暂停图标淡入淡出切换，避免同一位置硬切造成「闪一下」
+        Crossfade(
+            targetState = icon,
+            animationSpec = tween(durationMillis = 180),
+            label = "playerIcon",
+        ) { shownIcon ->
+            Icon(shownIcon, contentDescription = contentDescription, modifier = Modifier.size(size))
+        }
     }
 }
 
