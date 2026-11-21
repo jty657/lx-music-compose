@@ -40,12 +40,15 @@ import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SongListInfo
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.EmptyHint
+import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
+import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.Motion
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -120,19 +123,12 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(sources) { source ->
-                val selected = selectedSource == source
-                GlassSurface(
-                    tint = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f) else null,
+                // 统一走 FilterChip：胶囊形 + 选中主色描边 + 168ms 底色渐变 + 读屏 selected 语义
+                FilterChip(
+                    label = SourceConst.displayName(source),
+                    selected = selectedSource == source,
                     onClick = { selectedSource = source },
-                ) {
-                    Text(
-                        text = SourceConst.displayName(source),
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = if (selected) MiuixTheme.colorScheme.primary
-                        else MiuixTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    )
-                }
+                )
             }
         }
 
@@ -141,21 +137,14 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         // 搜索类型切换（对应原版 音乐/歌单）。
         // 原先两个 Button 容器相同，只靠文字颜色区分选中态，扫视时看不出当前在哪一栏；
         // 改为与上方音源 chip 同一套「选中 = 主色淡底 + 主色文字」的玻璃胶囊。
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(SearchType.MUSIC to "音乐", SearchType.SONGLIST to "歌单").forEach { (type, label) ->
-                val selected = viewModel.searchType == type
-                GlassSurface(
-                    tint = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f) else null,
+                FilterChip(
+                    label = label,
+                    selected = viewModel.searchType == type,
                     onClick = { viewModel.setType(type) },
-                ) {
-                    Text(
-                        label,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = if (selected) MiuixTheme.colorScheme.primary
-                        else MiuixTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
-                    )
-                }
+                    horizontalPadding = 18,
+                )
             }
         }
 
@@ -183,11 +172,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     "清空",
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.primary,
-                    // 扩大点击热区：仅靠文字高度约 20dp，低于 48dp 的可访问性下限，
-                    // 上下各补 10dp 让手指更容易点中（历史行整体仍保持紧凑）
+                    // 热区：仅靠文字约 40×20dp，低于 48dp 下限；上下 14dp + 左右 8dp 补齐，
+                    // 右侧还要吃掉行尾内边距，所以用 start padding 把视觉位置拉回原处。
                     modifier = Modifier
                         .clickable { viewModel.clearHistory() }
-                        .padding(vertical = 10.dp),
+                        .padding(horizontal = 8.dp, vertical = 14.dp),
                 )
             }
             Spacer(Modifier.height(4.dp))
@@ -232,7 +221,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             LazyColumn(state = songListState, modifier = Modifier.weight(1f)) {
                 items(songLists, key = { "${it.source}_${it.id}" }) { item ->
                     GlassSurface(
-                        modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = Motion.itemFade(),
+                            placementSpec = Motion.itemPlacement(),
+                            fadeOutSpec = Motion.itemFade(),
+                        ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
                         onClick = {
                             navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                         },
@@ -286,7 +279,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         LazyColumn(state = resultState, modifier = Modifier.weight(1f)) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = Motion.itemFade(),
+                        placementSpec = Motion.itemPlacement(),
+                        fadeOutSpec = Motion.itemFade(),
+                    ),
                     music = music,
                     isFavorite = music.id in viewModel.favoriteIds,
                     onClick = {

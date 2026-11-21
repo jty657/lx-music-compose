@@ -7,11 +7,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 
 /**
@@ -74,24 +72,4 @@ object Motion {
 
     /** 列表项淡入淡出：短促线性淡变，配合位移使用 */
     fun itemFade(): FiniteAnimationSpec<Float> = tween(durationMillis = 180)
-}
-
-/**
- * 列表项增删/重排的统一动效。
- *
- * 默认 `animateItem()` 的进出场用 `spring(stiffness = 1000f)`，增删瞬间会「弹一下」，
- * 且各页面参数漂移（有的传 key，有的不传）。这里把「位移柔和 + 淡变短促 + 裁剪越界」
- * 固化成一个扩展，调用点只需 `Modifier.listItemEnterExit()`。
- *
- * 减弱动效时返回空 Modifier：既不播放位移也不做淡入，避免「关掉动画仍在动」。
- */
-@Composable
-fun LazyItemScope.listItemEnterExit(): Modifier {
-    val reduceMotion = LocalReduceMotion.current
-    if (reduceMotion) return Modifier
-    return Modifier.animateItem(
-        fadeInSpec = Motion.itemFade(),
-        placementSpec = Motion.itemPlacement(),
-        fadeOutSpec = Motion.itemFade(),
-    )
 }

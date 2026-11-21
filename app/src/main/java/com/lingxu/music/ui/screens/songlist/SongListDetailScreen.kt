@@ -32,6 +32,7 @@ import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
+import com.lingxu.music.ui.components.TopBarTitle
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
@@ -93,11 +94,9 @@ fun SongListDetailScreen(
         GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             BackIconButton(onClick = { navigator.pop() })
-            Text(
-                name,
-                fontSize = MiuixTheme.textStyles.title1.fontSize,
-                modifier = Modifier.padding(start = 12.dp),
-            )
+            // 单行省略 + weight：歌单名可能很长（「2024 华语年度热歌 TOP500」），
+            // 此前无 maxLines，长标题会让顶栏行高翻倍并挤掉右侧空间
+            TopBarTitle(name)
         }
         }
         Column(

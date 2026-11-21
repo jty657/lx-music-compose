@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
 import androidx.compose.foundation.clickable
@@ -183,13 +184,23 @@ fun SettingScreen(
         // 而字号本来也只有几档常用值。用 SectionTitle 与周围 Preference 的标题层级统一。
         SectionTitle("字体大小")
         Spacer(Modifier.size(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // 分段选择器：此前选中项被 enabled=false 置灰，与「当前选中」的语义正好相反
+        // （用户会以为那一档不可用）。改为 FilterChip 的「选中高亮、其余可点」，
+        // 并对当前值额外做语义标记，读屏可播报「已选中」。
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             listOf(0.85f, 1f, 1.15f, 1.3f, 1.5f).forEach { scale ->
                 val selected = (fontScale - scale).let { it < 0.06f && it > -0.06f }
-                Button(
-                    onClick = { viewModel.setFontScale(scale) },
-                    enabled = !selected,
-                ) { Text("${(scale * 100).toInt()}%") }
+                FilterChip(
+                    label = "${(scale * 100).toInt()}%",
+                    selected = selected,
+                    // 点已选中的档位不做任何事，避免无意义的重排
+                    onClick = { if (!selected) viewModel.setFontScale(scale) },
+                    horizontalPadding = 12,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
         ArrowPreference(

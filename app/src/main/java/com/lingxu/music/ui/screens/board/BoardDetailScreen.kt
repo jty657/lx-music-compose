@@ -34,6 +34,7 @@ import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.RetryHint
+import com.lingxu.music.ui.components.TopBarTitle
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import kotlinx.coroutines.launch
@@ -100,11 +101,8 @@ fun BoardDetailScreen(
         GlassTopBar {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             BackIconButton(onClick = { navigator.pop() })
-            Text(
-                name,
-                fontSize = MiuixTheme.textStyles.title1.fontSize,
-                modifier = Modifier.padding(start = 12.dp),
-            )
+            // 单行省略 + weight：长榜单名不再把下面的操作按钮挤出版面
+            TopBarTitle(name)
         }
         }
         Column(

@@ -32,6 +32,8 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
+import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.Motion
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -160,16 +162,17 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         // 与榜单详情、歌单详情的加载提示保持一致。
         if (boards.isEmpty()) {
             when {
-                // 加载中：给 3 个与真实卡片同高的骨架块（静态半透明，不做闪烁动画），
+                // 加载中：给 3 个与真实卡片同构的骨架（静态半透明，不做闪烁动画），
                 // 既占住版面避免「空白 → 突然出现列表」的跳变，也不会在低端机上多一份逐帧绘制。
+                // 高度与原卡片一致（行内 padding 8dp + 内容 ~28dp + 卡片描边），否则加载完成时列表会整体上跳。
                 viewModel.loading -> Column(Modifier.fillMaxWidth()) {
                     repeat(3) {
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .height(56.dp)
-                                .clip(RoundedCornerShape(20.dp))
+                                .padding(vertical = Dimens.ItemGap)
+                                .height(60.dp)
+                                .clip(RoundedCornerShape(Dimens.CardCorner))
                                 .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f)),
                         )
                     }
@@ -183,7 +186,12 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         LazyColumn(Modifier.weight(if (showHot) 0.6f else 1f), state = boardState) {
                 items(boards, key = { it.id }) { board ->
                     GlassSurface(
-                        modifier = Modifier.fillMaxWidth().animateItem().padding(vertical = 4.dp),
+                        // animateItem 必须在 LazyItemScope 上调用，链式顺序需先于其它 Modifier
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = Motion.itemFade(),
+                            placementSpec = Motion.itemPlacement(),
+                            fadeOutSpec = Motion.itemFade(),
+                        ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
                         onClick = {
                             val (source, bangId, name) = viewModel.boardTarget(board)
                             navigator.push(Screen.BoardList(source, bangId, name))
