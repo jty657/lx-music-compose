@@ -65,7 +65,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             onClick = { navigator.push(Screen.Source) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(14.dp)) {
-                IconWrap(MiuixIcons.File)
+                EntryIcon(MiuixIcons.File)
                 Column(Modifier.padding(start = 12.dp)) {
                     Text("音源管理", fontSize = MiuixTheme.textStyles.main.fontSize)
                     Text(
@@ -86,7 +86,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 onClick = { navigator.push(Screen.MyLists) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
-                    IconWrap(MiuixIcons.Layers)
+                    EntryIcon(MiuixIcons.Layers)
                     Column(Modifier.padding(start = 12.dp)) {
                         Text("我的列表", fontSize = MiuixTheme.textStyles.main.fontSize)
                         Text(
@@ -103,7 +103,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 onClick = { navigator.push(Screen.SongList(selectedSource)) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
-                    IconWrap(MiuixIcons.Music)
+                    EntryIcon(MiuixIcons.Music)
                     Column(Modifier.padding(start = 12.dp)) {
                         Text("歌单广场", fontSize = MiuixTheme.textStyles.main.fontSize)
                         Text(
@@ -208,6 +208,25 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 }
             }
     }
+    }
+}
+
+/**
+ * 首页入口卡的图标：与主内容同处的「淡色圆底托图标」语言对齐
+ * （搜索页歌单结果此前已采用），24dp 视觉尺寸套一层 36dp 圆角淡底，
+ * 让音源/我的列表/歌单广场三张入口卡的图标从裸图标升级为有层级的功能入口标识。
+ * 仅用于入口卡；榜单项沿用裸 [IconWrap] 以保持列表行高度不变。纯视觉、不改交互。
+ */
+@Composable
+private fun EntryIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(Dimens.CornerM))
+            .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        top.yukonga.miuix.kmp.basic.Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
     }
 }
 
