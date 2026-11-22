@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -775,5 +776,12 @@ private fun Modifier.deletePressClickable(onClick: () -> Unit): Modifier {
     )
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
-        .clickable(indication = null, interactionSource = interactionSource, onClick = onClick)
+        // 与全站图标按钮一致补 Role.Button：
+        // 内层 Icon 的 contentDescription（删除/移除）读屏会报成「图像」，加 role 后才是「按钮」。
+        .clickable(
+            indication = null,
+            interactionSource = interactionSource,
+            role = Role.Button,
+            onClick = onClick,
+        )
 }

@@ -282,7 +282,15 @@ private fun Modifier.queueActionClickable(enabled: Boolean = true, onClick: () -
     )
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
-        .clickable(enabled = enabled, indication = null, interactionSource = interactionSource, onClick = onClick)
+        // 与 ClearQueueButton / BackIconButton 一致补 Role.Button：
+        // 内层 Icon 的 contentDescription（上移/下移/移除）读屏会报成「图像」，加 role 后才是「按钮」。
+        .clickable(
+            enabled = enabled,
+            indication = null,
+            interactionSource = interactionSource,
+            role = Role.Button,
+            onClick = onClick,
+        )
 }
 
 class PlayQueueViewModel : ViewModel() {

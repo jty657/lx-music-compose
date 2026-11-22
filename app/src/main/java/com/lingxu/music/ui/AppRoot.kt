@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -474,6 +475,9 @@ private fun MiniBarAction(
             .clickable(
                 indication = null,
                 interactionSource = interaction,
+                // 与 BackIconButton / 播放页图标键一致补 Role.Button：
+                // 内层 Icon 的 contentDescription（播放/播放队列）读屏会报成「图像」，加 role 后才是「按钮」。
+                role = Role.Button,
                 onClick = onClick,
             ),
         contentAlignment = Alignment.Center,

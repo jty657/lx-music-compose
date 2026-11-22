@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -155,7 +156,13 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                                     .padding(vertical = 6.dp),
                             ) {
                                 RadioButton(selected = picked == list.id, onClick = { picked = list.id })
-                                Text(list.name, modifier = Modifier.padding(start = 8.dp))
+                                // 超长列表名单行省略：避免撑破对话框选项行、把确定/取消按钮挤出屏幕
+                                Text(
+                                    list.name,
+                                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
                         }
                     }
@@ -266,9 +273,12 @@ private fun Modifier.clickableNoIndication(onClick: () -> Unit): Modifier {
     )
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
+        // 与全站图标按钮一致补 Role.Button：
+        // 内层 Icon 的 contentDescription（移除）读屏会报成「图像」，加 role 后才是「按钮」。
         .clickable(
             indication = null,
             interactionSource = interactionSource,
+            role = Role.Button,
             onClick = onClick,
         )
 }

@@ -429,6 +429,9 @@ private fun FavoriteToggleIcon(isFavorite: Boolean, onClick: () -> Unit) {
             .clickable(
                 indication = null,
                 interactionSource = interaction,
+                // 与 BackIconButton / PlayerIconButton 一致补 Role.Button：
+                // 内层 Icon 的 contentDescription（收藏/取消收藏）读屏会报成「图像」，加 role 后才是「按钮」。
+                role = Role.Button,
                 onClick = onClick,
             ),
         contentAlignment = Alignment.Center,
