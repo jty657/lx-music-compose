@@ -16,6 +16,7 @@ import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.TextActionButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
@@ -590,13 +591,11 @@ fun SettingScreen(
                     rules.forEach { rule ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text(rule, modifier = Modifier.weight(1f))
-                            Text(
-                                "删除",
+                            // 统一走 TextActionButton：48dp 命中区 + 按压缩放 + Role.Button + 静帧降级
+                            TextActionButton(
+                                text = "删除",
+                                onClick = { viewModel.removeDislike(rule) },
                                 color = MiuixTheme.colorScheme.error,
-                                modifier = Modifier
-                                    .clickable { viewModel.removeDislike(rule) }
-                                    // 热区从约 32dp 扩至约 48dp（可达性下限），视觉字号不变
-                                    .padding(horizontal = 8.dp, vertical = 14.dp),
                             )
                         }
                     }

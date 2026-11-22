@@ -71,6 +71,7 @@ import com.lingxu.music.core.player.LyricLine
 import com.lingxu.music.core.player.PlayMode
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
+import com.lingxu.music.ui.components.TextActionButton
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
@@ -260,21 +261,13 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    Box(
-                        Modifier
-                            .padding(start = 8.dp)
-                            .clip(RoundedCornerShape(Dimens.CornerS))
-                            .clickable { viewModel.next() }
-                            // 纯文字按钮热区补到约 48dp（可达性下限），字号与视觉不变
-                            .padding(horizontal = 8.dp, vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "下一首",
-                            color = MiuixTheme.colorScheme.primary,
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        )
-                    }
+                    // 统一走 TextActionButton：48dp 命中区 + 按压缩放 + Role.Button + 静帧降级
+                    TextActionButton(
+                        text = "下一首",
+                        onClick = { viewModel.next() },
+                        color = MiuixTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
                 }
             }
 

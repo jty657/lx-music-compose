@@ -55,7 +55,9 @@ import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.LoadMoreButton
 import com.lingxu.music.ui.components.RetryHint
+import com.lingxu.music.ui.components.TextActionButton
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
@@ -184,15 +186,12 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
                 Spacer(Modifier.size(8.dp))
-                Text(
-                    "清空",
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                // 统一走 TextActionButton：48dp 命中区 + 按压缩放 + Role.Button + 静帧降级，
+                // 取代此前裸 clickable 的方角涟漪（字号/颜色/视觉位置保持原样）
+                TextActionButton(
+                    text = "清空",
+                    onClick = { viewModel.clearHistory() },
                     color = MiuixTheme.colorScheme.primary,
-                    // 热区：仅靠文字约 40×20dp，低于 48dp 下限；上下 14dp + 左右 8dp 补齐，
-                    // 右侧还要吃掉行尾内边距，所以用 start padding 把视觉位置拉回原处。
-                    modifier = Modifier
-                        .clickable { viewModel.clearHistory() }
-                        .padding(horizontal = 8.dp, vertical = 14.dp),
                 )
             }
             Spacer(Modifier.height(4.dp))
@@ -284,11 +283,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                 }
                 if (viewModel.hasMore) {
                     item(key = "__load_more__") {
-                        Button(
+                        LoadMoreButton(
+                            loading = viewModel.loading,
                             onClick = { viewModel.loadMore() },
-                            enabled = !viewModel.loading,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        ) { Text(if (viewModel.loading) "加载中…" else "加载更多") }
+                        )
                     }
                 }
                 // 自动加载失败时给一个可点的重试入口，否则用户会一直卡在列表底部
@@ -335,15 +334,13 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             }
             if (viewModel.hasMore) {
                 item(key = "__load_more__") {
-                    Button(
+                    LoadMoreButton(
+                        loading = viewModel.loading,
                         onClick = { viewModel.loadMore() },
-                        enabled = !viewModel.loading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                    ) {
-                        Text(if (viewModel.loading) "加载中…" else "加载更多")
-                    }
+                    )
                 }
             }
             viewModel.errorMessage?.let { err ->

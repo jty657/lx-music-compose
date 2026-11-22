@@ -36,6 +36,7 @@ import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.LoadMoreButton
 import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.theme.Dimens
@@ -207,11 +208,11 @@ fun SongListScreen(
             }
             if (hasMore) {
                 item(key = "__songlist_more__") {
-                    Button(
+                    LoadMoreButton(
+                        loading = loading,
                         onClick = { load(page + 1) },
-                        enabled = !loading,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    ) { Text(if (loading) "加载中…" else "加载更多") }
+                    )
                 }
             }
         }
