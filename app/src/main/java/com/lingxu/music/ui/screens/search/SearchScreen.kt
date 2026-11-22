@@ -44,6 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
@@ -209,7 +212,12 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                         fontSize = MiuixTheme.textStyles.body1.fontSize,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .combinedClickable(
+                            // 与全站 unified 交互语言一致：indication=null 去掉方角涟漪 +
+                            // 轻微按压缩放 + Role.Button + 读屏描述（含长按删除提示）+ 静帧降级。
+                            // 此前是全站唯一一处裸 combinedClickable 的历史词条，与
+                            // BackIconButton / TextActionButton / 各列表操作键手感不一致。
+                            .historyRowClickable(
+                                description = "搜索历史：$word，长按删除",
                                 onClick = {
                                     textFieldState.setTextAndPlaceCursorAtEnd(word)
                                     scope.launch { viewModel.search(word, selectedSource) }
@@ -439,6 +447,40 @@ private fun FavoriteToggleIcon(isFavorite: Boolean, onClick: () -> Unit) {
             )
         }
     }
+}
+
+/**
+ * 搜索历史词条的点击修饰：与全站交互语言统一。
+ *
+ * 此前历史词条是全站最后一处裸 [combinedClickable]——系统方角涟漪铺满整行、按下无任何
+ * 缩放反馈、读屏只当普通文本且不知可长按删除。这里与 [BackIconButton]、[TextActionButton]
+ * 及各页操作键对齐：`indication=null` 去掉方角涟漪、轻微按压缩放（只动 transform）、
+ * `Role.Button` + 读屏描述、减弱动效时退化为静帧。onClick/onLongClick 行为完全不变。
+ */
+@Composable
+private fun Modifier.historyRowClickable(
+    description: String,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !reduceMotion) 0.98f else 1f,
+        animationSpec = Motion.press(),
+        label = "historyRowPress",
+    )
+    return this
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .combinedClickable(
+            interactionSource = interaction,
+            indication = null,
+            role = Role.Button,
+            onClick = onClick,
+            onLongClick = onLongClick,
+        )
+        .semantics { contentDescription = description }
 }
 
 /** 滚到接近底部（留 4 项余量）时自动触发加载下一页 */
