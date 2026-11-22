@@ -1,6 +1,9 @@
 package com.lingxu.music.ui.screens.playqueue
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +42,7 @@ import com.lingxu.music.ui.components.PlayingIndicator
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
@@ -162,7 +166,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                             Box(
                                 Modifier
                                     .size(48.dp)
-                                    .clickable(enabled = index > 0) { viewModel.moveUp(index) },
+                                    .queueActionClickable(enabled = index > 0) { viewModel.moveUp(index) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
@@ -178,7 +182,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                             Box(
                                 Modifier
                                     .size(48.dp)
-                                    .clickable(enabled = index < queue.lastIndex) { viewModel.moveDown(index) },
+                                    .queueActionClickable(enabled = index < queue.lastIndex) { viewModel.moveDown(index) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
@@ -196,7 +200,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                         Box(
                             Modifier
                                 .size(48.dp)
-                                .clickable { viewModel.removeAt(index) },
+                                .queueActionClickable { viewModel.removeAt(index) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -233,6 +237,27 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
             }
         }
     }
+}
+
+/**
+ * 队列操作图标（上移/下移/移除）的点击修饰：48dp 热区由调用点的 size 提供，这里补按压缩放反馈。
+ * 与收藏页删除键、我的列表删除键、全站 BackIconButton 同一手感：只动 transform（不触发重新布局），
+ * 禁用态（首项上移/末项下移）不给出反馈，减弱动效时退化为静帧。
+ * 此前本页三个操作图标是全站唯一「点下去毫无变化」的可点元素，其它同类按钮已在 ac3b207 补齐。
+ */
+@Composable
+private fun Modifier.queueActionClickable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled && !reduceMotion) 0.85f else 1f,
+        animationSpec = Motion.press(),
+        label = "queueActionPress",
+    )
+    return this
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .clickable(enabled = enabled, indication = null, interactionSource = interactionSource, onClick = onClick)
 }
 
 class PlayQueueViewModel : ViewModel() {
