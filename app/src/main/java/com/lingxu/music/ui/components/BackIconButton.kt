@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
@@ -48,6 +49,10 @@ fun BackIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .clickable(
                 indication = null,
                 interactionSource = interaction,
+                // 补 Role.Button：内层 Icon 只有 contentDescription，读屏会报成「返回 图像」而非
+                // 「返回 按钮」，与全站 TextActionButton/DialogOption 的按钮语义不一致。
+                // 仅加语义，点击行为与热区完全不变。
+                role = Role.Button,
                 onClick = onClick,
             ),
         contentAlignment = Alignment.Center,

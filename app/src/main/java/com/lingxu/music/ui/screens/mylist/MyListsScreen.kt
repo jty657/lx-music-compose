@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -258,11 +259,18 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                 modifier = Modifier.size(28.dp),
                             )
                             Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                Text(music.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                                Text(
+                                    music.name,
+                                    fontSize = MiuixTheme.textStyles.main.fontSize,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                                 Text(
                                     music.singer,
                                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                             if (!selectMode) {
@@ -565,6 +573,14 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
         EmptyHint(icon = MiuixIcons.Favorites, text = "还没有列表，点右上角「新建」或去歌单广场收藏")
         return
     }
+    // 长按重命名此前无任何提示，用户无从发现（与音源页「长按音源可删除」同类）
+    Text(
+        "长按列表可重命名",
+        fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        modifier = Modifier.padding(start = 4.dp),
+    )
+    Spacer(Modifier.size(4.dp))
     LazyColumn(
         state = listState,
     ) {
@@ -581,11 +597,18 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
                         modifier = Modifier.size(28.dp),
                     )
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(list.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                        Text(
+                            list.name,
+                            fontSize = MiuixTheme.textStyles.main.fontSize,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Text(
                             if (list.sourceListId != null) "在线列表 · ${list.source}" else "本地列表",
                             fontSize = MiuixTheme.textStyles.body2.fontSize,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                     Box(

@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -144,6 +145,8 @@ fun GlassSurface(
     tint: Color? = null,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    /** 读屏语义角色：可点卡片传入 [Role.Button] 让读屏识别为按钮；默认 null 保持原语义 */
+    role: Role? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val dark = LocalGlass.current?.dark ?: false
@@ -186,12 +189,14 @@ fun GlassSurface(
         onClick != null && onLongClick != null -> Modifier.combinedClickable(
             interactionSource = interaction,
             indication = indication,
+            role = role,
             onLongClick = onLongClick,
             onClick = onClick,
         )
         onClick != null -> Modifier.clickable(
             interactionSource = interaction,
             indication = indication,
+            role = role,
             onClick = onClick,
         )
         else -> Modifier

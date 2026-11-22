@@ -157,6 +157,17 @@ fun SongListScreen(
             Spacer(Modifier.size(8.dp))
         }
 
+        // 长按收藏此前无任何提示，用户无从发现（与音源页「长按音源可删除」同类）
+        if (list.isNotEmpty()) {
+            Text(
+                "长按歌单可收藏到我的列表",
+                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+            Spacer(Modifier.size(4.dp))
+        }
+
         // 错误提示统一由下方空态分支的 RetryHint 展示，此处不再单独渲染红字，
         // 避免加载失败且列表为空时同一句错误文案出现两遍。
 

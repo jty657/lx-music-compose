@@ -564,6 +564,10 @@ private fun LyricView(
                 slideOutVertically(tween(if (reduceMotion) 0 else 120)) { it / 2 },
         ) {
             GlassSurface(
+                // 补 Role.Button：该浮层是「回到当前歌词」的可点入口，读屏可识别为按钮。
+                // 通过 GlassSurface 的 role 参数传入（而非外部 semantics，避免与内部 clickable
+                // 语义节点分离），点击与入场动效均不变。
+                role = Role.Button,
                 shape = RoundedCornerShape(Dimens.CardCorner),
                 onClick = { followCurrent = true },
             ) {
@@ -689,6 +693,10 @@ private fun PlayerIconButton(
             .clickable(
                 indication = null,
                 interactionSource = interaction,
+                // 与 BackIconButton / TextActionButton 一致补 Role.Button：
+                // 内层 Icon 的 contentDescription 会被读屏报成「图像」，加 role 后才是「按钮」，
+                // 视障用户可正确识别这些播放控制键。仅语义变化，行为不变。
+                role = Role.Button,
                 onClick = onClick,
             ),
         contentAlignment = Alignment.Center,
@@ -744,6 +752,8 @@ private fun PlayerMainButton(playing: Boolean, onClick: () -> Unit) {
             .clickable(
                 indication = null,
                 interactionSource = interaction,
+                // 主播放键同样补 Role.Button，读屏识别为按钮（同 PlayerIconButton）
+                role = Role.Button,
                 onClick = onClick,
             ),
         contentAlignment = Alignment.Center,
@@ -799,7 +809,12 @@ private fun PlayerMoreSettings(
             )
             Spacer(Modifier.size(8.dp))
             Text("定时停止播放", fontSize = MiuixTheme.textStyles.body2.fontSize)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // 窄屏 / 大字号下四个按钮裸横排会超出屏宽被裁切，末尾「关闭」无法点到。
+            // 与播放模式分段一致改为横向可滚动；正常宽度下不产生滚动，观感不变。
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
                 listOf(15, 30, 60).forEach { min ->
                     Button(onClick = { onTimeout(min); onDismiss() }) { Text("${min}分") }
                 }
