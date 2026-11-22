@@ -539,6 +539,10 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                     targetLists.forEach { target ->
                         Text(
                             target.name,
+                            // 列表名用户可自定义、长度不可控：单行省略，避免超长名字撑高
+                            // 选项行、把对话框顶出屏幕（与收藏页「加入列表」对话框一致）。
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .dialogOptionClickable {

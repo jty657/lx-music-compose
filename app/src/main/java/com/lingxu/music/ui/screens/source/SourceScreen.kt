@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.core.model.SourceConst
@@ -152,11 +153,15 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                             Column(Modifier.weight(1f)) {
-                                Text(api.name)
+                                // 脚本名来自用户导入、完全不可控：补单行省略，避免长名把右侧
+                                // 「✓ 使用中」挤出屏幕（与首页榜单/歌单项同一省略语言）。
+                                Text(api.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
                                     "${api.author} ${api.version}".trim(),
                                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                             if (currentSource == api.id) {
@@ -170,11 +175,14 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
         // 状态提示（成功/进行中用次要色，只有失败才是红字）
         viewModel.statusMessage?.let { msg ->
+            // 导入失败的长异常信息限制两行并省略，避免撑高底部、压缩上方音源列表。
             Text(
                 msg,
                 color = if (viewModel.statusIsError) MiuixTheme.colorScheme.error
                 else MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 fontSize = MiuixTheme.textStyles.body2.fontSize,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         }

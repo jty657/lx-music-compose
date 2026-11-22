@@ -179,12 +179,16 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                             fontSize = if (isTop3) MiuixTheme.textStyles.body1.fontSize
                                        else MiuixTheme.textStyles.body2.fontSize,
                         )
+                        // 热搜词来自网络、长度不可控：占满剩余宽度并单行省略，
+                        // 避免长词换行、与左侧排名数字错位并撑高整行（与榜单项同一省略语言）。
                         Text(
                             word,
-                            modifier = Modifier.padding(start = 12.dp),
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),
                             color = if (isTop3) MiuixTheme.colorScheme.primary
                                     else MiuixTheme.colorScheme.onSurface,
                             fontSize = MiuixTheme.textStyles.body1.fontSize,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

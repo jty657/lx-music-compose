@@ -210,6 +210,9 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     Text(
                         word,
                         fontSize = MiuixTheme.textStyles.body1.fontSize,
+                        // 历史搜索词单行省略，避免超长词换行改变行高、挤掉下方条目。
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .fillMaxWidth()
                             // 与全站 unified 交互语言一致：indication=null 去掉方角涟漪 +

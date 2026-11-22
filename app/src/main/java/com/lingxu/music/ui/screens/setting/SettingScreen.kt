@@ -30,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
@@ -590,7 +591,13 @@ fun SettingScreen(
                 } else {
                     rules.forEach { rule ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Text(rule, modifier = Modifier.weight(1f))
+                            // 规则为「歌名@歌手」，长度不可控：单行省略，避免长规则换行挤压右侧删除按钮。
+                            Text(
+                                rule,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             // 统一走 TextActionButton：48dp 命中区 + 按压缩放 + Role.Button + 静帧降级
                             TextActionButton(
                                 text = "删除",
