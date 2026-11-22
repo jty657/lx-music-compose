@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.animateListItem
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
@@ -142,7 +144,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                 items(userApis, key = { it.id }) { api ->
                     GlassSurface(
                         // 与全站其它列表一致：导入/删除音源时条目平滑让位，不瞬移。
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).animateItem(),
+                        modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                         onClick = { viewModel.switchSource(api.id) },
                         onLongClick = {
                             deletingId = api.id

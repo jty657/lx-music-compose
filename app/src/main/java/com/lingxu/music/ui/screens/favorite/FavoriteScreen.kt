@@ -44,6 +44,7 @@ import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.animateListItem
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -102,11 +103,7 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             items(favorites, key = { it.id }) { music ->
                 FavoriteCard(
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = Motion.itemFade(),
-                        placementSpec = Motion.itemPlacement(),
-                        fadeOutSpec = Motion.itemFade(),
-                    ),
+                    modifier = animateListItem(),
                     music = music,
                     onPlay = {
                         scope.launch { viewModel.play(music) }

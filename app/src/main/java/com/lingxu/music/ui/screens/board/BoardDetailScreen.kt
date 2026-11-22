@@ -43,6 +43,7 @@ import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.animateListItem
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -182,12 +183,7 @@ fun BoardDetailScreen(
             }
             items(shownMusic, key = { it.id }) { music ->
                 GlassSurface(
-                    modifier = Modifier
-                        .animateItem(
-                            fadeInSpec = Motion.itemFade(),
-                            placementSpec = Motion.itemPlacement(),
-                            fadeOutSpec = Motion.itemFade(),
-                        )
+                    modifier = animateListItem()
                         .fillMaxWidth()
                         .padding(vertical = Dimens.ItemGap),
                     onClick = { viewModel.play(musicList, music) },

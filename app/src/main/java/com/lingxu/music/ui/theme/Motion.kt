@@ -7,6 +7,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -72,4 +74,21 @@ object Motion {
 
     /** 列表项淡入淡出：短促线性淡变，配合位移使用 */
     fun itemFade(): FiniteAnimationSpec<Float> = tween(durationMillis = 180)
+}
+
+/**
+ * 列表项进出/位移的统一入口：把 [Motion.itemFade] / [Motion.itemPlacement] 与
+ * 「减弱动效」开关绑在一起。系统关闭动画时长缩放时一帧到位，与全站封面、按压缩放、
+ * 弹窗进出的静帧降级保持一致；同时省掉低端机列表滚动时无意义的逐帧调度。
+ *
+ * 此前各列表虽已使用 [Motion.itemFade] / [Motion.itemPlacement]，但都绕过了
+ * LocalReduceMotion —— 是全站动效降级覆盖里唯一的一组遗漏。
+ */
+@Composable
+fun LazyItemScope.animateListItem(): Modifier {
+    val reduceMotion = LocalReduceMotion.current
+    val fade: FiniteAnimationSpec<Float> = if (reduceMotion) tween(0) else Motion.itemFade()
+    val placement: FiniteAnimationSpec<IntOffset> =
+        if (reduceMotion) tween(0) else Motion.itemPlacement()
+    return Modifier.animateItem(fadeInSpec = fade, placementSpec = placement, fadeOutSpec = fade)
 }

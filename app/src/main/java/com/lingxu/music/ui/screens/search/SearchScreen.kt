@@ -64,6 +64,7 @@ import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.animateListItem
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -236,11 +237,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
             LazyColumn(state = songListState, modifier = Modifier.weight(1f)) {
                 items(songLists, key = { "${it.source}_${it.id}" }) { item ->
                     GlassSurface(
-                        modifier = Modifier.animateItem(
-                            fadeInSpec = Motion.itemFade(),
-                            placementSpec = Motion.itemPlacement(),
-                            fadeOutSpec = Motion.itemFade(),
-                        ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
+                        modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                         onClick = {
                             navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                         },
@@ -317,11 +314,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         LazyColumn(state = resultState, modifier = Modifier.weight(1f)) {
             items(results, key = { it.id }) { music ->
                 SearchResultCard(
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = Motion.itemFade(),
-                        placementSpec = Motion.itemPlacement(),
-                        fadeOutSpec = Motion.itemFade(),
-                    ),
+                    modifier = animateListItem(),
                     music = music,
                     isFavorite = music.id in viewModel.favoriteIds,
                     onClick = {

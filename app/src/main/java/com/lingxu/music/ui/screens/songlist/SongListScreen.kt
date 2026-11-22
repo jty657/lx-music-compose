@@ -41,6 +41,7 @@ import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.animateListItem
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
@@ -179,11 +180,7 @@ fun SongListScreen(
         ) {
             items(list, key = { "${it.source}_${it.id}" }) { item ->
                 GlassSurface(
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = Motion.itemFade(),
-                        placementSpec = Motion.itemPlacement(),
-                        fadeOutSpec = Motion.itemFade(),
-                    ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
+                    modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                     onClick = {
                         navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                     },

@@ -54,6 +54,7 @@ import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.animateListItem
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
@@ -236,11 +237,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 items(shownMusics, key = { it.id }) { music ->
                     val checked = music.id in selected
                     GlassSurface(
-                        modifier = Modifier.animateItem(
-                        fadeInSpec = Motion.itemFade(),
-                        placementSpec = Motion.itemPlacement(),
-                        fadeOutSpec = Motion.itemFade(),
-                    ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
+                        modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                         onClick = {
                             if (selectMode) {
                                 selected = if (checked) selected - music.id else selected + music.id
@@ -573,11 +570,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
     ) {
         items(lists, key = { it.id }) { list ->
             GlassSurface(
-                modifier = Modifier.animateItem(
-                        fadeInSpec = Motion.itemFade(),
-                        placementSpec = Motion.itemPlacement(),
-                        fadeOutSpec = Motion.itemFade(),
-                    ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
+                modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                 onClick = { onOpen(list) },
                 onLongClick = { onRename(list) },
             ) {

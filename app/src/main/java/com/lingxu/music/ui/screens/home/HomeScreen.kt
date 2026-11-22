@@ -44,6 +44,7 @@ import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.animateListItem
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -218,11 +219,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 items(boards, key = { it.id }) { board ->
                     GlassSurface(
                         // animateItem 必须在 LazyItemScope 上调用，链式顺序需先于其它 Modifier
-                        modifier = Modifier.animateItem(
-                            fadeInSpec = Motion.itemFade(),
-                            placementSpec = Motion.itemPlacement(),
-                            fadeOutSpec = Motion.itemFade(),
-                        ).fillMaxWidth().padding(vertical = Dimens.ItemGap),
+                        modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                         onClick = {
                             val (source, bangId, name) = viewModel.boardTarget(board)
                             navigator.push(Screen.BoardList(source, bangId, name))
