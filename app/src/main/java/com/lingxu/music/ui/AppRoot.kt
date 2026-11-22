@@ -178,8 +178,12 @@ fun AppRoot() {
                         ) {
                             AnimatedVisibility(
                                 visible = miniBarVisible,
-                                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                                // 迷你条滑入/淡入是全站最后一处未降级的 AnimatedVisibility：
+                                // 正常模式完全保留原 spring 位移+淡变手感（零变化）；系统要求减弱动效时
+                                // 改为瞬时淡变（tween 0）、去掉位移，与 Glass/PlayerScreen/MyLists 的
+                                // AnimatedVisibility 降级约定一致，静帧到位不空播滑入动画。
+                                enter = if (reduceMotion) fadeIn(tween(0)) else slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                                exit = if (reduceMotion) fadeOut(tween(0)) else slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                             ) {
                                 // 高度上报给 MainScaffold 预留底部留白（字体缩放后会变高）
                                 val d = androidx.compose.ui.platform.LocalDensity.current
