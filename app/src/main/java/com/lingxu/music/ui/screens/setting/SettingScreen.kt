@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.lingxu.music.ui.components.ContentMaxWidth
+import com.lingxu.music.ui.components.dialogOptionClickable
 import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.TextActionButton
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -636,7 +636,7 @@ fun SettingScreen(
                         "$min 分钟",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .dialogOptionClickable {
                                 viewModel.setTimeoutExit(min)
                                 showTimeoutExit = false
                             }
@@ -651,7 +651,7 @@ fun SettingScreen(
                         color = MiuixTheme.colorScheme.error,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .dialogOptionClickable {
                                 viewModel.setTimeoutExit(0)
                                 showTimeoutExit = false
                             }

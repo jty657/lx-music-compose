@@ -44,6 +44,7 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.db.Playlist
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.ui.components.BackIconButton
+import com.lingxu.music.ui.components.dialogOptionClickable
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.EmptyHint
@@ -405,7 +406,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         color = MiuixTheme.colorScheme.primary,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .dialogOptionClickable {
                                 val target = currentList
                                 showSort = false
                                 showSync = true
@@ -430,7 +431,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         opt.label,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .dialogOptionClickable {
                                 val sorted = when (opt.key) {
                                     "name" -> musics.sortedBy { it.name }
                                     "singer" -> musics.sortedBy { it.singer }
@@ -451,7 +452,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                     "导出此歌单",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .dialogOptionClickable {
                             val target = lists.firstOrNull { it.id == openList }
                             showSort = false
                             // 列表名可以直接含路径分隔符，导出前净化（原版 utils.filterFileName）
@@ -466,7 +467,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                     color = MiuixTheme.colorScheme.error,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .dialogOptionClickable {
                             // 同名同歌手视为重复，保留首次出现
                             val seen = mutableSetOf<String>()
                             val deduped = musics.filter { seen.add("${it.name}\u0000${it.singer}") }
@@ -534,7 +535,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                             target.name,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .dialogOptionClickable {
                                     val moved = musics.filter { it.id in selected }
                                     scope.launch {
                                         viewModel.moveMusics(openList!!, target.id, moved)
