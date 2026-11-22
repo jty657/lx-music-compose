@@ -60,6 +60,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -388,7 +391,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                                         .minimumInteractiveComponentSize()
                                         .clip(RoundedCornerShape(Dimens.CornerM))
                                         .background(modeBg)
-                                        .clickable { viewModel.setMode(mode) }
+                                        .clickable(role = Role.Tab, onClick = { viewModel.setMode(mode) })
+                                        // 与 FilterChip 对齐：读屏可播报「已选中/未选中」，避免只靠颜色区分选中态
+                                        .semantics { this.selected = selected }
                                         .padding(horizontal = 12.dp, vertical = 11.dp),
                                     color = if (selected) MiuixTheme.colorScheme.primary
                                     else MiuixTheme.colorScheme.onSurfaceVariantSummary,
@@ -608,7 +613,8 @@ private fun LyricLineRow(
                 transformOrigin = TransformOrigin(originX, 0.5f)
             }
             // 点歌词跳到对应时间（对应原版「点歌词调进度」）
-            .clickable { onSeek(line.timeMs) }
+            // 补 Role.Button 语义，读屏可识别为可操作的跳转项而非普通文本
+            .clickable(role = Role.Button, onClickLabel = "跳转到该句歌词") { onSeek(line.timeMs) }
             .padding(vertical = 5.dp),
         horizontalAlignment = horizontal,
     ) {

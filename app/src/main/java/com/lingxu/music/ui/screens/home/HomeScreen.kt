@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
@@ -20,9 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
@@ -34,6 +42,7 @@ import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
@@ -129,15 +138,34 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             com.lingxu.music.ui.components.ReportScrollForMiniBar(hotState)
             LazyColumn(Modifier.weight(0.4f), state = hotState) {
                 itemsIndexed(hotSearch) { index, word ->
+                    // 热搜行是全站少数仍用裸 clickable 的列表项：系统方角涟漪会溢出整行宽度、
+                    // 按下无反馈、读屏只当普通文本。这里与 BackIconButton / RetryHint / 各列表
+                    // 操作键统一为「indication=null + 轻微按压缩放 + Role.Button + reduceMotion 静帧」。
+                    val hotInteraction = remember { MutableInteractionSource() }
+                    val hotPressed by hotInteraction.collectIsPressedAsState()
+                    val hotReduceMotion = LocalReduceMotion.current
+                    val hotScale by animateFloatAsState(
+                        targetValue = if (hotPressed && !hotReduceMotion) 0.98f else 1f,
+                        animationSpec = Motion.press(),
+                        label = "hotSearchPress",
+                    )
                     // 前三名用主色强调、字号放大一档，其余弱化为次要色，形成清晰的榜单层级
                     val isTop3 = index < 3
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { navigator.push(Screen.Search(word)) }
+                            .graphicsLayer { scaleX = hotScale; scaleY = hotScale }
+                            .clip(RoundedCornerShape(Dimens.CornerS))
+                            .clickable(
+                                interactionSource = hotInteraction,
+                                indication = null,
+                                role = Role.Button,
+                                onClick = { navigator.push(Screen.Search(word)) },
+                            )
                             // 榜单每行热区提到 48dp 下限，视觉紧凑度基本不变
-                            .padding(vertical = 14.dp),
+                            .padding(vertical = 14.dp)
+                            .semantics { contentDescription = "热搜第 ${index + 1} 名：$word" },
                     ) {
                         Text(
                             "${index + 1}",
