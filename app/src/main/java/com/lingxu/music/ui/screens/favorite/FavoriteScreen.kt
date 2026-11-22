@@ -216,7 +216,8 @@ private fun FavoriteCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(8.dp),
         ) {
-            Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
+            // 整卡已可点且读屏会播报歌名/歌手，这里只是装饰图标；描述置空避免重复播报「播放」
+            Icon(MiuixIcons.Play, contentDescription = null, modifier = Modifier.size(28.dp))
             Spacer(Modifier.size(10.dp))
             TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
             Spacer(Modifier.size(10.dp))
