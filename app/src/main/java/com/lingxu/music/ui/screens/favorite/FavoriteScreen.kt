@@ -36,6 +36,7 @@ import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.EmptyHint
+import com.lingxu.music.ui.components.dialogOptionClickable
 import androidx.compose.foundation.layout.Arrangement
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
@@ -135,11 +136,15 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                 } else {
                     Column {
                         lists.forEach { list ->
+                            // 与「移动到」「定时停止」等对话框选项统一交互语言：
+                            // 去掉系统方角涟漪、补 0.97 按压缩放、Role.Button 语义与减弱动效静帧降级；
+                            // 这是全站最后一处裸露的对话框选项 clickable（其余均已接入 dialogOptionClickable）。
+                            // 行内 RadioButton 保留原选中态与点击，整行点击仅扩大命中区，不改变选择逻辑。
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { picked = list.id }
+                                    .dialogOptionClickable { picked = list.id }
                                     .padding(vertical = 6.dp),
                             ) {
                                 RadioButton(selected = picked == list.id, onClick = { picked = list.id })
