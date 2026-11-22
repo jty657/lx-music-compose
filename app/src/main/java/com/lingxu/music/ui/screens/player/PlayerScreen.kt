@@ -377,6 +377,15 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                                 // 让「已按下」在选中/未选中两种状态下都能被看见。
                                 val modeInteraction = remember { MutableInteractionSource() }
                                 val modePressed by modeInteraction.collectIsPressedAsState()
+                                // 按压缩放：此前模式 chip 是播放页内唯一「按下只有底色变化、无缩放」的可点元素，
+                                // 与同页收藏/队列/设置图标键的手感不一致。补一档轻微缩放（0.94），只动 transform，
+                                // 幅度比图标键（0.88）更小——chip 横向密集排列，收缩过大会互相牵动显得乱。
+                                // 接入 reduceMotion：系统要求减弱动效时退化为静帧，与底色过渡的降级一致。
+                                val modeScale by animateFloatAsState(
+                                    targetValue = if (modePressed && !reduceMotion) 0.94f else 1f,
+                                    animationSpec = Motion.press(),
+                                    label = "modeChipPress",
+                                )
                                 // 选中态底色随模式切换渐变，而不是硬切；按下态叠加一档加深
                                 val modeBg by animateColorAsState(
                                     targetValue = when {
@@ -395,6 +404,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                                     PlayMode.label(mode),
                                     // 胶囊形：与搜索页的筛选 chip 保持同一形态语言
                                     modifier = Modifier
+                                        // 按压缩放放在 clip 之前：缩放整个 chip（底色 + 文字），
+                                        // 不被圆角裁剪；只动 transform，不触发重新布局。
+                                        .graphicsLayer { scaleX = modeScale; scaleY = modeScale }
                                         // 命中区兜底 48dp：11dp padding 时文字高约 44dp，未达 Material 建议下限；
                                         // 与 FilterChip/RetryHint 一致，视觉仍是紧凑胶囊
                                         .minimumInteractiveComponentSize()
