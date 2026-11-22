@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -75,18 +76,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
             )
             Spacer(Modifier.weight(1f))
             if (queue.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable { showClearConfirm = true },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        "清空",
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = MiuixTheme.colorScheme.error,
-                    )
-                }
+                ClearQueueButton(onClick = { showClearConfirm = true })
             }
         }
         }
@@ -236,6 +226,44 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                 }
             }
         }
+    }
+}
+
+/**
+ * 顶栏「清空」文字键：与全站图标键同一手感——48dp 命中区 + 按压缩放反馈。
+ *
+ * 此前这里是裸 [clickable]（默认涟漪在 48dp 方形热区里会画成方角，和文字不搭），
+ * 且是全站唯一「点下去无缩放反馈」的可点元素。改为 indication=null + 轻微缩放，
+ * 对齐 [BackIconButton] / [queueActionClickable] 的语言；减弱动效时退化为静帧。
+ * 同时补 Role.Button 语义，读屏可识别为按钮（原先只是一段可点文字）。
+ */
+@Composable
+private fun ClearQueueButton(onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !reduceMotion) 0.9f else 1f,
+        animationSpec = Motion.press(),
+        label = "clearQueuePress",
+    )
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(
+                indication = null,
+                interactionSource = interaction,
+                role = Role.Button,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "清空",
+            fontSize = MiuixTheme.textStyles.body2.fontSize,
+            color = MiuixTheme.colorScheme.error,
+        )
     }
 }
 
