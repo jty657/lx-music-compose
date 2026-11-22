@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -203,11 +204,19 @@ fun SongListScreen(
                             modifier = Modifier.size(32.dp),
                         )
                         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(item.name, fontSize = MiuixTheme.textStyles.main.fontSize)
+                            // 长歌单名单行省略：与全站列表项一致，避免超长名称换行撑高卡片、把副标题挤出可视区
+                            Text(
+                                item.name,
+                                fontSize = MiuixTheme.textStyles.main.fontSize,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             Text(
                                 "${item.author} · ${item.playCount ?: ""}",
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }

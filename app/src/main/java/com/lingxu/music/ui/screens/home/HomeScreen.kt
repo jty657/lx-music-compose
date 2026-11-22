@@ -231,7 +231,13 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                             IconWrap(MiuixIcons.Music)
-                            Text(board.name, modifier = Modifier.padding(start = 12.dp))
+                            // 长榜单名单行省略：与首页其余列表项一致，超长名称以省略号收尾，不撑破卡片
+                            Text(
+                                board.name,
+                                modifier = Modifier.padding(start = 12.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }
