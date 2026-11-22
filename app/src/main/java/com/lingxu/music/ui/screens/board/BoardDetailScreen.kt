@@ -106,7 +106,7 @@ fun BoardDetailScreen(
             .fillMaxSize(),
     ) {
         GlassTopBar {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Dimens.PageH, vertical = 10.dp)) {
             BackIconButton(onClick = { navigator.pop() })
             // 单行省略 + weight：长榜单名不再把下面的操作按钮挤出版面
             TopBarTitle(name)
@@ -191,7 +191,7 @@ fun BoardDetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
                         Spacer(Modifier.size(10.dp))
-                        TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
+                        TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
                         Spacer(Modifier.size(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(

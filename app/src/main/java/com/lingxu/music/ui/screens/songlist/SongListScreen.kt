@@ -104,7 +104,7 @@ fun SongListScreen(
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Dimens.PageH, vertical = 10.dp)) {
                 BackIconButton(onClick = { navigator.pop() })
                 Text(
                     com.lingxu.music.core.model.SourceConst.displayName(source) + " 歌单",

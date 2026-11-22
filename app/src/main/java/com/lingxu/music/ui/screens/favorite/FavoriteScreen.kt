@@ -77,7 +77,7 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
             Text(
                 "我喜欢",
                 fontSize = MiuixTheme.textStyles.title1.fontSize,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = Dimens.PageH, vertical = 10.dp),
             )
         }
         Column(
@@ -218,7 +218,7 @@ private fun FavoriteCard(
         ) {
             Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
             Spacer(Modifier.size(10.dp))
-            TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
+            TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
             Spacer(Modifier.size(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(

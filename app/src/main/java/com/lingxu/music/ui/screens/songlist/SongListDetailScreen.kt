@@ -99,7 +99,7 @@ fun SongListDetailScreen(
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Dimens.PageH, vertical = 10.dp)) {
             BackIconButton(onClick = { navigator.pop() })
             // 单行省略 + weight：歌单名可能很长（「2024 华语年度热歌 TOP500」），
             // 此前无 maxLines，长标题会让顶栏行高翻倍并挤掉右侧空间
@@ -184,7 +184,7 @@ fun SongListDetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(28.dp))
                         Spacer(Modifier.size(10.dp))
-                        TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
+                        TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
                         Spacer(Modifier.size(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(

@@ -151,7 +151,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
         GlassTopBar {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.PageH, vertical = 10.dp),
             ) {
                 BackIconButton(
                     onClick = {

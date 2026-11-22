@@ -68,7 +68,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Dimens.PageH, vertical = 10.dp)) {
             BackIconButton(onClick = { navigator.pop() })
             Text(
                 "播放队列（${queue.size}）",
@@ -129,7 +129,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                             )
                         }
                         Spacer(Modifier.size(10.dp))
-                        TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
+                        TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
                         Spacer(Modifier.size(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(

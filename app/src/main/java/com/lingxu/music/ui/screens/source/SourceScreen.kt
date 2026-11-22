@@ -68,7 +68,7 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         GlassTopBar {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = Dimens.PageH, vertical = 10.dp),
             ) {
                 // 从首页卡片 push 进来时是二级页，需要可见的返回入口
                 if (navigator.backStack.size > 1) {

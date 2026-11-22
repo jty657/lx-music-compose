@@ -106,7 +106,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         GlassTopBar {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.PageH, vertical = 8.dp),
             ) {
                 TextField(
                     state = textFieldState,
@@ -377,7 +377,7 @@ private fun SearchResultCard(
         ) {
             Icon(MiuixIcons.Play, contentDescription = "播放", modifier = Modifier.size(32.dp))
             Spacer(Modifier.size(10.dp))
-            TrackCover(url = music.meta.picUrl, size = 44.dp, corner = 8.dp)
+            TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
             Spacer(Modifier.size(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
