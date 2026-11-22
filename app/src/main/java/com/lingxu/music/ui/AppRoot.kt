@@ -408,6 +408,9 @@ private fun MiniPlayerBar(navigator: Navigator) {
             }
             // 细进度线：给迷你条一个不占位的播放进度反馈。
             // positionMs 每 500ms 才更新一次，直接赋值会「跳格」；用等速补间把两次更新连起来。
+            // 这是全站最后一处未降级的 tween：系统要求减弱动效时瞬时到位（进度跳格是预期的静帧），
+            // 与封面淡入、歌词高亮、按压缩放的静帧降级约定保持一致。
+            val reduceMotion = LocalReduceMotion.current
             val rawProgress = if (state.durationMs > 0) {
                 (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
             } else {
@@ -415,7 +418,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
             }
             val progress by animateFloatAsState(
                 targetValue = rawProgress,
-                animationSpec = tween(durationMillis = 500, easing = LinearEasing),
+                animationSpec = tween(durationMillis = 500.motionMs(reduceMotion), easing = LinearEasing),
                 label = "miniProgress",
             )
             Box(
