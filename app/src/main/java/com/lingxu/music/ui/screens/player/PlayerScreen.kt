@@ -78,6 +78,7 @@ import com.lingxu.music.ui.components.TextActionButton
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
+import com.lingxu.music.ui.theme.ChipShape
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
@@ -410,7 +411,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                                         // 命中区兜底 48dp：11dp padding 时文字高约 44dp，未达 Material 建议下限；
                                         // 与 FilterChip/RetryHint 一致，视觉仍是紧凑胶囊
                                         .minimumInteractiveComponentSize()
-                                        .clip(RoundedCornerShape(Dimens.CornerM))
+                                        // 用统一胶囊形状（ChipShape）：与搜索页 FilterChip 同一形态语言，
+                                        // 兑现上方「胶囊形」注释；此前误用 CornerM(12dp) 显得像小按钮而非可选项。
+                                        .clip(ChipShape)
                                         .background(modeBg)
                                         .clickable(
                                             interactionSource = modeInteraction,
@@ -749,7 +752,8 @@ private fun PlayerMainButton(playing: Boolean, onClick: () -> Unit) {
             MiuixTheme.colorScheme.primary
         },
         // 减弱动效下底色瞬时到位，与同函数按压缩放的静帧降级保持一致
-        animationSpec = tween(durationMillis = if (reduceMotion) 0 else 160),
+        // 160ms 等值收敛到 MotionFastMs（与全站短交互时长统一，数值不变）
+        animationSpec = tween(durationMillis = if (reduceMotion) 0 else MotionFastMs),
         label = "mainBtnBg",
     )
     Box(

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lingxu.music.core.request.HttpClient
+import com.lingxu.music.ui.theme.Dimens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -132,7 +133,8 @@ fun TrackCover(
     url: String?,
     size: Dp,
     modifier: Modifier = Modifier,
-    corner: Dp = 8.dp,
+    // 默认圆角接入主题变量（等值 8dp）：与全站 CornerS 统一，避免边距语义散落
+    corner: Dp = Dimens.CornerS,
 ) {
     val density = LocalDensity.current
     // 2x 超采样避免放大发虚；列表行 44dp 与播放页 288dp 会得到不同的解码尺寸
