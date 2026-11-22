@@ -34,6 +34,7 @@ import com.lingxu.music.core.model.SongListTag
 import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.EmptyHint
+import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.LoadMoreButton
@@ -44,7 +45,6 @@ import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.animateListItem
 import com.lingxu.music.ui.navigation.Screen
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -121,17 +121,16 @@ fun SongListScreen(
         ) {
         Spacer(Modifier.size(8.dp))
 
-        // 排序
+        // 排序：与搜索页音源/类型 chip 同一套「选中 = 主色淡底 + 描边 + 读屏 selected」语言。
+        // 此前是裸 Button 只靠文字颜色区分选中态，圆角形态与筛选语义都不一致。
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(sorts) { (name, _) ->
                 val idx = sorts.indexOfFirst { it.first == name }
-                Button(onClick = { sortIndex = idx }) {
-                    Text(
-                        name,
-                        color = if (sortIndex == idx) MiuixTheme.colorScheme.primary
-                        else MiuixTheme.colorScheme.onSurface,
-                    )
-                }
+                FilterChip(
+                    label = name,
+                    selected = sortIndex == idx,
+                    onClick = { sortIndex = idx },
+                )
             }
         }
 
@@ -141,18 +140,18 @@ fun SongListScreen(
         if (tags.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 item {
-                    Button(onClick = { selectedTag = null }) {
-                        Text("全部", color = if (selectedTag == null) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface)
-                    }
+                    FilterChip(
+                        label = "全部",
+                        selected = selectedTag == null,
+                        onClick = { selectedTag = null },
+                    )
                 }
                 items(tags) { tag ->
-                    Button(onClick = { selectedTag = tag.id }) {
-                        Text(
-                            tag.name,
-                            color = if (selectedTag == tag.id) MiuixTheme.colorScheme.primary
-                            else MiuixTheme.colorScheme.onSurface,
-                        )
-                    }
+                    FilterChip(
+                        label = tag.name,
+                        selected = selectedTag == tag.id,
+                        onClick = { selectedTag = tag.id },
+                    )
                 }
             }
             Spacer(Modifier.size(8.dp))
