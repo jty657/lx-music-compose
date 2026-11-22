@@ -373,10 +373,19 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         ) {
                             PlayMode.ALL.forEach { mode ->
                                 val selected = state.playMode == mode
-                                // 选中态底色随模式切换渐变，而不是硬切
+                                // 与搜索页 FilterChip 一致：按下时底色再加深一档，
+                                // 让「已按下」在选中/未选中两种状态下都能被看见。
+                                val modeInteraction = remember { MutableInteractionSource() }
+                                val modePressed by modeInteraction.collectIsPressedAsState()
+                                // 选中态底色随模式切换渐变，而不是硬切；按下态叠加一档加深
                                 val modeBg by animateColorAsState(
-                                    targetValue = if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.14f)
-                                    else androidx.compose.ui.graphics.Color.Transparent,
+                                    targetValue = when {
+                                        selected -> MiuixTheme.colorScheme.primary.copy(
+                                            alpha = if (modePressed) 0.24f else 0.14f,
+                                        )
+                                        modePressed -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.10f)
+                                        else -> androidx.compose.ui.graphics.Color.Transparent
+                                    },
                                     // 减弱动效下选中底色瞬时到位，与同一 Box 内渐隐提示（下方
                                     // canScrollForward 的 fadeIn/fadeOut）的降级保持一致。
                                     animationSpec = tween(durationMillis = if (reduceMotion) 0 else MotionFastMs),
@@ -391,7 +400,12 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                                         .minimumInteractiveComponentSize()
                                         .clip(RoundedCornerShape(Dimens.CornerM))
                                         .background(modeBg)
-                                        .clickable(role = Role.Tab, onClick = { viewModel.setMode(mode) })
+                                        .clickable(
+                                            interactionSource = modeInteraction,
+                                            indication = null,
+                                            role = Role.Tab,
+                                            onClick = { viewModel.setMode(mode) },
+                                        )
                                         // 与 FilterChip 对齐：读屏可播报「已选中/未选中」，避免只靠颜色区分选中态
                                         .semantics { this.selected = selected }
                                         .padding(horizontal = 12.dp, vertical = 11.dp),
