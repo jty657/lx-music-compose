@@ -1,7 +1,12 @@
 package com.lingxu.music.ui.screens.search
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -37,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,6 +60,7 @@ import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
@@ -395,24 +402,51 @@ private fun SearchResultCard(
                     )
                 }
             }
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        onClick = onToggleFavorite,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (isFavorite) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
-                    contentDescription = if (isFavorite) "取消收藏" else "收藏",
-                    tint = if (isFavorite) MiuixTheme.colorScheme.primary
-                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
+            // 与播放页收藏键一致：48dp 热区 + 按压缩放反馈 + 收藏/取消图标淡变，
+            // 消除此前「点下去毫无变化、图标硬切」的不一致。减弱动效时退化为静帧。
+            FavoriteToggleIcon(isFavorite = isFavorite, onClick = onToggleFavorite)
+        }
+    }
+}
+
+/**
+ * 搜索结果的收藏/取消收藏图标：48dp 热区 + 按压缩放 + 图标淡变。
+ * 与播放页 PlayerIconButton 的收藏键同一手感，此前本按钮是最后一处「无反馈 + 图标硬切」的可点收藏图标。
+ * 减弱动效时缩放退化为静帧、图标瞬时切换。
+ */
+@Composable
+private fun FavoriteToggleIcon(isFavorite: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !reduceMotion) 0.85f else 1f,
+        animationSpec = Motion.press(),
+        label = "favoriteTogglePress",
+    )
+    Box(
+        Modifier
+            .size(48.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(
+                indication = null,
+                interactionSource = interaction,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Crossfade(
+            targetState = isFavorite,
+            animationSpec = tween(durationMillis = if (reduceMotion) 0 else 180),
+            label = "favoriteToggleIcon",
+        ) { fav ->
+            Icon(
+                if (fav) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
+                contentDescription = if (fav) "取消收藏" else "收藏",
+                tint = if (fav) MiuixTheme.colorScheme.primary
+                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.size(24.dp),
+            )
         }
     }
 }
