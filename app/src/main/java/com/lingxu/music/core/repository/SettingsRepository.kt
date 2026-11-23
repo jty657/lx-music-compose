@@ -40,6 +40,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_STARTUP_PUSH_PLAY_DETAIL = booleanPreferencesKey("player.startupPushPlayDetailScreen")
         val KEY_IS_SAVE_PLAY_TIME = booleanPreferencesKey("player.isSavePlayTime")
         val KEY_IS_HANDLE_AUDIO_FOCUS = booleanPreferencesKey("player.isHandleAudioFocus")
+        // 原版 player.isShowNotificationImage：媒体通知/锁屏是否显示专辑封面，默认 true
+        val KEY_IS_SHOW_NOTIFICATION_IMAGE = booleanPreferencesKey("player.isShowNotificationImage")
         val KEY_PLAYBACK_RATE = floatPreferencesKey("player.playbackRate")
         val KEY_VOLUME = floatPreferencesKey("player.volume")
         // 定时退出（对应原版 player.timeoutExit / timeoutExitPlayed）
@@ -101,6 +103,8 @@ class SettingsRepository(private val context: Context) {
     val startupPushPlayDetail: Flow<Boolean> = context.dataStore.data.map { it[KEY_STARTUP_PUSH_PLAY_DETAIL] ?: false }
     val isSavePlayTime: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SAVE_PLAY_TIME] ?: false }
     val isHandleAudioFocus: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_HANDLE_AUDIO_FOCUS] ?: true }
+    // 默认 true 与原版 defaultSetting 的 'player.isShowNotificationImage' 一致
+    val isShowNotificationImage: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_NOTIFICATION_IMAGE] ?: true }
     val playbackRate: Flow<Float> = context.dataStore.data.map { it[KEY_PLAYBACK_RATE] ?: 1f }
     val volume: Flow<Float> = context.dataStore.data.map { it[KEY_VOLUME] ?: 1f }
     val timeoutExitMinutes: Flow<Int> = context.dataStore.data.map { it[KEY_TIMEOUT_EXIT_MINUTES] ?: 0 }
@@ -162,6 +166,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setStartupPushPlayDetail(value: Boolean) = context.dataStore.edit { it[KEY_STARTUP_PUSH_PLAY_DETAIL] = value }
     suspend fun setIsSavePlayTime(value: Boolean) = context.dataStore.edit { it[KEY_IS_SAVE_PLAY_TIME] = value }
     suspend fun setIsHandleAudioFocus(value: Boolean) = context.dataStore.edit { it[KEY_IS_HANDLE_AUDIO_FOCUS] = value }
+    suspend fun setIsShowNotificationImage(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_NOTIFICATION_IMAGE] = value }
     suspend fun setPlaybackRate(value: Float) = context.dataStore.edit { it[KEY_PLAYBACK_RATE] = value }
     suspend fun setVolume(value: Float) = context.dataStore.edit { it[KEY_VOLUME] = value }
     suspend fun setTimeoutExitMinutes(value: Int) = context.dataStore.edit { it[KEY_TIMEOUT_EXIT_MINUTES] = value }

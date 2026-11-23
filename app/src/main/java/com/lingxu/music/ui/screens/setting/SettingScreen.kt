@@ -105,6 +105,7 @@ fun SettingScreen(
     val startupPushPlayDetail by viewModel.startupPushPlayDetail.collectAsState(initial = false)
     val isSavePlayTime by viewModel.isSavePlayTime.collectAsState(initial = false)
     val isHandleAudioFocus by viewModel.isHandleAudioFocus.collectAsState(initial = true)
+    val isShowNotificationImage by viewModel.isShowNotificationImage.collectAsState(initial = true)
     val playbackRate by viewModel.playbackRate.collectAsState(initial = 1f)
     val volume by viewModel.volume.collectAsState(initial = 1f)
     // 滑块拖动中的本地值：落盘已节流，拖动时用它驱动显示。
@@ -283,6 +284,12 @@ fun SettingScreen(
             summary = "来电或其它 App 播放时自动暂停",
             checked = isHandleAudioFocus,
             onCheckedChange = { viewModel.setIsHandleAudioFocus(it) },
+        )
+        SwitchPreference(
+            title = "通知栏显示封面",
+            summary = "媒体通知与锁屏界面显示专辑封面（对齐原版）",
+            checked = isShowNotificationImage,
+            onCheckedChange = { viewModel.setIsShowNotificationImage(it) },
         )
         SliderPreference(
             title = "播放倍速",

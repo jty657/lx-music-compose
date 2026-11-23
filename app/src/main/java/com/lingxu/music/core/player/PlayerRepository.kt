@@ -265,6 +265,31 @@ class PlayerRepository(context: Context) {
     /** 不喜欢列表匹配（由 App 注入）：命中则切歌时跳过 */
     var dislikeMatcher: ((MusicInfo) -> Boolean)? = null
 
+    /**
+     * 媒体通知/锁屏封面显示开关（原版 player.isShowNotificationImage）。
+     * 关闭后通知只显示歌名/歌手，不再加载并显示专辑封面。
+     * @Volatile：设置页在 Main 作用域改写，播放解析协程在 IO/其它线程读取，需可见性保证。
+     */
+    @Volatile
+    var showNotificationImage: Boolean = true
+        private set
+
+    /**
+     * 更新通知封面开关，并即时刷新当前媒体项的 metadata。
+     * 用 replaceMediaItem 而非重建队列：它保留当前播放位置与播放/暂停状态，
+     * 不触发 onMediaItemTransition，用户切换开关时听感无变化。
+     * 仅当当前项已解析出播放地址时才 replace，避免把空 URI 写回导致误报播放错误。
+     */
+    fun setShowNotificationImage(enabled: Boolean) {
+        if (showNotificationImage == enabled) return
+        showNotificationImage = enabled
+        val index = player.currentMediaItemIndex
+        val info = _state.value.queue.getOrNull(index)
+        if (info != null && !info.meta.filePath.isNullOrBlank()) {
+            runCatching { player.replaceMediaItem(index, info.toMediaItem()) }
+        }
+    }
+
     init {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -757,7 +782,11 @@ class PlayerRepository(context: Context) {
                     .setTitle(name)
                     .setArtist(singer)
                     .setAlbumTitle(meta.albumName.ifBlank { null })
-                    .setArtworkUri(meta.picUrl?.let { android.net.Uri.parse(it) })
+                    // 原版 player.isShowNotificationImage：关闭时通知/锁屏不显示专辑封面。
+                    // 仅在开关开启时才设置 artworkUri；封面加载与内存缓存不受影响（播放页照常显示）。
+                    .setArtworkUri(
+                        if (showNotificationImage) meta.picUrl?.let { android.net.Uri.parse(it) } else null
+                    )
                     .build(),
             )
             .build()

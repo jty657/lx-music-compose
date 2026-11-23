@@ -52,6 +52,8 @@ class SettingViewModel : ViewModel() {
     val startupPushPlayDetail: StateFlow<Boolean> = state(settings.startupPushPlayDetail, false)
     val isSavePlayTime: StateFlow<Boolean> = state(settings.isSavePlayTime, false)
     val isHandleAudioFocus: StateFlow<Boolean> = state(settings.isHandleAudioFocus, true)
+    // 原版 player.isShowNotificationImage：媒体通知/锁屏是否显示专辑封面
+    val isShowNotificationImage: StateFlow<Boolean> = state(settings.isShowNotificationImage, true)
 
     // ============ 不喜欢列表 ============
     val dislikeRules: StateFlow<List<String>> = state(LxApp.app.dislikeRepository.rules, emptyList())
@@ -163,6 +165,7 @@ class SettingViewModel : ViewModel() {
     fun setStartupPushPlayDetail(value: Boolean) = launch { settings.setStartupPushPlayDetail(value) }
     fun setIsSavePlayTime(value: Boolean) = launch { settings.setIsSavePlayTime(value) }
     fun setIsHandleAudioFocus(value: Boolean) = launch { settings.setIsHandleAudioFocus(value) }
+    fun setIsShowNotificationImage(value: Boolean) = launch { settings.setIsShowNotificationImage(value) }
     fun setPlaybackRate(value: Float) = launch { settings.setPlaybackRate(value.coerceIn(0.5f, 3f)) }
     fun setVolume(value: Float) = launch { settings.setVolume(value.coerceIn(0f, 1f)) }
     /**

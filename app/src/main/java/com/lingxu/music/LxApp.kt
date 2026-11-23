@@ -120,6 +120,11 @@ class LxApp : Application() {
         appScope.launch {
             settings.volume.catch { }.collect { playerRepository.setVolume(it) }
         }
+        // 通知栏封面显示开关（原版 player.isShowNotificationImage）：切换即时刷新通知 metadata。
+        // 首值收集时队列通常尚未恢复（此时 replace 守卫会跳过），切歌构造 mediaItem 时会读取最新值。
+        appScope.launch {
+            settings.isShowNotificationImage.catch { }.collect { playerRepository.setShowNotificationImage(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {
