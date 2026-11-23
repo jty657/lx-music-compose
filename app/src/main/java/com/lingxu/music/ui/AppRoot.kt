@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -418,7 +419,29 @@ private fun MiniPlayerBar(navigator: Navigator) {
                         },
                     ),
             ) {
-                TrackCover(url = state.coverUrl ?: current.meta.picUrl, size = 44.dp, corner = 10.dp)
+                // 切歌时封面淡入 + 轻微缩放，与播放页封面的入场语言一致：
+                // 播放页已有 260ms 淡入，但迷你条此前是直接硬切封面；缓存命中时尤其突兀。
+                // 以歌曲 id 为 key，同一首歌刷新封面（picUrl -> 兜底大图）不会闪一下。
+                // 只动 opacity/scale（transform），不触发布局；减弱动效时初值即为「已显示」，静帧到位。
+                key(current.id) {
+                    var coverShown by remember { mutableStateOf(reduceMotion) }
+                    LaunchedEffect(Unit) { coverShown = true }
+                    val coverEnter by animateFloatAsState(
+                        targetValue = if (coverShown) 1f else 0f,
+                        animationSpec = tween(durationMillis = if (reduceMotion) 0 else 220),
+                        label = "miniCoverEnter",
+                    )
+                    TrackCover(
+                        url = state.coverUrl ?: current.meta.picUrl,
+                        size = 44.dp,
+                        corner = 10.dp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = coverEnter
+                            scaleX = 0.92f + 0.08f * coverEnter
+                            scaleY = 0.92f + 0.08f * coverEnter
+                        },
+                    )
+                }
                 Spacer(Modifier.size(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(

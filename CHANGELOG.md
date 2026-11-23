@@ -1,6 +1,19 @@
 # 更新日志
 
-## 第二十二轮：我的列表功能对齐（v1.5.1，本次）
+## 第二十三轮：通知栏封面开关与迷你条封面转场（v1.5.2，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 补齐一项设置功能，并打磨一处封面转场。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议；全部 `.kt` 改动通过 `scripts/selfcheck.py`。
+
+### 功能对齐（原版缺失项）
+- **通知栏/锁屏封面显示开关**（原版 `player.isShowNotificationImage`，默认 `true`；`SettingsRepository` / `SettingViewModel` / `SettingScreen` / `PlayerRepository` / `LxApp`）：此前移植版 `toMediaItem()` 无条件设置 `artworkUri`，用户无法关闭通知栏封面。新增同名设置项（基本设置→播放设置分组，默认 `true` 与原版一致）；关闭后媒体通知与锁屏只显示歌名/歌手，播放页封面不受影响。切换时通过 `replaceMediaItem` 即时刷新当前媒体项 metadata——它保留播放位置与播放/暂停状态、不触发切歌回调，听感无变化；当前项未解析出播放地址时跳过刷新，避免写回空 URI 误报错误。
+
+### UI / 动效打磨
+- **迷你条封面切歌淡入**（`ui/AppRoot.kt`）：播放页封面已有 260ms 淡入+缩放，但底部迷你条此前直接硬切封面（缓存命中时尤为突兀）。以歌曲 id 为 key 加 220ms 淡入 + 0.92→1 轻微缩放，与播放页入场语言一致；只动 opacity/scale（transform），不触发布局；减弱动效时静帧到位，无逐帧调度。
+
+### 工程
+- 版本 1.5.1 → 1.5.2（versionCode 25 → 26）；README 同步。
+
+## 第二十二轮：我的列表功能对齐（v1.5.1）
 
 > 对照原版 lx-music-mobile v1.9.2 的《我的列表》歌曲行，补齐两处显示层功能：三项列表显示设置（来源/时长/专辑名）在本页生效，以及当前播放曲目的播放态指示。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议；全部 `.kt` 改动通过 `scripts/selfcheck.py`。
 
