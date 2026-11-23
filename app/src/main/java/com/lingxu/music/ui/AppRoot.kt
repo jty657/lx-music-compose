@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -474,6 +475,12 @@ private fun MiniPlayerBar(navigator: Navigator) {
             var seekBarWidthPx by remember { mutableFloatStateOf(0f) }
             val dragging = dragProgress >= 0f
             val shownProgress = if (dragging) dragProgress else progress
+            // 滑块用 transform 从小到大回弹到位（只缩放、不改布局）；关动画时直接满尺寸出现。
+            val thumbScale by animateFloatAsState(
+                targetValue = if (dragging && !reduceMotion) 1f else 0.6f,
+                animationSpec = Motion.press(),
+                label = "miniSeekThumb",
+            )
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -529,6 +536,23 @@ private fun MiniPlayerBar(navigator: Navigator) {
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(Dimens.Hairline))
                             .background(MiuixTheme.colorScheme.primary),
+                    )
+                }
+                // 拖动时显示滑块，让「正在拖进度」有明确视觉反馈（此前只有细线在动）。
+                // 滑块浮在 2dp 轨道之上，不参与测量，松手即消失，不改变原有命中区与 seek 逻辑。
+                if (dragging) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(MiuixTheme.colorScheme.primary)
+                            .graphicsLayer {
+                                // translation 只影响绘制位置：以轨道左端为原点，滑块中心对齐进度点。
+                                translationX = shownProgress * seekBarWidthPx - 5.dp.toPx()
+                                scaleX = thumbScale
+                                scaleY = thumbScale
+                            },
                     )
                 }
             }

@@ -1,6 +1,20 @@
 # 更新日志
 
-## 第十九轮：迷你条进度条拖动跳转（v1.4.8，本次）
+## 第二十轮：歌词逐句定位线与拖动滑块反馈（v1.4.9，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 补齐一项播放页功能，并打磨迷你条拖动反馈。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。全部 `.kt` 改动通过 `scripts/selfcheck.py`，并由本地 `assembleRelease` 实编译通过（云端 Actions 复核）。
+
+### 功能对齐（原版缺失项）
+- **歌词逐句定位线**（原版 `playDetail.isShowLyricProgressSetting` + `PlayLine`，`SettingsRepository` / `SettingViewModel` / `SettingScreen` / `PlayerScreen`）：原版在播放页设置里可开启「歌词进度线」——手动滚动歌词时，视线（距顶部 40%）处浮出一条虚线刻度、该句时间戳和一个播放键，点播放键跳到该句。移植版此前无此功能。本轮新增同名设置项（默认 `false`，与原版一致），开启后在 `LyricView` 中由 `LazyListState.layoutInfo` 取视线最近的歌词行，叠加淡入的定位线（180ms，减弱动效时瞬时），点击跳转复用已有 `onSeek` 并恢复自动跟随。只读布局信息、不拦截手势、不增加列表占位项，跟随自动滚动时不显示。
+
+### UI / 动效打磨
+- **迷你条进度拖动滑块**（`ui/AppRoot.kt`）：v1.4.8 加入的拖动手势此前只有细线跟随，缺少「正在拖动」的视觉锚点。拖动时现在显示一个 10dp 主色滑块，中心对齐进度点，用 `graphicsLayer` 的 translation + 轻回弹缩放（只动 transform，不改布局）；松手即消失。减弱动效时滑块直接满尺寸出现，无回弹。
+
+### 工程
+- 版本 1.4.8 → 1.4.9（versionCode 22 → 23）；README 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过；`assembleRelease --offline` 退出码 0；首次编译发现 `drawBehind` lambda 内读取 `MiuixTheme.colorScheme` 的 Compose 作用域错误，已将颜色提到 Composable 作用域后复编通过（详见报告）。
+
+## 第十九轮：迷你条进度条拖动跳转（v1.4.8）
 
 > 本轮对照原版 lx-music-mobile v1.9.2 做一项交互功能对齐：原版 `common.allowProgressBarSeek`。不触碰 QuickJS 引擎、音源协议、播放内核、路由结构与状态管理；复用播放页已有的 `seekTo`，未新增任何依赖。所有 `.kt` 改动通过 `scripts/selfcheck.py` 静态自检，构建由 GitHub Actions 云端验证。
 
