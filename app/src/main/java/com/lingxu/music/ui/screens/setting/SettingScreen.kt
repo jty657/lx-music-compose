@@ -100,6 +100,7 @@ fun SettingScreen(
     val quality by viewModel.quality.collectAsState(initial = "128k")
     val playMode by viewModel.playMode.collectAsState(initial = "listLoop")
     val startupAutoPlay by viewModel.startupAutoPlay.collectAsState(initial = false)
+    val startupPushPlayDetail by viewModel.startupPushPlayDetail.collectAsState(initial = false)
     val isSavePlayTime by viewModel.isSavePlayTime.collectAsState(initial = false)
     val isHandleAudioFocus by viewModel.isHandleAudioFocus.collectAsState(initial = true)
     val playbackRate by viewModel.playbackRate.collectAsState(initial = 1f)
@@ -247,6 +248,12 @@ fun SettingScreen(
             summary = "打开 App 后自动开始播放上次的歌曲",
             checked = startupAutoPlay,
             onCheckedChange = { viewModel.setStartupAutoPlay(it) },
+        )
+        SwitchPreference(
+            title = "启动时打开播放详情页",
+            summary = "有上次播放记录时，打开 App 直接进入播放页",
+            checked = startupPushPlayDetail,
+            onCheckedChange = { viewModel.setStartupPushPlayDetail(it) },
         )
         SwitchPreference(
             title = "保存播放进度",

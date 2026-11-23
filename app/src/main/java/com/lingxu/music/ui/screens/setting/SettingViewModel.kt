@@ -47,6 +47,7 @@ class SettingViewModel : ViewModel() {
     val quality: StateFlow<String> = state(settings.quality, "128k")
     val playMode: StateFlow<String> = state(settings.playMode, "listLoop")
     val startupAutoPlay: StateFlow<Boolean> = state(settings.startupAutoPlay, false)
+    val startupPushPlayDetail: StateFlow<Boolean> = state(settings.startupPushPlayDetail, false)
     val isSavePlayTime: StateFlow<Boolean> = state(settings.isSavePlayTime, false)
     val isHandleAudioFocus: StateFlow<Boolean> = state(settings.isHandleAudioFocus, true)
 
@@ -148,6 +149,7 @@ class SettingViewModel : ViewModel() {
     }
 
     fun setStartupAutoPlay(value: Boolean) = launch { settings.setStartupAutoPlay(value) }
+    fun setStartupPushPlayDetail(value: Boolean) = launch { settings.setStartupPushPlayDetail(value) }
     fun setIsSavePlayTime(value: Boolean) = launch { settings.setIsSavePlayTime(value) }
     fun setIsHandleAudioFocus(value: Boolean) = launch { settings.setIsHandleAudioFocus(value) }
     fun setPlaybackRate(value: Float) = launch { settings.setPlaybackRate(value.coerceIn(0.5f, 3f)) }

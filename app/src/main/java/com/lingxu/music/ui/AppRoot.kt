@@ -91,6 +91,7 @@ import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.isInDarkTheme
 import com.lingxu.music.ui.theme.motionMs
 import com.lingxu.music.ui.theme.rememberReduceMotion
+import kotlinx.coroutines.flow.map
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
@@ -120,6 +121,23 @@ fun AppRoot() {
 
     LxTheme(themeMode = themeMode, fontScale = fontScale) {
         val navigator = rememberNavigator()
+        // 原版 player.startupPushPlayDetailScreen：开启且有上次播放记录时，冷启动直接进入播放页。
+        // 只在本次冷启动的首次组合里执行一次（startupNavDone 守护），且不覆盖用户已手动导航的状态：
+        // 仅当仍在根页 Home 时才 push，避免把用户从其它页面拽回来。上次播放恢复是异步的，
+        // 故用 state.map 派生「是否已有 current」并观察，恢复完成后满足条件再进入。
+        val startupPushDetail by LxApp.app.settings.startupPushPlayDetail.collectAsState(initial = false)
+        val hasLastPlay by remember {
+            LxApp.app.playerRepository.state.map { it.current != null }
+        }.collectAsState(initial = false)
+        val startupNavDone = remember { mutableStateOf(false) }
+        LaunchedEffect(startupPushDetail, hasLastPlay) {
+            if (!startupNavDone.value && startupPushDetail && hasLastPlay &&
+                navigator.backStack.size == 1 && navigator.backStack.last() == Screen.Home
+            ) {
+                startupNavDone.value = true
+                navigator.push(Screen.Player)
+            }
+        }
         val dark = isInDarkTheme()
         // 系统「动画时长缩放 = 关闭」时降级为静帧动效（无障碍 + 低端机省电）
         val reduceMotion = rememberReduceMotion()

@@ -32,6 +32,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_IS_SHOW_LYRIC_TRANSLATION = booleanPreferencesKey("player.isShowLyricTranslation")
         val KEY_IS_SHOW_LYRIC_ROMA = booleanPreferencesKey("player.isShowLyricRoma")
         val KEY_STARTUP_AUTO_PLAY = booleanPreferencesKey("player.startupAutoPlay")
+        // 原版 player.startupPushPlayDetailScreen：启动时自动进入播放详情页（默认 false）
+        val KEY_STARTUP_PUSH_PLAY_DETAIL = booleanPreferencesKey("player.startupPushPlayDetailScreen")
         val KEY_IS_SAVE_PLAY_TIME = booleanPreferencesKey("player.isSavePlayTime")
         val KEY_IS_HANDLE_AUDIO_FOCUS = booleanPreferencesKey("player.isHandleAudioFocus")
         val KEY_PLAYBACK_RATE = floatPreferencesKey("player.playbackRate")
@@ -83,6 +85,8 @@ class SettingsRepository(private val context: Context) {
     val showLyricTranslation: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_LYRIC_TRANSLATION] ?: false }
     val showLyricRoma: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_LYRIC_ROMA] ?: false }
     val startupAutoPlay: Flow<Boolean> = context.dataStore.data.map { it[KEY_STARTUP_AUTO_PLAY] ?: false }
+    // 与原版 defaultSetting 的 'player.startupPushPlayDetailScreen': false 保持一致
+    val startupPushPlayDetail: Flow<Boolean> = context.dataStore.data.map { it[KEY_STARTUP_PUSH_PLAY_DETAIL] ?: false }
     val isSavePlayTime: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SAVE_PLAY_TIME] ?: false }
     val isHandleAudioFocus: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_HANDLE_AUDIO_FOCUS] ?: true }
     val playbackRate: Flow<Float> = context.dataStore.data.map { it[KEY_PLAYBACK_RATE] ?: 1f }
@@ -139,6 +143,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setShowLyricTranslation(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_LYRIC_TRANSLATION] = value }
     suspend fun setShowLyricRoma(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_LYRIC_ROMA] = value }
     suspend fun setStartupAutoPlay(value: Boolean) = context.dataStore.edit { it[KEY_STARTUP_AUTO_PLAY] = value }
+    suspend fun setStartupPushPlayDetail(value: Boolean) = context.dataStore.edit { it[KEY_STARTUP_PUSH_PLAY_DETAIL] = value }
     suspend fun setIsSavePlayTime(value: Boolean) = context.dataStore.edit { it[KEY_IS_SAVE_PLAY_TIME] = value }
     suspend fun setIsHandleAudioFocus(value: Boolean) = context.dataStore.edit { it[KEY_IS_HANDLE_AUDIO_FOCUS] = value }
     suspend fun setPlaybackRate(value: Float) = context.dataStore.edit { it[KEY_PLAYBACK_RATE] = value }
