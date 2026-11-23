@@ -26,6 +26,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_FONT_SCALE = floatPreferencesKey("common.fontScale")
         val KEY_SHARE_TYPE = stringPreferencesKey("common.shareType")
         val KEY_AUTO_HIDE_PLAY_BAR = booleanPreferencesKey("common.autoHidePlayBar")
+        // 原版 common.allowProgressBarSeek：底部迷你条进度条是否可拖动跳转，默认 true
+        val KEY_ALLOW_PROGRESS_BAR_SEEK = booleanPreferencesKey("common.allowProgressBarSeek")
         // 原版 common.sourceNameType：音源显示名类型 real（原名）/ alias（别名），默认 real
         val KEY_SOURCE_NAME_TYPE = stringPreferencesKey("common.sourceNameType")
         // player
@@ -80,6 +82,8 @@ class SettingsRepository(private val context: Context) {
     val fontScale: Flow<Float> = context.dataStore.data.map { it[KEY_FONT_SCALE] ?: 1f }
     val shareType: Flow<String> = context.dataStore.data.map { it[KEY_SHARE_TYPE] ?: SHARE_SYSTEM }
     val autoHidePlayBar: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_HIDE_PLAY_BAR] ?: true }
+    // 默认 true 与原版 defaultSetting 一致：迷你条进度条可拖动跳转
+    val allowProgressBarSeek: Flow<Boolean> = context.dataStore.data.map { it[KEY_ALLOW_PROGRESS_BAR_SEEK] ?: true }
     // 默认 real（原名）：与移植版历史显示一致，老用户升级后观感不变；原版默认 alias，见报告待确认项
     val sourceNameType: Flow<String> = context.dataStore.data.map { it[KEY_SOURCE_NAME_TYPE] ?: SOURCE_NAME_REAL }
 
@@ -143,6 +147,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setFontScale(value: Float) = context.dataStore.edit { it[KEY_FONT_SCALE] = value }
     suspend fun setShareType(value: String) = context.dataStore.edit { it[KEY_SHARE_TYPE] = value }
     suspend fun setAutoHidePlayBar(value: Boolean) = context.dataStore.edit { it[KEY_AUTO_HIDE_PLAY_BAR] = value }
+    suspend fun setAllowProgressBarSeek(value: Boolean) = context.dataStore.edit { it[KEY_ALLOW_PROGRESS_BAR_SEEK] = value }
     suspend fun setSourceNameType(value: String) = context.dataStore.edit { it[KEY_SOURCE_NAME_TYPE] = value }
 
     suspend fun setQuality(value: String) = context.dataStore.edit { it[KEY_QUALITY] = value }

@@ -1,6 +1,15 @@
 # 更新日志
 
-## 第十八轮：歌曲来源名称（原名/别名）对齐（v1.4.7，本次）
+## 第十九轮：迷你条进度条拖动跳转（v1.4.8，本次）
+
+> 本轮对照原版 lx-music-mobile v1.9.2 做一项交互功能对齐：原版 `common.allowProgressBarSeek`。不触碰 QuickJS 引擎、音源协议、播放内核、路由结构与状态管理；复用播放页已有的 `seekTo`，未新增任何依赖。所有 `.kt` 改动通过 `scripts/selfcheck.py` 静态自检，构建由 GitHub Actions 云端验证。
+
+### 功能对齐（原版缺失项）
+- **底部迷你条进度条可拖动跳转**（原版 `common.allowProgressBarSeek`，默认 `true`，`SettingsRepository` / `SettingViewModel` / `SettingScreen` / `AppRoot`）：此前迷你条底部进度线纯装饰、不可交互，用户在列表页浏览时若想跳转播放位置必须先进入播放页。本轮给进度线加水平拖动手势——拖动时进度线实时跟随手指，松手才真正 `seekTo`（拖动过程不逐帧跳转）。新增设置开关「进度条可拖动」（默认开启，与原版一致），关闭后行为完全回到改动前。命中区由 2dp 视觉线扩为 16dp 透明容器（视觉线仍贴底 2dp，位置尺寸不变），解决细线难以点中的问题。
+- **无障碍与减弱动效**：进度区保留 `progressBarRangeInfo` + 「播放进度」读屏语义；拖动为即时位置反馈，非装饰动画，遵循系统「移除动画」时不引入任何补间。
+- 版本 1.4.7 → 1.4.8（versionCode 21 → 22）。
+
+## 第十八轮：歌曲来源名称（原名/别名）对齐（v1.4.7）
 
 > 本轮对照原版 lx-music-mobile v1.9.2 做一项功能对齐：原版 `common.sourceNameType`。不触碰 QuickJS 引擎、音源协议、播放内核、路由结构与状态管理。所有 `.kt` 改动均通过 `scripts/selfcheck.py` 静态自检，并在本地以 AGP 9.4.1 + Gradle 9.7.1 + compileSdk 37 执行 `assembleRelease` 实编译（产物 APK），同时由 GitHub Actions 云端复核。
 

@@ -16,6 +16,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -36,14 +37,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -463,27 +467,70 @@ private fun MiniPlayerBar(navigator: Navigator) {
                 animationSpec = tween(durationMillis = 500.motionMs(reduceMotion), easing = LinearEasing),
                 label = "miniProgress",
             )
+            // 对齐原版 common.allowProgressBarSeek：允许时迷你条进度线可水平拖动跳转。
+            // 拖动期间用 -1 之外的本地进度覆盖显示，松手才真正 seek，避免拖动中每帧触发跳转。
+            val allowSeek by LxApp.app.settings.allowProgressBarSeek.collectAsState(initial = true)
+            var dragProgress by remember { mutableFloatStateOf(-1f) }
+            var seekBarWidthPx by remember { mutableFloatStateOf(0f) }
+            val dragging = dragProgress >= 0f
+            val shownProgress = if (dragging) dragProgress else progress
             Box(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp)
-                    .padding(bottom = 2.dp)
-                    .height(2.dp)
-                    .clip(RoundedCornerShape(Dimens.Hairline))
-                    .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f))
+                    // 视觉仍是贴底 2dp 细线；外层命中容器向下顶到底、向上扩到 16dp，
+                    // 让手指有足够区域按下开始拖动（否则 2dp 几乎点不中）。
+                    .height(16.dp)
+                    // 可拖动时挂水平拖动手势；关闭开关或无效时长时退化为纯展示。
+                    .then(
+                        if (allowSeek && state.durationMs > 0) {
+                            Modifier.pointerInput(state.durationMs) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = { offset ->
+                                        if (seekBarWidthPx > 0f) {
+                                            dragProgress = (offset.x / seekBarWidthPx).coerceIn(0f, 1f)
+                                        }
+                                    },
+                                    onHorizontalDrag = { change, _ ->
+                                        if (seekBarWidthPx > 0f) {
+                                            dragProgress = (change.position.x / seekBarWidthPx).coerceIn(0f, 1f)
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        if (dragProgress >= 0f) {
+                                            LxApp.app.playerRepository.seekTo((dragProgress * state.durationMs).toLong())
+                                            dragProgress = -1f
+                                        }
+                                    },
+                                    onDragCancel = { dragProgress = -1f },
+                                )
+                            }
+                        } else Modifier,
+                    )
+                    .onSizeChanged { seekBarWidthPx = it.width.toFloat() }
                     // 读屏用户也能获知播放进度，而不只是一个装饰性细线
                     .semantics {
-                        progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
+                        progressBarRangeInfo = ProgressBarRangeInfo(shownProgress, 0f..1f)
                         contentDescription = "播放进度"
                     },
+                contentAlignment = Alignment.BottomCenter,
             ) {
+                // 真正的 2dp 视觉线，贴容器底部，与改动前的位置/尺寸一致。
                 Box(
                     Modifier
-                        .fillMaxWidth(progress)
-                        .fillMaxHeight()
+                        .fillMaxWidth()
+                        .height(2.dp)
                         .clip(RoundedCornerShape(Dimens.Hairline))
-                        .background(MiuixTheme.colorScheme.primary),
-                )
+                        .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(shownProgress)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(Dimens.Hairline))
+                            .background(MiuixTheme.colorScheme.primary),
+                    )
+                }
             }
         }
     }

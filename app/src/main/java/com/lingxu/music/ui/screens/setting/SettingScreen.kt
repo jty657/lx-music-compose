@@ -96,6 +96,7 @@ fun SettingScreen(
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
     val shareType by viewModel.shareType.collectAsState(initial = "system")
     val autoHidePlayBar by viewModel.autoHidePlayBar.collectAsState(initial = true)
+    val allowProgressBarSeek by viewModel.allowProgressBarSeek.collectAsState(initial = true)
     val sourceNameType by viewModel.sourceNameType.collectAsState(initial = "real")
 
     val quality by viewModel.quality.collectAsState(initial = "128k")
@@ -235,6 +236,12 @@ fun SettingScreen(
             summary = "滚动列表时自动隐藏底部迷你播放条",
             checked = autoHidePlayBar,
             onCheckedChange = { viewModel.setAutoHidePlayBar(it) },
+        )
+        SwitchPreference(
+            title = "进度条可拖动",
+            summary = "在底部迷你播放条的进度条上拖动即可跳转播放位置（对齐原版）",
+            checked = allowProgressBarSeek,
+            onCheckedChange = { viewModel.setAllowProgressBarSeek(it) },
         )
 
         Spacer(Modifier.size(12.dp))

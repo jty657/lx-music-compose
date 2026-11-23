@@ -42,6 +42,7 @@ class SettingViewModel : ViewModel() {
     val fontScale: StateFlow<Float> = state(settings.fontScale, 1f)
     val shareType: StateFlow<String> = state(settings.shareType, "system")
     val autoHidePlayBar: StateFlow<Boolean> = state(settings.autoHidePlayBar, true)
+    val allowProgressBarSeek: StateFlow<Boolean> = state(settings.allowProgressBarSeek, true)
     val sourceNameType: StateFlow<String> = state(settings.sourceNameType, "real")
 
     // ============ 播放 ============
@@ -141,6 +142,7 @@ class SettingViewModel : ViewModel() {
     fun cycleShareType() = launch { settings.setShareType(next(shareType.value, listOf("system", "clipboard"))) }
 
     fun setAutoHidePlayBar(value: Boolean) = launch { settings.setAutoHidePlayBar(value) }
+    fun setAllowProgressBarSeek(value: Boolean) = launch { settings.setAllowProgressBarSeek(value) }
 
     /** 音源显示名类型：real 原名 / alias 别名，与原版 common.sourceNameType 一致 */
     fun cycleSourceNameType() = launch {
