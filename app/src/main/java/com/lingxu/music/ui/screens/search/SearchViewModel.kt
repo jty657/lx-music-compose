@@ -36,6 +36,10 @@ class SearchViewModel : ViewModel() {
     var history by mutableStateOf<List<String>>(emptyList())
         private set
 
+    /** 热搜词（对齐原版搜索页空态热搜；失败时为空，界面回退到其它空态） */
+    var hotWords by mutableStateOf<List<String>>(emptyList())
+        private set
+
     /** 歌单搜索结果 */
     var songLists by mutableStateOf<List<com.lingxu.music.core.model.SongListInfo>>(emptyList())
         private set
@@ -62,6 +66,14 @@ class SearchViewModel : ViewModel() {
         }
         viewModelScope.launch {
             history = LxApp.app.database.loadSearchHistory()
+        }
+        // 热搜词来自内置 SDK（用户音源不提供热搜），失败静默为空由界面回退
+        viewModelScope.launch {
+            val source = runCatching { LxApp.app.settings.currentApiSource() }
+                .getOrDefault("kw")
+                .let { if (it.startsWith("user_api")) "kw" else it }
+            runCatching { LxApp.app.musicRepository.getHotSearch(source) }
+                .onSuccess { hotWords = it.take(12) }
         }
     }
 

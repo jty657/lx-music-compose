@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import com.lingxu.music.ui.components.GlassDialog
+import com.lingxu.music.ui.components.TextActionButton
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -99,6 +100,11 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             Button(onClick = { filePicker.launch(arrayOf("text/*", "application/javascript")) }) {
                 Text("文件导入")
             }
+            Spacer(Modifier.size(8.dp))
+            // 剪贴板导入：对齐手机版「复制音源链接或脚本文本后一键导入」的习惯
+            Button(onClick = { viewModel.importFromClipboard() }) {
+                Text("剪贴板导入")
+            }
         }
 
         Spacer(Modifier.size(8.dp))
@@ -143,30 +149,55 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         } else {
             LazyColumn(Modifier.weight(1f)) {
                 items(userApis, key = { it.id }) { api ->
-                    GlassSurface(
-                        // 与全站其它列表一致：导入/删除音源时条目平滑让位，不瞬移。
+                    // 动画/间距挂在外层 Column：卡片与其下方的「更新提示」设置行作为一个整体让位。
+                    Column(
                         modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
-                        onClick = { viewModel.switchSource(api.id) },
-                        onLongClick = {
-                            deletingId = api.id
-                        },
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                            Column(Modifier.weight(1f)) {
-                                // 脚本名来自用户导入、完全不可控：补单行省略，避免长名把右侧
-                                // 「✓ 使用中」挤出屏幕（与首页榜单/歌单项同一省略语言）。
-                                Text(api.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    "${api.author} ${api.version}".trim(),
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                        GlassSurface(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { viewModel.switchSource(api.id) },
+                            onLongClick = {
+                                deletingId = api.id
+                            },
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+                                Column(Modifier.weight(1f)) {
+                                    // 脚本名来自用户导入、完全不可控：补单行省略，避免长名把右侧
+                                    // 「✓ 使用中」挤出屏幕（与首页榜单/歌单项同一省略语言）。
+                                    Text(api.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        "${api.author} ${api.version}".trim(),
+                                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                if (currentSource == api.id) {
+                                    Text("✓ 使用中", color = MiuixTheme.colorScheme.primary)
+                                }
                             }
-                            if (currentSource == api.id) {
-                                Text("✓ 使用中", color = MiuixTheme.colorScheme.primary)
-                            }
+                        }
+                        // 「更新提示」开关放在卡片外侧：若嵌在卡片内，点击开关会冒泡触发卡片的
+                        // 切换音源 onClick（Compose 父子 clickable 会同帧响应），故独立成行。
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "更新提示",
+                                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            )
+                            Spacer(Modifier.size(4.dp))
+                            TextActionButton(
+                                text = if (api.allowShowUpdateAlert) "开" else "关",
+                                color = if (api.allowShowUpdateAlert) MiuixTheme.colorScheme.primary
+                                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                onClick = {
+                                    viewModel.setAllowShowUpdateAlert(api.id, !api.allowShowUpdateAlert)
+                                },
+                            )
                         }
                     }
                 }

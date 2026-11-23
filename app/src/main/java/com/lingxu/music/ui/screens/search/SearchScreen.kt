@@ -67,6 +67,7 @@ import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.MotionBaseMs
 import com.lingxu.music.ui.theme.animateListItem
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
@@ -229,6 +230,37 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                             )
                             .padding(vertical = 6.dp),
                     )
+                }
+            }
+            return@Column
+        }
+
+        // 热搜快捷入口（对齐原版搜索页热搜）：当没有可展示的历史、且输入为空/未搜索时，
+        // 展示内置 SDK 热搜词，点击即填入并搜索（与历史词同一路径），省去用户手动输入。
+        if (inputIsBlank && !viewModel.hasSearched && viewModel.results.isEmpty()
+            && viewModel.songLists.isEmpty() && viewModel.hotWords.isNotEmpty()
+        ) {
+            // 进场淡入：只动 alpha（不触发布局），减弱动效时 0ms 到位，与全站列表项淡入同一语言。
+            val hotReduceMotion = LocalReduceMotion.current
+            val hotAlpha by animateFloatAsState(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = if (hotReduceMotion) 0 else MotionBaseMs),
+                label = "hotEntryFade",
+            )
+            Column(Modifier.graphicsLayer { alpha = hotAlpha }) {
+                Text("热搜", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(viewModel.hotWords) { word ->
+                        FilterChip(
+                            label = word,
+                            selected = false,
+                            onClick = {
+                                textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                scope.launch { viewModel.search(word, selectedSource) }
+                            },
+                        )
+                    }
                 }
             }
             return@Column

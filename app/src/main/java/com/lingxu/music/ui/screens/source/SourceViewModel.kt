@@ -1,5 +1,7 @@
 package com.lingxu.music.ui.screens.source
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -139,6 +141,54 @@ class SourceViewModel : ViewModel() {
             }.onFailure { e ->
                 setStatus("读取文件失败：${e.message}", isError = true)
             }
+        }
+    }
+
+    /**
+     * 剪贴板导入（对齐 LX Music 手机版「复制音源链接/脚本后一键导入」习惯）。
+     * 剪贴板内容以 http(s) 开头时按网络 URL 处理，否则按脚本文本处理；
+     * 落库统一走 [commitScript]，与文件/网络导入共享数量与大小校验。
+     */
+    fun importFromClipboard() {
+        val text = runCatching {
+            val cm = LxApp.app.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            cm?.primaryClip?.getItemAt(0)?.text?.toString()?.trim()
+        }.getOrNull()
+        if (text.isNullOrEmpty()) {
+            setStatus("剪贴板中没有可导入的内容", isError = true)
+            return
+        }
+        if (text.startsWith("http://") || text.startsWith("https://")) {
+            importFromUrl(text)
+        } else {
+            commitScript(text)
+        }
+    }
+
+    /** 脚本落库：大小/数量校验 + 导入，供剪贴板导入复用（与文件/网络导入同规则） */
+    private fun commitScript(script: String) {
+        if (script.length > ApiSourceRepository.MAX_SCRIPT_SIZE) {
+            setStatus("脚本过大（超过 9MB）", isError = true)
+            return
+        }
+        viewModelScope.launch {
+            runCatching {
+                if (repo.count() >= ApiSourceRepository.MAX_COUNT) {
+                    throw IllegalStateException("最多只能添加 20 个自定义音源")
+                }
+                repo.importScript(script)
+            }.onSuccess { info ->
+                setStatus("导入成功：${info.name}")
+            }.onFailure { e ->
+                setStatus("导入失败：${e.message}", isError = true)
+            }
+        }
+    }
+
+    /** 切换单个音源的「更新提示」开关（原版 List.tsx 的 update alert 开关） */
+    fun setAllowShowUpdateAlert(id: String, enable: Boolean) {
+        viewModelScope.launch {
+            repo.setAllowShowUpdateAlert(id, enable)
         }
     }
 
