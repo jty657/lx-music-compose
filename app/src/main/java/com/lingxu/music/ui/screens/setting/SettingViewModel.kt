@@ -70,6 +70,8 @@ class SettingViewModel : ViewModel() {
     val lyricAlign: StateFlow<String> = state(settings.lyricAlign, "left")
     val lyricFontSize: StateFlow<Float> = state(settings.lyricFontSize, 1f)
     val isZoomActiveLrc: StateFlow<Boolean> = state(settings.isZoomActiveLrc, false)
+    // 原版 playDetail.isShowLyricProgressSetting：滚动歌词时显示逐句定位线
+    val showLyricProgress: StateFlow<Boolean> = state(settings.showLyricProgress, false)
 
     // ============ 搜索 ============
     val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, false)
@@ -222,6 +224,7 @@ class SettingViewModel : ViewModel() {
     fun cycleLyricAlign() = launch { settings.setLyricAlign(next(lyricAlign.value, listOf("left", "center"))) }
     fun setLyricFontSize(value: Float) = launch { settings.setLyricFontSize(value.coerceIn(0.8f, 1.8f)) }
     fun setIsZoomActiveLrc(value: Boolean) = launch { settings.setIsZoomActiveLrc(value) }
+    fun setShowLyricProgress(value: Boolean) = launch { settings.setShowLyricProgress(value) }
 
     fun setIsShowHotSearch(value: Boolean) = launch { settings.setIsShowHotSearch(value) }
     fun setIsShowHistorySearch(value: Boolean) = launch { settings.setIsShowHistorySearch(value) }

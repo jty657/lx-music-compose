@@ -49,6 +49,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_LYRIC_ALIGN = stringPreferencesKey("playDetail.style.align")
         val KEY_LYRIC_FONT_SIZE = floatPreferencesKey("playDetail.style.lrcFontSize")
         val KEY_IS_ZOOM_ACTIVE_LRC = booleanPreferencesKey("playDetail.isZoomActiveLrc")
+        // 原版 playDetail.isShowLyricProgressSetting：滚动歌词时显示逐句定位线
+        val KEY_SHOW_LYRIC_PROGRESS = booleanPreferencesKey("playDetail.isShowLyricProgressSetting")
         // search
         val KEY_IS_SHOW_HOT_SEARCH = booleanPreferencesKey("search.isShowHotSearch")
         val KEY_IS_SHOW_HISTORY_SEARCH = booleanPreferencesKey("search.isShowHistorySearch")
@@ -109,6 +111,8 @@ class SettingsRepository(private val context: Context) {
     val lyricAlign: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_ALIGN] ?: ALIGN_LEFT }
     val lyricFontSize: Flow<Float> = context.dataStore.data.map { it[KEY_LYRIC_FONT_SIZE] ?: 1f }
     val isZoomActiveLrc: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_ZOOM_ACTIVE_LRC] ?: false }
+    // 默认 false 与原版 defaultSetting 一致：手动滚动歌词时是否显示逐句定位线
+    val showLyricProgress: Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_LYRIC_PROGRESS] ?: false }
 
     // ================= search =================
 
@@ -166,6 +170,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setLyricAlign(value: String) = context.dataStore.edit { it[KEY_LYRIC_ALIGN] = value }
     suspend fun setLyricFontSize(value: Float) = context.dataStore.edit { it[KEY_LYRIC_FONT_SIZE] = value }
     suspend fun setIsZoomActiveLrc(value: Boolean) = context.dataStore.edit { it[KEY_IS_ZOOM_ACTIVE_LRC] = value }
+    suspend fun setShowLyricProgress(value: Boolean) = context.dataStore.edit { it[KEY_SHOW_LYRIC_PROGRESS] = value }
 
     suspend fun setIsShowHotSearch(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_HOT_SEARCH] = value }
     suspend fun setIsShowHistorySearch(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_HISTORY_SEARCH] = value }

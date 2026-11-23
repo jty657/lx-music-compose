@@ -125,6 +125,7 @@ fun SettingScreen(
     val lyricAlign by viewModel.lyricAlign.collectAsState(initial = "left")
     val lyricFontSize by viewModel.lyricFontSize.collectAsState(initial = 1f)
     val isZoomActiveLrc by viewModel.isZoomActiveLrc.collectAsState(initial = false)
+    val showLyricProgress by viewModel.showLyricProgress.collectAsState(initial = false)
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = true)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = true)
@@ -350,6 +351,12 @@ fun SettingScreen(
             title = "放大当前歌词",
             checked = isZoomActiveLrc,
             onCheckedChange = { viewModel.setIsZoomActiveLrc(it) },
+        )
+        SwitchPreference(
+            title = "歌词逐句定位线",
+            summary = "手动滑动歌词时显示时间刻度线，点播放键跳到该句（对齐原版）",
+            checked = showLyricProgress,
+            onCheckedChange = { viewModel.setShowLyricProgress(it) },
         )
 
         Spacer(Modifier.size(12.dp))

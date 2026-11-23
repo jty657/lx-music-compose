@@ -52,8 +52,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -85,6 +87,7 @@ import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.MotionFastMs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Slider
@@ -114,6 +117,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val showLrcTranslation by LxApp.app.settings.showLyricTranslation.collectAsState(initial = true)
     val showLrcRoma by LxApp.app.settings.showLyricRoma.collectAsState(initial = false)
     val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
+    // 原版 playDetail.isShowLyricProgressSetting：手动滚动歌词时的逐句定位线
+    val showLyricProgress by LxApp.app.settings.showLyricProgress.collectAsState(initial = false)
     val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
     val reduceMotion = LocalReduceMotion.current
     var showMore by remember { mutableStateOf(false) }
@@ -248,6 +253,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 showTranslation = showLrcTranslation,
                 showRoma = showLrcRoma,
                 centered = lyricAlign == "center",
+                showPlayLine = showLyricProgress,
                 reduceMotion = reduceMotion,
                 onSeek = { viewModel.seekTo(it) },
             )
@@ -469,6 +475,12 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     }
 }
 
+/** 逐句定位线的时间戳：与原版 formatPlayTime2 同一语义（M:SS），负时间钳到 0。 */
+private fun formatLyricTime(timeMs: Long): String {
+    val seconds = timeMs.coerceAtLeast(0L) / 1000L
+    return "${seconds / 60L}:${(seconds % 60L).toString().padStart(2, '0')}"
+}
+
 /**
  * 歌词视图：LazyColumn 承载，滚动到当前行。
  *
@@ -487,6 +499,7 @@ private fun LyricView(
     showTranslation: Boolean = true,
     showRoma: Boolean = false,
     centered: Boolean = false,
+    showPlayLine: Boolean = false,
     reduceMotion: Boolean = false,
     onSeek: (Long) -> Unit = {},
 ) {
@@ -511,6 +524,20 @@ private fun LyricView(
     BoxWithConstraints(modifier) {
         val edgePad = maxHeight * 0.4f
         val edgePadPx = with(LocalDensity.current) { edgePad.roundToPx() }
+        // 逐句定位线（对应原版 PlayLine）：手动回看时，取距顶部 40% 视线最近的一句歌词。
+        // 只读 LazyList 的布局信息，不额外测量、不拦截手势；跟随自动滚动时不显示。
+        val playLineIndex by remember(lyricLines, edgePadPx) {
+            derivedStateOf {
+                val info = listState.layoutInfo
+                val focusY = info.viewportStartOffset + edgePadPx
+                info.visibleItemsInfo
+                    // LazyColumn 的第 0 项是首部占位，歌词下标 = item.index - 1
+                    .filter { it.index in 1..lyricLines.size }
+                    .minByOrNull { item -> abs((item.offset + item.size / 2f) - focusY) }
+                    ?.index?.minus(1)
+            }
+        }
+        val targetLine = playLineIndex?.takeIf { it in lyricLines.indices }
         // 用弹簧缓动替换默认的瞬时滚动：歌词跟着唱「滑」到位，而不是一格一格跳。
         // followCurrent 作为 key：恢复跟随时立即把当前行滑回居中位置。
         // 注意：animateScrollToItem 是协程动画，不受 Compose「动画时长缩放」影响 —— 系统
@@ -562,6 +589,78 @@ private fun LyricView(
                 )
             }
             item { Spacer(Modifier.height(edgePad)) }
+        }
+
+        // 原版 PlayLine：手动回看时叠加一条虚线刻度 + 该句时间戳 + 跳转按钮。
+        // 只动 alpha 淡入淡出（transform/opacity 类），不触发列表重新布局；
+        // 系统要求减弱动效时瞬时到位，避免滚动回看时反复淡变干扰阅读。
+        AnimatedVisibility(
+            visible = showPlayLine && !followCurrent && targetLine != null,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = edgePad),
+            enter = fadeIn(tween(if (reduceMotion) 0 else 180)),
+            exit = fadeOut(tween(if (reduceMotion) 0 else 120)),
+        ) {
+            val lineIndex = targetLine
+            if (lineIndex != null) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                        .padding(horizontal = 12.dp),
+                ) {
+                    // 虚线：与原版 dashed border 相同的视觉语言，但用 drawBehind 绘制，
+                    // 不增加一个占位的布局节点。颜色需在 Composable 作用域先取出，
+                    // drawBehind 的绘制 lambda 内不能读 MiuixTheme 的 CompositionLocal。
+                    val lineColor = MiuixTheme.colorScheme.primary.copy(alpha = 0.55f)
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterStart)
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .drawBehind {
+                                drawLine(
+                                    color = lineColor,
+                                    start = androidx.compose.ui.geometry.Offset(0f, size.height / 2f),
+                                    end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2f),
+                                    strokeWidth = 1.dp.toPx(),
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f),
+                                )
+                            },
+                    )
+                    Row(
+                        Modifier.align(Alignment.CenterEnd),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            formatLyricTime(lyricLines[lineIndex].timeMs),
+                            fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                            color = MiuixTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Box(
+                            Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.14f))
+                                .clickable(role = Role.Button, onClickLabel = "跳转到该句歌词") {
+                                    // 与原版 handlePlayLine 一致：跳到该句并恢复自动跟随。
+                                    followCurrent = true
+                                    onSeek(lyricLines[lineIndex].timeMs)
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                MiuixIcons.Play,
+                                contentDescription = null,
+                                tint = MiuixTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         // 手动回看时浮出「回到当前歌词」入口，点击后恢复自动跟随并把当前行滑回居中。
