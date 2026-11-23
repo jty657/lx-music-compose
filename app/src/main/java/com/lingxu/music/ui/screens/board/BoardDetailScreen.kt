@@ -37,6 +37,7 @@ import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.LoadMoreButton
+import com.lingxu.music.ui.components.LoadingHint
 import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TopBarTitle
 import com.lingxu.music.ui.components.TrackCover
@@ -163,16 +164,9 @@ fun BoardDetailScreen(
             // 首次加载中且暂无内容：给出明确的进度提示，避免分不清「加载中」还是「无数据」
             if (loading && musicList.isEmpty() && error == null) {
                 item(key = "__board_loading__") {
-                    Column(
-                        Modifier.fillMaxWidth().padding(vertical = 64.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            "正在加载榜单…",
-                            fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
+                    // 统一加载态：三点流水灯呼吸替代此前的静态死文本，慢网络上明确表达「进行中」，
+                    // 与首页骨架、加载更多 Crossfade 全站语言一致；减弱动效时静帧。
+                    LoadingHint(text = "正在加载榜单…")
                 }
             }
             // 搜索关键词无匹配：给出专属空态，避免过滤后一片空白
