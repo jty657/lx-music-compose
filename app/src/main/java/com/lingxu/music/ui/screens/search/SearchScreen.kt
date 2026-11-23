@@ -177,7 +177,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         // 这里不再单独渲染红字，避免加载失败时同一句错误文案出现两遍。
 
         // 搜索历史（无结果且输入为空时展示；可在设置里关闭）
-        val showHistory by LxApp.app.settings.isShowHistorySearch.collectAsState(initial = true)
+        // initial 与落盘默认（SettingsRepository: false）一致，避免首帧先闪出历史再消失。
+        val showHistory by LxApp.app.settings.isShowHistorySearch.collectAsState(initial = false)
+        // 热搜同样受设置开关门控（对齐原版 BlankView 的 isShowHotSearch）：
+        // 此前搜索页遗漏该开关，用户关掉「显示热搜」后热搜依旧出现。
+        val showHot by LxApp.app.settings.isShowHotSearch.collectAsState(initial = false)
         // 必须加「输入框为空」判断：搜索后输入框仍保留关键词，若只判结果为空，
         // 任意无结果的搜索都会命中历史分支并 return，导致「没有找到相关音乐」空态永远不显示。
         val inputIsBlank = textFieldState.text.toString().isBlank()
@@ -237,7 +241,8 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
 
         // 热搜快捷入口（对齐原版搜索页热搜）：当没有可展示的历史、且输入为空/未搜索时，
         // 展示内置 SDK 热搜词，点击即填入并搜索（与历史词同一路径），省去用户手动输入。
-        if (inputIsBlank && !viewModel.hasSearched && viewModel.results.isEmpty()
+        // showHot 门控对齐原版 isShowHotSearch：关掉「显示热搜」后不再展示。
+        if (showHot && inputIsBlank && !viewModel.hasSearched && viewModel.results.isEmpty()
             && viewModel.songLists.isEmpty() && viewModel.hotWords.isNotEmpty()
         ) {
             // 进场淡入：只动 alpha（不触发布局），减弱动效时 0ms 到位，与全站列表项淡入同一语言。
