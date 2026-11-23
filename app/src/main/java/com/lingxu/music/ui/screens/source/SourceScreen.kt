@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -105,6 +106,34 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             Button(onClick = { viewModel.importFromClipboard() }) {
                 Text("剪贴板导入")
             }
+        }
+
+        Spacer(Modifier.size(8.dp))
+
+        // 音源说明与 FAQ 入口（对齐原版 UserApiEditModal 底部的 user_api_readme + FAQ + user_api_note）。
+        // 新用户往往不知道自定义音源脚本从哪来，这里给一句话说明与可点的编写文档入口；
+        // 用 TextActionButton 复用全站统一热区/按压反馈，Intent 打开外部浏览器沿用设置页既有写法。
+        val faqContext = LocalContext.current
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "音源脚本编写说明：",
+                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            TextActionButton(
+                text = "FAQ",
+                color = MiuixTheme.colorScheme.primary,
+                onClick = {
+                    runCatching {
+                        faqContext.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://lyswhut.github.io/lx-music-doc/mobile/custom-source"),
+                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                },
+            )
         }
 
         Spacer(Modifier.size(8.dp))
@@ -262,11 +291,17 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
     // 删除确认
     deletingId?.let { id ->
+        // 对齐原版 user_api_remove_tip（文案带 {name}）：让用户在确认时看清将要删除的是哪个音源，
+        // 避免多个脚本时误删；从已收集的 userApis 按 id 取 name，找不到时回退到泛化文案。
+        val deletingName = userApis.find { it.id == id }?.name
         GlassDialog(onDismissRequest = { deletingId = null }) {
             Column(Modifier.padding(horizontal = 4.dp)) {
                 Text("删除音源", fontSize = MiuixTheme.textStyles.title1.fontSize)
                 Spacer(Modifier.size(12.dp))
-                Text("确定删除该自定义音源吗？")
+                Text(
+                    if (deletingName.isNullOrBlank()) "确定删除该自定义音源吗？"
+                    else "确定删除音源「$deletingName」吗？",
+                )
                 Spacer(Modifier.size(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Button(onClick = { deletingId = null }) { Text("取消") }
