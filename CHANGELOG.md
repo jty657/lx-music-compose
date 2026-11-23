@@ -1,6 +1,17 @@
 # 更新日志
 
-## 第十六轮：触感反馈、弹窗进出场与播放模式可达性（v1.4.5，本次）
+## 第十七轮：启动直达播放页与音源选中态视觉（v1.4.6，本次）
+
+> 本轮对照原版 lx-music-mobile v1.9.2 做一项功能对齐与一项 UI 打磨，不触碰 QuickJS 引擎、音源协议、播放内核、路由结构与状态管理。所有 `.kt` 改动均通过 `scripts/selfcheck.py` 静态自检，并在本地以 AGP 9.4.1 + Gradle 9.7.1 + compileSdk 37 执行 `assembleRelease` 实编译（产物 APK），同时由 GitHub Actions 云端复核。
+
+### 功能对齐（原版缺失项）
+- **启动时打开播放详情页**（原版 `player.startupPushPlayDetailScreen`，`SettingsRepository` / `SettingViewModel` / `SettingScreen` / `AppRoot`）：原版有此开关而移植版缺失。新增设置项（默认 `false`，与原版 `defaultSetting` 一致）；开启后冷启动若检测到上次播放记录，进入根页 Home 时一次性 push 播放页。用 `startupNavDone` 守护只触发一次，且仅在仍停留 Home 时进入，不会覆盖用户已手动导航的状态。上次播放恢复是异步的，故观察 `state.map { current != null }` 待恢复完成后再判定。纯设置/导航层，不改播放逻辑。
+
+### UI / 动效打磨
+- **音源选中态整卡高亮**（`ui/screens/source/SourceScreen.kt`）：内置音源与自定义音源的「使用中」项由单一的「✓ 使用中」文字，改为整卡主色淡染（10% 主色）+ 音源名主色，与播放队列「正在播放」、搜索音源 chip 的选中态统一为同一设计语言。切换音源时由 `GlassSurface` 内置的 `animateColorAsState`（160ms）平滑淡变，遵循静帧降级。仅视觉反馈，`switchSource` 逻辑不变。
+- 版本 1.4.5 → 1.4.6（versionCode 19 → 20）。
+
+## 第十六轮：触感反馈、弹窗进出场与播放模式可达性（v1.4.5）
 
 > 本轮只做 UI 层交互手感与可达性打磨，不触碰 QuickJS 引擎、音源协议、播放内核、路由结构与状态管理。所有 `.kt` 改动均通过 `scripts/selfcheck.py` 自检，并在本地以 AGP 9.4.1 + Gradle 9.7.1 + compileSdk 37 执行 `assembleRelease` 实机等价编译（产物 APK），非仅云端验证。
 

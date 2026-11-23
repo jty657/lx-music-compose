@@ -142,16 +142,22 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         Spacer(Modifier.size(4.dp))
 
         SourceConst.ONLINE.forEach { source ->
+            // 当前启用音源整卡主色淡染，与播放队列「正在播放」、搜索音源 chip 的选中态同一设计语言。
+            // GlassSurface 内部对 tint 走 animateColorAsState，切换音源时底色平滑淡入淡出（静帧降级已内置）。
+            // 仅视觉反馈，switchSource 的切换逻辑完全不变。
+            val inUse = currentSource == source
             GlassSurface(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                tint = if (inUse) MiuixTheme.colorScheme.primary.copy(alpha = 0.10f) else null,
                 onClick = { viewModel.switchSource(source) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                     Text(
                         SourceConst.displayName(source),
                         modifier = Modifier.weight(1f),
+                        color = if (inUse) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
                     )
-                    if (currentSource == source) {
+                    if (inUse) {
                         Text("✓ 使用中", color = MiuixTheme.colorScheme.primary)
                     }
                 }
@@ -182,8 +188,12 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                     Column(
                         modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                     ) {
+                        // 与内置音源一致的选中态主色淡染：当前启用的自定义音源整卡淡染，
+                        // 长列表中扫视定位更快；切换时由 GlassSurface 的 tint 过渡平滑淡变。
+                        val inUse = currentSource == api.id
                         GlassSurface(
                             modifier = Modifier.fillMaxWidth(),
+                            tint = if (inUse) MiuixTheme.colorScheme.primary.copy(alpha = 0.10f) else null,
                             onClick = { viewModel.switchSource(api.id) },
                             onLongClick = {
                                 deletingId = api.id
@@ -193,7 +203,12 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                                 Column(Modifier.weight(1f)) {
                                     // 脚本名来自用户导入、完全不可控：补单行省略，避免长名把右侧
                                     // 「✓ 使用中」挤出屏幕（与首页榜单/歌单项同一省略语言）。
-                                    Text(api.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        api.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = if (inUse) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                    )
                                     Text(
                                         "${api.author} ${api.version}".trim(),
                                         fontSize = MiuixTheme.textStyles.body2.fontSize,
