@@ -313,6 +313,20 @@ private fun MiniPlayerBar(navigator: Navigator) {
     val pieceShape = RoundedCornerShape(Dimens.CardCorner)
     val dark = glass?.dark ?: isInDarkTheme()
 
+    // 整行「进入播放页」点击区与全站可点元素统一交互语言：此前这里是全站最后一处
+    // 裸 clickable —— 系统方角涟漪画在圆角玻璃条上、按下无任何反馈、读屏只当普通容器。
+    // 现在改为 indication=null + 轻微按压缩放 + Role.Button：只动 transform 不触发布局；
+    // 幅度取 0.985（比紧凑图标键 0.9 更保守，避免整条大面积背景明显塌陷），
+    // 减弱动效时退化为静帧。点击守卫与跳转逻辑完全不变。
+    val barInteraction = remember { MutableInteractionSource() }
+    val barPressed by barInteraction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val barScale by animateFloatAsState(
+        targetValue = if (barPressed && !reduceMotion) 0.985f else 1f,
+        animationSpec = Motion.press(),
+        label = "miniPlayerBarPress",
+    )
+
     Box(
         Modifier
             .fillMaxWidth()
@@ -368,9 +382,18 @@ private fun MiniPlayerBar(navigator: Navigator) {
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
                     .padding(bottom = 6.dp)
-                    .clickable {
-                        if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
-                    },
+                    // 按压缩放只作用于内容 Row（transform，不触发布局），不套到外层 backdrop 节点；
+                    // 放在 clickable 之前，缩放封面+文字整体。减弱动效时 barScale 恒为 1f。
+                    .graphicsLayer { scaleX = barScale; scaleY = barScale }
+                    .clickable(
+                        interactionSource = barInteraction,
+                        indication = null,
+                        role = Role.Button,
+                        onClickLabel = "进入播放页",
+                        onClick = {
+                            if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
+                        },
+                    ),
             ) {
                 TrackCover(url = state.coverUrl ?: current.meta.picUrl, size = 44.dp, corner = 10.dp)
                 Spacer(Modifier.size(10.dp))
@@ -411,7 +434,7 @@ private fun MiniPlayerBar(navigator: Navigator) {
             // positionMs 每 500ms 才更新一次，直接赋值会「跳格」；用等速补间把两次更新连起来。
             // 这是全站最后一处未降级的 tween：系统要求减弱动效时瞬时到位（进度跳格是预期的静帧），
             // 与封面淡入、歌词高亮、按压缩放的静帧降级约定保持一致。
-            val reduceMotion = LocalReduceMotion.current
+            // reduceMotion 复用函数顶部声明（整条与进度线共用同一开关，避免重复读取）
             val rawProgress = if (state.durationMs > 0) {
                 (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
             } else {
