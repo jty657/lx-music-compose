@@ -74,6 +74,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.LyricLine
 import com.lingxu.music.core.player.PlayMode
+import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.TextActionButton
@@ -505,13 +506,9 @@ private fun LyricView(
 ) {
     val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
     if (lyricLines.isEmpty()) {
-        Box(modifier, contentAlignment = Alignment.Center) {
-            Text(
-                "暂无歌词",
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
-        }
+        // 与全站空态统一：居中 + 占位图标 + 入场淡入上浮；此处是全站最后一处裸文字空态。
+        // 图标沿用已导入的 Favorites（歌词/收藏语义相近），减弱动效时静帧。
+        EmptyHint(icon = MiuixIcons.Favorites, text = "暂无歌词", modifier = modifier)
         return
     }
     val listState = rememberLazyListState()
