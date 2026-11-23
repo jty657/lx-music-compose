@@ -1,5 +1,14 @@
 # 更新日志
 
+## 第十八轮：歌曲来源名称（原名/别名）对齐（v1.4.7，本次）
+
+> 本轮对照原版 lx-music-mobile v1.9.2 做一项功能对齐：原版 `common.sourceNameType`。不触碰 QuickJS 引擎、音源协议、播放内核、路由结构与状态管理。所有 `.kt` 改动均通过 `scripts/selfcheck.py` 静态自检，并在本地以 AGP 9.4.1 + Gradle 9.7.1 + compileSdk 37 执行 `assembleRelease` 实编译（产物 APK），同时由 GitHub Actions 云端复核。
+
+### 功能对齐（原版缺失项）
+- **歌曲来源名称：原名 / 别名切换**（原版 `common.sourceNameType`，`SettingsRepository` / `SettingViewModel` / `SettingScreen` / `LxApp` / `core/model/Models.kt` / `HomeViewModel`）：原版设置里有「歌曲来源名称」开关，可在别名（小蜗音乐、小枸音乐…）与原名（酷我音乐、酷狗音乐…）间切换，移植版此前恒显示原名。新增设置项（基本设置分组，点击循环，与主题/语言同一交互语言），默认 `real`（原名）——保持移植版历史显示，老用户升级后观感不变；原版默认为 `alias`，差异见报告待确认项。
+- **响应式实现（10 处调用点零改动）**：`SourceConst` 增加两套显示名映射，并用 Compose `mutableStateOf` 承载当前类型；所有 `displayName()` 调用点均在 Composable 中读取该 State，切换后全站音源名（音源管理/搜索/榜单/歌单/收藏/队列）即时重组刷新。`LxApp` 启动时收集设置同步全局 State（`catch` 兜底防 DataStore 首读损坏）；首页标签改由 `displayName()` 实时读取，不再用缓存字符串。未收录的 `user_api` 源原样返回 id，自定义源名仍走原缓存路径。
+- 版本 1.4.6 → 1.4.7（versionCode 20 → 21）。
+
 ## 第十七轮：启动直达播放页与音源选中态视觉（v1.4.6，本次）
 
 > 本轮对照原版 lx-music-mobile v1.9.2 做一项功能对齐与一项 UI 打磨，不触碰 QuickJS 引擎、音源协议、播放内核、路由结构与状态管理。所有 `.kt` 改动均通过 `scripts/selfcheck.py` 静态自检，并在本地以 AGP 9.4.1 + Gradle 9.7.1 + compileSdk 37 执行 `assembleRelease` 实编译（产物 APK），同时由 GitHub Actions 云端复核。

@@ -30,18 +30,41 @@ object SourceConst {
     val ONLINE = listOf(KW, KG, TX, WY, MG)
     fun isUserApi(id: String) = id.startsWith("user_api")
 
-    /** 内置源中文名（对应原版 sourceNameType=alias） */
-    fun displayName(source: String): String = when (source) {
-        KW -> "酷我音乐"
-        KG -> "酷狗音乐"
-        TX -> "QQ音乐"
-        WY -> "网易音乐"
-        MG -> "咪咕音乐"
-        XM -> "虾米音乐"
-        LOCAL -> "本地音乐"
-        "all" -> "聚合搜索"
-        else -> source
+    // ===== 音源显示名类型（对齐原版 common.sourceNameType）=====
+    // 用 Compose State 承载全局类型：所有 displayName() 调用点都在 Composable 中，
+    // 读取该 State 后会自动订阅，切换「原名/别名」时全站音源名即时重组刷新，
+    // 而 10 处调用点无需任何改动。非 Composable 上下文（如 ViewModel）读取也安全。
+    private val _nameType = androidx.compose.runtime.mutableStateOf(NAME_REAL)
+    val nameType: String get() = _nameType.value
+
+    /** 由设置层在启动/切换时同步；非法值一律回退到「原名」 */
+    fun setNameType(value: String) {
+        _nameType.value = if (value == NAME_ALIAS) NAME_ALIAS else NAME_REAL
     }
+
+    const val NAME_REAL = "real"
+    const val NAME_ALIAS = "alias"
+
+    /** 原名（对应原版 sourceNameType=real，也是本项目历史默认显示） */
+    private val realNames = mapOf(
+        KW to "酷我音乐", KG to "酷狗音乐", TX to "QQ音乐",
+        WY to "网易音乐", MG to "咪咕音乐", XM to "虾米音乐",
+        LOCAL to "本地音乐", "all" to "聚合搜索",
+    )
+
+    /** 别名（对应原版 sourceNameType=alias，与原版 zh-cn.json 的 source_alias_* 一致） */
+    private val aliasNames = mapOf(
+        KW to "小蜗音乐", KG to "小枸音乐", TX to "小秋音乐",
+        WY to "小芸音乐", MG to "小蜜音乐", XM to "虾米音乐",
+        LOCAL to "本地音乐", "all" to "聚合搜索",
+    )
+
+    /**
+     * 内置源显示名：按当前「原名/别名」设置取值。
+     * 未收录的源（如 user_api_xxx）原样返回 id，交由调用方展示自定义名称。
+     */
+    fun displayName(source: String): String =
+        (if (_nameType.value == NAME_ALIAS) aliasNames else realNames)[source] ?: source
 }
 
 /** 歌曲信息，与原版 LX.Music.MusicInfo 对齐 */

@@ -104,6 +104,13 @@ class LxApp : Application() {
         appScope.launch {
             settings.enableUserApiLog.catch { }.collect { engineManager.scriptLogEnabled = it }
         }
+        // 音源显示名类型（原名/别名）：同步到全局，供所有 displayName() 调用点读取。
+        // DataStore 首读损坏时 catch 兜底，保持 SourceConst 默认 real，不影响启动。
+        appScope.launch {
+            settings.sourceNameType.catch { }.collect {
+                com.lingxu.music.core.model.SourceConst.setNameType(it)
+            }
+        }
         appScope.launch {
             settings.isHandleAudioFocus.catch { }.collect { playerRepository.setHandleAudioFocus(it) }
         }

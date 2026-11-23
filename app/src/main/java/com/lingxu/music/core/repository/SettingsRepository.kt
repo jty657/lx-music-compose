@@ -26,6 +26,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_FONT_SCALE = floatPreferencesKey("common.fontScale")
         val KEY_SHARE_TYPE = stringPreferencesKey("common.shareType")
         val KEY_AUTO_HIDE_PLAY_BAR = booleanPreferencesKey("common.autoHidePlayBar")
+        // 原版 common.sourceNameType：音源显示名类型 real（原名）/ alias（别名），默认 real
+        val KEY_SOURCE_NAME_TYPE = stringPreferencesKey("common.sourceNameType")
         // player
         val KEY_QUALITY = stringPreferencesKey("player.quality")
         val KEY_PLAY_MODE = stringPreferencesKey("player.playMode")
@@ -61,6 +63,8 @@ class SettingsRepository(private val context: Context) {
 
         const val LANG_SYSTEM = "system"
         const val SHARE_SYSTEM = "system"
+        const val SOURCE_NAME_REAL = "real"
+        const val SOURCE_NAME_ALIAS = "alias"
         const val ALIGN_LEFT = "left"
         const val ADD_LOCATION_TOP = "top"
         const val ADD_LOCATION_BOTTOM = "bottom"
@@ -76,6 +80,8 @@ class SettingsRepository(private val context: Context) {
     val fontScale: Flow<Float> = context.dataStore.data.map { it[KEY_FONT_SCALE] ?: 1f }
     val shareType: Flow<String> = context.dataStore.data.map { it[KEY_SHARE_TYPE] ?: SHARE_SYSTEM }
     val autoHidePlayBar: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_HIDE_PLAY_BAR] ?: true }
+    // 默认 real（原名）：与移植版历史显示一致，老用户升级后观感不变；原版默认 alias，见报告待确认项
+    val sourceNameType: Flow<String> = context.dataStore.data.map { it[KEY_SOURCE_NAME_TYPE] ?: SOURCE_NAME_REAL }
 
     // ================= player =================
 
@@ -137,6 +143,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setFontScale(value: Float) = context.dataStore.edit { it[KEY_FONT_SCALE] = value }
     suspend fun setShareType(value: String) = context.dataStore.edit { it[KEY_SHARE_TYPE] = value }
     suspend fun setAutoHidePlayBar(value: Boolean) = context.dataStore.edit { it[KEY_AUTO_HIDE_PLAY_BAR] = value }
+    suspend fun setSourceNameType(value: String) = context.dataStore.edit { it[KEY_SOURCE_NAME_TYPE] = value }
 
     suspend fun setQuality(value: String) = context.dataStore.edit { it[KEY_QUALITY] = value }
     suspend fun setPlayMode(value: String) = context.dataStore.edit { it[KEY_PLAY_MODE] = value }

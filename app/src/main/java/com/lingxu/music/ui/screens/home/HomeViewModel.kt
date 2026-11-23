@@ -51,7 +51,13 @@ class HomeViewModel : ViewModel() {
     }
 
     /** 当前音源显示名（内置源用中文名，自定义源用脚本名） */
-    fun sourceLabel(): String = sourceLabelText
+    fun sourceLabel(): String {
+        val id = selectedSource
+        // 内置源显示名实时读取 SourceConst 的响应式 State：在 Composable 中调用本方法时，
+        // 读取会被 Compose 记录为依赖，切换「原名/别名」后首页标签即时刷新，无需重建 ViewModel。
+        // 自定义源名来自脚本、非响应式，仍用 init/切源时缓存的值。
+        return if (id.startsWith("user_api")) sourceLabelText else SourceConst.displayName(id)
+    }
 
     private suspend fun refreshSourceLabel() {
         val id = selectedSource

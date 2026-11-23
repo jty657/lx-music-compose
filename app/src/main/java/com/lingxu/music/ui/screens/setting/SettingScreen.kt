@@ -96,6 +96,7 @@ fun SettingScreen(
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
     val shareType by viewModel.shareType.collectAsState(initial = "system")
     val autoHidePlayBar by viewModel.autoHidePlayBar.collectAsState(initial = true)
+    val sourceNameType by viewModel.sourceNameType.collectAsState(initial = "real")
 
     val quality by viewModel.quality.collectAsState(initial = "128k")
     val playMode by viewModel.playMode.collectAsState(initial = "listLoop")
@@ -221,6 +222,13 @@ fun SettingScreen(
                 else -> "系统分享"
             },
             onClick = { viewModel.cycleShareType() },
+        )
+        // 对齐原版「歌曲来源名称」：切换内置音源显示原名（酷我音乐）或别名（小蜗音乐）。
+        // 与主题/语言同一交互语言（点击循环），切换后全站音源名经 Compose State 即时刷新。
+        ArrowPreference(
+            title = "歌曲来源名称",
+            summary = if (sourceNameType == "alias") "别名（小蜗音乐 等）" else "原名（酷我音乐 等）",
+            onClick = { viewModel.cycleSourceNameType() },
         )
         SwitchPreference(
             title = "自动隐藏播放条",
