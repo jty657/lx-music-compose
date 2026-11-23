@@ -2,7 +2,7 @@
 
 > **一款同时具备「在线」与「本地」功能的音乐播放器** —— 既能在联网时聚合搜索并播放各大平台的在线音乐，也能离线管理你自己的歌单、收藏与播放队列。
 
-聆序是 [洛雪音乐（lx-music-mobile）](https://github.com/lyswhut/lx-music-mobile) v1.9.1 的 Compose 多平台移植版，使用 Kotlin + Jetpack Compose 从零重写 UI 层，功能对齐原版，并带来液态玻璃（Liquid Glass）视觉风格。包名 `com.lingxu.mobile`，当前版本 `1.5.0`。
+聆序是 [洛雪音乐（lx-music-mobile）](https://github.com/lyswhut/lx-music-mobile) v1.9.1 的 Compose 多平台移植版，使用 Kotlin + Jetpack Compose 从零重写 UI 层，功能对齐原版，并带来液态玻璃（Liquid Glass）视觉风格。包名 `com.lingxu.mobile`，当前版本 `1.5.1`。
 
 ---
 

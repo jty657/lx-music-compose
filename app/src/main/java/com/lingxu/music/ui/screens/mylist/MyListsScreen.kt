@@ -45,7 +45,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.db.Playlist
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.components.BackIconButton
+import com.lingxu.music.ui.components.PlayingIndicator
 import com.lingxu.music.ui.components.dialogOptionClickable
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.ContentMaxWidth
@@ -57,6 +59,7 @@ import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.animateListItem
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
@@ -75,6 +78,21 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     val lists by viewModel.lists.collectAsState()
     val scope = rememberCoroutineScope()
     val reduceMotion = LocalReduceMotion.current
+
+    // 列表副标题字段开关：对齐原版 list.isShowSource / isShowInterval / isShowAlbumName。
+    // 原版《我的列表》歌曲行（Mylist/MusicList/ListItem.tsx）会按 isShowAlbumName 追加专辑名、
+    // 按 isShowInterval 显示时长；此前移植版该页副标题固定只有歌手名，三项开关在此页无效。
+    // 组装方式与收藏页 FavoriteCard / 歌单详情一致，歌手恒显示，空片段过滤后无悬空「 · 」。
+    val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
+    val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
+    val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
+    // 当前播放曲目 id 与播放态：派生为 Pair 只订阅这两个字段，避免播放进度每秒变化触发整页重组。
+    // 对齐原版《我的列表》activeIndex 高亮 —— 当前曲目用播放态音柱 + 主色歌名标识。
+    val playingInfo: Pair<String?, Boolean> by LxApp.app.playerRepository.state
+        .map { Pair(it.current?.id, it.isPlaying) }
+        .collectAsState(initial = Pair(null, false))
+    val currentPlayingId = playingInfo.first
+    val isCurrentlyPlaying = playingInfo.second
 
     var showCreate by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
@@ -249,25 +267,44 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                            Icon(
-                                if (selectMode) {
-                                    if (checked) MiuixIcons.Favorites else MiuixIcons.Play
-                                } else {
-                                    MiuixIcons.Play
-                                },
-                                // 多选态下选中/未选中此前只靠颜色与图标区分，读屏用户无法感知
-                                contentDescription = if (selectMode) (if (checked) "已选中" else "未选中") else null,
-                                modifier = Modifier.size(28.dp),
-                            )
+                            val isCurrent = !selectMode && music.id == currentPlayingId
+                            if (isCurrent) {
+                                // 当前曲目：三条律动音柱（暂停时静帧），与播放队列页一致；
+                                // 多选态下让位给选中/未选中图标，避免语义冲突。
+                                PlayingIndicator(
+                                    playing = isCurrentlyPlaying,
+                                    modifier = Modifier.size(28.dp),
+                                )
+                            } else {
+                                Icon(
+                                    if (selectMode) {
+                                        if (checked) MiuixIcons.Favorites else MiuixIcons.Play
+                                    } else {
+                                        MiuixIcons.Play
+                                    },
+                                    // 多选态下选中/未选中此前只靠颜色与图标区分，读屏用户无法感知
+                                    contentDescription = if (selectMode) (if (checked) "已选中" else "未选中") else null,
+                                    modifier = Modifier.size(28.dp),
+                                )
+                            }
                             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                                 Text(
                                     music.name,
                                     fontSize = MiuixTheme.textStyles.main.fontSize,
+                                    color = if (isCurrent) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                // 副标题字段由设置开关决定，组装方式与收藏页 FavoriteCard 一致：
+                                // 歌手恒显示，专辑名/来源/时长按开关按需拼接；空片段过滤后不会出现悬空的「 · 」。
+                                val subtitle = buildList {
+                                    add(music.singer)
+                                    if (showAlbumName) music.meta.albumName.takeIf { it.isNotBlank() }?.let { add(it) }
+                                    if (showSource) add(SourceConst.displayName(music.source))
+                                    if (showInterval) music.interval?.let { add(it) }
+                                }.filter { it.isNotBlank() }
                                 Text(
-                                    music.singer,
+                                    subtitle.joinToString(" · "),
                                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                     maxLines = 1,

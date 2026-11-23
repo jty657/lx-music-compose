@@ -1,6 +1,17 @@
 # 更新日志
 
-## 第二十一轮：列表显示设置全站对齐（v1.5.0，本次）
+## 第二十二轮：我的列表功能对齐（v1.5.1，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 的《我的列表》歌曲行，补齐两处显示层功能：三项列表显示设置（来源/时长/专辑名）在本页生效，以及当前播放曲目的播放态指示。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议；全部 `.kt` 改动通过 `scripts/selfcheck.py`。
+
+### 功能对齐（原版缺失项）
+- **副标题接入三项列表显示设置**（`ui/screens/mylist/MyListsScreen.kt`）：原版《我的列表》歌曲行（`Mylist/MusicList/ListItem.tsx`）会按 `list.isShowAlbumName` 追加专辑名、按 `list.isShowInterval` 显示时长，并受 `list.isShowSource` 控制来源；此前移植版该页副标题固定只有歌手名，用户在设置里的三项开关对本页完全无效。本轮按收藏页 `FavoriteCard` 的 `buildList` 组装方式接入——歌手恒显示，专辑名/来源/时长按需拼接，空片段过滤后不会出现悬空的「 · 」。至此三项设置已在收藏页、歌单详情、搜索结果、我的列表四处全部生效。
+- **当前播放曲目指示**（同文件）：原版《我的列表》对正在播放的曲目用 `activeIndex` 高亮；此前移植版每行都是统一的 Play 图标，无法识别当前曲目。本轮复用播放队列页已有的 `PlayingIndicator`——当前曲目显示三条律动音柱（暂停时静帧、减弱动效时静帧），歌名染主色；只订阅 `current?.id` 与 `isPlaying` 两个派生字段，播放进度每秒变化不会触发本页重组。多选态下让位给选中/未选中图标，避免语义冲突。
+
+### 工程
+- 版本 1.5.0 → 1.5.1（versionCode 24 → 25）；README 同步。
+
+## 第二十一轮：列表显示设置全站对齐（v1.5.0）
 
 > 对照原版 lx-music-mobile v1.9.2 的 `list.isShowSource / isShowInterval / isShowAlbumName` 三项显示设置，把它们从「仅收藏页生效」补齐到歌单详情页与搜索结果页。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议；全部 `.kt` 改动通过 `scripts/selfcheck.py`。
 
