@@ -1,6 +1,17 @@
 # 更新日志
 
-## 第二十轮：歌词逐句定位线与拖动滑块反馈（v1.4.9，本次）
+## 第二十一轮：列表显示设置全站对齐（v1.5.0，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 的 `list.isShowSource / isShowInterval / isShowAlbumName` 三项显示设置，把它们从「仅收藏页生效」补齐到歌单详情页与搜索结果页。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议；全部 `.kt` 改动通过 `scripts/selfcheck.py`。
+
+### 功能对齐（原版设置项在更多页面生效）
+- **歌单详情页 / 搜索结果页副标题**（`ui/screens/songlist/SongListDetailScreen.kt`、`ui/screens/search/SearchScreen.kt`）：此前两页分别固定显示「歌手 · 来源」与「歌手 · 时长」，用户在设置里的「显示歌曲来源 / 显示歌曲时长 / 显示专辑名」三项开关对这两页完全无效。本轮按收藏页 `FavoriteCard` 的既有 `buildList` 组装方式接入三开关——歌手恒显示，专辑名/来源/时长按需拼接，与收藏页行为一致。空片段经 `filter` 过滤，不再出现时长为空时尾部悬空的「 · 」。
+- **设置页初值一致性**（`ui/screens/setting/SettingScreen.kt`）：修正 4 处 `collectAsState(initial=...)` 与落盘默认不符导致的首帧闪烁——歌词翻译 `true→false`、显示热搜 `true→false`、显示历史 `true→false`、添加位置 `bottom→top`，均与 `SettingsRepository` 默认值对齐。
+
+### 工程
+- 版本 1.4.9 → 1.5.0（versionCode 23 → 24）；README 同步。
+
+## 第二十轮：歌词逐句定位线与拖动滑块反馈（v1.4.9）
 
 > 对照原版 lx-music-mobile v1.9.2 补齐一项播放页功能，并打磨迷你条拖动反馈。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。全部 `.kt` 改动通过 `scripts/selfcheck.py`，并由本地 `assembleRelease` 实编译通过（云端 Actions 复核）。
 

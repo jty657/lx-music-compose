@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +65,11 @@ fun SongListDetailScreen(
     viewModel: SongListDetailViewModel = viewModel(),
 ) {
     val navigator = LocalNavigator.current
+    // 列表副标题字段开关：对齐原版 list.isShowSource / isShowInterval / isShowAlbumName。
+    // 此前本页固定显示「歌手 · 来源」，用户在设置里的三项开关歌单详情里全部无效。
+    val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
+    val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
+    val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
     var musicList by remember { mutableStateOf<List<MusicInfo>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var hasMore by remember { mutableStateOf(true) }
@@ -188,8 +194,16 @@ fun SongListDetailScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                            // 副标题字段由设置开关决定，组装方式与收藏页 FavoriteCard 一致：
+                            // 歌手恒显示，专辑名/来源/时长按开关按需拼接；空片段过滤后不会出现悬空的「 · 」。
+                            val subtitle = buildList {
+                                add(music.singer)
+                                if (showAlbumName) music.meta.albumName.takeIf { it.isNotBlank() }?.let { add(it) }
+                                if (showSource) add(SourceConst.displayName(music.source))
+                                if (showInterval) music.interval?.let { add(it) }
+                            }.filter { it.isNotBlank() }
                             Text(
-                                "${music.singer} · ${SourceConst.displayName(music.source)}",
+                                subtitle.joinToString(" · "),
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 maxLines = 1,

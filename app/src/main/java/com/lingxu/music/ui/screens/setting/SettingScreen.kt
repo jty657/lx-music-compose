@@ -120,20 +120,21 @@ fun SettingScreen(
     }.collectAsState(initial = -1)
     var showTimeoutExit by remember { mutableStateOf(false) }
 
-    val showLyricTranslation by viewModel.showLyricTranslation.collectAsState(initial = true)
+    // initial 与落盘默认（SettingsRepository）保持一致，避免首帧闪出错误状态再跳变。
+    val showLyricTranslation by viewModel.showLyricTranslation.collectAsState(initial = false)
     val showLyricRoma by viewModel.showLyricRoma.collectAsState(initial = false)
     val lyricAlign by viewModel.lyricAlign.collectAsState(initial = "left")
     val lyricFontSize by viewModel.lyricFontSize.collectAsState(initial = 1f)
     val isZoomActiveLrc by viewModel.isZoomActiveLrc.collectAsState(initial = false)
     val showLyricProgress by viewModel.showLyricProgress.collectAsState(initial = false)
 
-    val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = true)
-    val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = true)
+    val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
+    val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
 
     val isShowSource by viewModel.isShowSource.collectAsState(initial = true)
     val isShowAlbumName by viewModel.isShowAlbumName.collectAsState(initial = false)
     val isShowInterval by viewModel.isShowInterval.collectAsState(initial = true)
-    val addMusicLocation by viewModel.addMusicLocation.collectAsState(initial = "bottom")
+    val addMusicLocation by viewModel.addMusicLocation.collectAsState(initial = "top")
 
     val blurEnabled by viewModel.blurEnabled.collectAsState(initial = true)
     val blurRadius by viewModel.blurRadius.collectAsState(initial = 24f)

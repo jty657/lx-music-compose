@@ -90,6 +90,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
     val textFieldState = remember { TextFieldState() }
     val sources = listOf("all") + SourceConst.ONLINE
     var selectedSource by rememberSaveable { mutableStateOf("all") }
+    // 搜索结果副标题字段开关：对齐原版 list.isShowSource / isShowInterval / isShowAlbumName。
+    // 此前本页固定显示「歌手 · 时长」，三项开关在搜索结果里全部无效。
+    val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
+    val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
+    val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
 
     // 由热词/历史进入时自动搜索
     androidx.compose.runtime.LaunchedEffect(initialKeyword) {
@@ -365,6 +370,9 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     modifier = animateListItem(),
                     music = music,
                     isFavorite = music.id in viewModel.favoriteIds,
+                    showSource = showSource,
+                    showInterval = showInterval,
+                    showAlbumName = showAlbumName,
                     onClick = {
                         scope.launch {
                             viewModel.play(music)
@@ -400,6 +408,9 @@ private fun SearchResultCard(
     isFavorite: Boolean,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
+    showSource: Boolean = true,
+    showInterval: Boolean = true,
+    showAlbumName: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     GlassSurface(
@@ -424,8 +435,16 @@ private fun SearchResultCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // 副标题字段由设置开关决定，组装方式与收藏页 FavoriteCard 一致：
+                // 歌手恒显示，专辑名/来源/时长按开关按需拼接；空片段过滤后不会出现悬空的「 · 」。
+                val subtitle = buildList {
+                    add(music.singer)
+                    if (showAlbumName) music.meta.albumName.takeIf { it.isNotBlank() }?.let { add(it) }
+                    if (showSource) add(SourceConst.displayName(music.source))
+                    if (showInterval) music.interval?.let { add(it) }
+                }.filter { it.isNotBlank() }
                 Text(
-                    "${music.singer} · ${music.interval ?: ""}",
+                    subtitle.joinToString(" · "),
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     maxLines = 1,
