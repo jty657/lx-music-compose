@@ -81,6 +81,11 @@ class SettingViewModel : ViewModel() {
     // 原版 desktopLyric.isLock：位置锁定（写入后由 LxApp 的 Flow 监听同步给悬浮窗）
     val desktopLyricLocked: StateFlow<Boolean> = state(settings.desktopLyricLocked, false)
     val desktopLyricFontSize: StateFlow<Float> = state(settings.desktopLyricFontSize, 18f)
+    // 对齐原版桌面歌词样式项：写入后由 LxApp 的 Flow 监听同步给原生悬浮窗
+    val desktopLyricSingleLine: StateFlow<Boolean> = state(settings.desktopLyricSingleLine, false)
+    val desktopLyricToggleAnima: StateFlow<Boolean> = state(settings.desktopLyricToggleAnima, true)
+    val desktopLyricOpacity: StateFlow<Int> = state(settings.desktopLyricOpacity, 100)
+    val desktopLyricTextPositionX: StateFlow<String> = state(settings.desktopLyricTextPositionX, "center")
 
     // ============ 搜索 ============
     val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, false)
@@ -269,6 +274,31 @@ class SettingViewModel : ViewModel() {
 
     /** 桌面歌词位置锁定（原版 desktopLyric.isLock）：只写设置，实时生效由 LxApp 的 Flow 监听负责 */
     fun setDesktopLyricLocked(value: Boolean) = launch { settings.setDesktopLyricLocked(value) }
+
+    /** 桌面歌词单行 / 切换动画 / 文字对齐：低频开关，只写设置，由 LxApp 监听同步 */
+    fun setDesktopLyricSingleLine(value: Boolean) = launch { settings.setDesktopLyricSingleLine(value) }
+    fun setDesktopLyricToggleAnima(value: Boolean) = launch { settings.setDesktopLyricToggleAnima(value) }
+    fun setDesktopLyricTextPositionX(value: String) = launch { settings.setDesktopLyricTextPositionX(value) }
+
+    /** 桌面歌词不透明度：滑块高频回调，立即生效 + 节流写盘（同字号），离开页面补写 */
+    private var pendingDesktopLyricOpacity: Int? = null
+
+    fun setDesktopLyricOpacity(value: Int) {
+        val v = value.coerceIn(10, 100)
+        pendingDesktopLyricOpacity = v
+        com.lingxu.music.core.system.DesktopLyric.setTextOpacity(v)
+        if (throttle("desktopLyricOpacity", 150)) {
+            pendingDesktopLyricOpacity = null
+            launch { settings.setDesktopLyricOpacity(v) }
+        }
+    }
+
+    fun commitDesktopLyricOpacity() {
+        val value = pendingDesktopLyricOpacity ?: return
+        pendingDesktopLyricOpacity = null
+        clearThrottle("desktopLyricOpacity")
+        launch { settings.setDesktopLyricOpacity(value) }
+    }
 
     /** 桌面歌词字号：悬浮窗存在时实时生效，落盘节流避免滑块每帧写 DataStore */
     private var pendingDesktopLyricFont: Float? = null

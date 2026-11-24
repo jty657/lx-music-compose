@@ -165,6 +165,16 @@ fun SettingScreen(
     LaunchedEffect(desktopLyricFontSize) {
         if (!lyricFontTouched) localLyricFont = desktopLyricFontSize
     }
+    // 桌面歌词原版样式项：单行 / 切换动画 / 不透明度 / 文字对齐
+    val desktopLyricSingleLine by viewModel.desktopLyricSingleLine.collectAsState(initial = false)
+    val desktopLyricToggleAnima by viewModel.desktopLyricToggleAnima.collectAsState(initial = true)
+    val desktopLyricOpacity by viewModel.desktopLyricOpacity.collectAsState(initial = 100)
+    val desktopLyricTextPositionX by viewModel.desktopLyricTextPositionX.collectAsState(initial = "center")
+    var localLyricOpacity by remember { mutableIntStateOf(desktopLyricOpacity) }
+    var lyricOpacityTouched by remember { mutableStateOf(false) }
+    LaunchedEffect(desktopLyricOpacity) {
+        if (!lyricOpacityTouched) localLyricOpacity = desktopLyricOpacity
+    }
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
@@ -187,6 +197,7 @@ fun SettingScreen(
             viewModel.commitPlaybackRate()
             viewModel.commitVolume()
             viewModel.commitDesktopLyricFontSize()
+            viewModel.commitDesktopLyricOpacity()
         }
     }
 
@@ -505,6 +516,45 @@ fun SettingScreen(
                 checked = desktopLyricLocked,
                 onCheckedChange = { viewModel.setDesktopLyricLocked(it) },
             )
+            // 原版桌面歌词样式项（对齐 lx-music-mobile 的 LyricDesktop 设置组）。
+            SwitchPreference(
+                title = "单行显示",
+                summary = if (desktopLyricSingleLine) "只显示当前歌词，不显示翻译副行" else "显示歌词与翻译副行",
+                checked = desktopLyricSingleLine,
+                onCheckedChange = { viewModel.setDesktopLyricSingleLine(it) },
+            )
+            SwitchPreference(
+                title = "切换动画",
+                summary = if (desktopLyricToggleAnima) "暂停 / 继续时淡入淡出" else "关闭：状态切换即时生效（省电、减弱动效）",
+                checked = desktopLyricToggleAnima,
+                onCheckedChange = { viewModel.setDesktopLyricToggleAnima(it) },
+            )
+            SliderPreference(
+                title = "文字不透明度",
+                summary = "$localLyricOpacity%",
+                value = localLyricOpacity.toFloat(),
+                valueRange = 10f..100f,
+                onValueChange = {
+                    lyricOpacityTouched = true
+                    val v = it.toInt().coerceIn(10, 100)
+                    localLyricOpacity = v
+                    viewModel.setDesktopLyricOpacity(v)
+                },
+            )
+            SectionTitle("歌词对齐")
+            Spacer(Modifier.size(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                listOf("left" to "左", "center" to "居中", "right" to "右").forEach { (id, label) ->
+                    FilterChip(
+                        label = label,
+                        selected = desktopLyricTextPositionX == id,
+                        onClick = { viewModel.setDesktopLyricTextPositionX(id) },
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.size(12.dp))

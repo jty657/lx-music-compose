@@ -139,6 +139,20 @@ class LxApp : Application() {
         appScope.launch {
             settings.desktopLyricLocked.catch { }.collect { DesktopLyric.setLocked(it) }
         }
+        // 桌面歌词其余样式（对齐原版 isSingleLine/showToggleAnima/style.opacity/textPosition.x）：
+        // 与字号/锁定同一模式，独立协程 + catch 同步给原生悬浮窗，避免偏好损坏拖垮初始化。
+        appScope.launch {
+            settings.desktopLyricSingleLine.catch { }.collect { DesktopLyric.setSingleLine(it) }
+        }
+        appScope.launch {
+            settings.desktopLyricToggleAnima.catch { }.collect { DesktopLyric.setToggleAnima(it) }
+        }
+        appScope.launch {
+            settings.desktopLyricOpacity.catch { }.collect { DesktopLyric.setTextOpacity(it) }
+        }
+        appScope.launch {
+            settings.desktopLyricTextPositionX.catch { }.collect { DesktopLyric.setTextPositionX(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {

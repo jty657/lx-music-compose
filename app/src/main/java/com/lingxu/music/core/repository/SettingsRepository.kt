@@ -76,6 +76,14 @@ class SettingsRepository(private val context: Context) {
         val KEY_DESKTOP_LYRIC_LOCK = booleanPreferencesKey("desktopLyric.isLock")
         // 字号按 sp 存（原版存百分比 100~300），默认 18sp
         val KEY_DESKTOP_LYRIC_FONT_SIZE = floatPreferencesKey("desktopLyric.style.fontSize")
+        // 原版 desktopLyric.isSingleLine：单行显示（隐藏翻译副行），默认 false
+        val KEY_DESKTOP_LYRIC_SINGLE_LINE = booleanPreferencesKey("desktopLyric.isSingleLine")
+        // 原版 desktopLyric.showToggleAnima：暂停/播放切换时的淡入淡出动效，默认 true
+        val KEY_DESKTOP_LYRIC_TOGGLE_ANIMA = booleanPreferencesKey("desktopLyric.showToggleAnima")
+        // 原版 desktopLyric.style.opacity：文字不透明度 10~100，默认 100
+        val KEY_DESKTOP_LYRIC_OPACITY = androidx.datastore.preferences.core.intPreferencesKey("desktopLyric.style.opacity")
+        // 原版 desktopLyric.textPosition.x：文字水平对齐 left/center/right
+        val KEY_DESKTOP_LYRIC_TEXT_POSITION_X = stringPreferencesKey("desktopLyric.textPosition.x")
         // userApi
         val KEY_ENABLE_USER_API_LOG = booleanPreferencesKey("userApi.log")
         const val LANG_SYSTEM = "system"
@@ -176,6 +184,15 @@ class SettingsRepository(private val context: Context) {
     // 默认 false 与原版 defaultSetting 的 'desktopLyric.isLock': false 一致
     val desktopLyricLocked: Flow<Boolean> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_LOCK] ?: false }
     val desktopLyricFontSize: Flow<Float> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_FONT_SIZE] ?: 18f }
+    // 下面四项对齐原版 defaultSetting：单行关 / 切换动画开 / 不透明度 100 / 文字对齐。
+    // textPosition.x 默认 center 而非原版 left：移植版悬浮窗历史一直是居中，
+    // 保持默认可避免老用户升级后观感突变，用户可在设置中切到 left/right（报告已记录该假设）。
+    val desktopLyricSingleLine: Flow<Boolean> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_SINGLE_LINE] ?: false }
+    val desktopLyricToggleAnima: Flow<Boolean> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_TOGGLE_ANIMA] ?: true }
+    val desktopLyricOpacity: Flow<Int> = context.dataStore.data.map {
+        (it[KEY_DESKTOP_LYRIC_OPACITY] ?: 100).coerceIn(10, 100)
+    }
+    val desktopLyricTextPositionX: Flow<String> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_TEXT_POSITION_X] ?: "center" }
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
@@ -223,6 +240,10 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDesktopLyricEnabled(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_ENABLE] = value }
     suspend fun setDesktopLyricLocked(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_LOCK] = value }
     suspend fun setDesktopLyricFontSize(value: Float) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_FONT_SIZE] = value }
+    suspend fun setDesktopLyricSingleLine(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_SINGLE_LINE] = value }
+    suspend fun setDesktopLyricToggleAnima(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_TOGGLE_ANIMA] = value }
+    suspend fun setDesktopLyricOpacity(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_OPACITY] = value.coerceIn(10, 100) }
+    suspend fun setDesktopLyricTextPositionX(value: String) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_TEXT_POSITION_X] = value }
 
     suspend fun currentApiSource(): String = apiSource.first()
     suspend fun currentQuality(): String = quality.first()

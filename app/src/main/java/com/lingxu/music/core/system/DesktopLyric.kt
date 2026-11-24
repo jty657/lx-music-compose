@@ -71,6 +71,14 @@ object DesktopLyric {
     private var fontSizeSp: Float = 18f
     /** 位置是否锁定（对齐原版 desktopLyric.isLock）：锁定时禁止拖动，轻点暂停/继续仍可用 */
     private var locked: Boolean = false
+    /** 单行显示（对齐原版 desktopLyric.isSingleLine）：开启后隐藏翻译副行 */
+    private var singleLine: Boolean = false
+    /** 暂停/播放切换动画（对齐原版 desktopLyric.showToggleAnima） */
+    private var toggleAnima: Boolean = true
+    /** 文字不透明度 10~100（对齐原版 desktopLyric.style.opacity） */
+    private var textOpacity: Int = 100
+    /** 文字水平对齐（对齐原版 desktopLyric.textPosition.x）：left / center / right */
+    private var textGravity: Int = Gravity.CENTER
     /** 上一次刷新用的内容指纹：只有歌词行/播放状态变化才改 TextView，避免每 500ms 白改一次 */
     private var lastKey: String? = null
 
@@ -116,6 +124,55 @@ object DesktopLyric {
     }
 
     /**
+     * 单行显示（对齐原版 desktopLyric.isSingleLine）。开启后翻译副行始终隐藏。
+     * 直接改可见性即可，不动窗口；重置指纹让下次同内容刷新也重新应用可见性。
+     */
+    fun setSingleLine(value: Boolean) {
+        if (singleLine == value) return
+        singleLine = value
+        if (value) subText?.visibility = android.view.View.GONE
+        lastKey = null
+        runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
+    }
+
+    /**
+     * 暂停/播放切换动画（对齐原版 desktopLyric.showToggleAnima）。
+     * 关闭时 [refresh] 直接设 alpha，不走补间；只影响透明度过渡，不影响文本刷新。
+     */
+    fun setToggleAnima(value: Boolean) {
+        toggleAnima = value
+    }
+
+    /**
+     * 文字不透明度 10~100（对齐原版 desktopLyric.style.opacity）。
+     * 采用「整窗 alpha」实现：播放态 alpha = opacity/100，暂停态再乘 0.55，
+     * 与原版「文字淡」观感一致且零额外绘制层（报告记录为简化实现）。
+     */
+    fun setTextOpacity(value: Int) {
+        val clamped = value.coerceIn(10, 100)
+        if (textOpacity == clamped) return
+        textOpacity = clamped
+        lastKey = null
+        runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
+    }
+
+    /**
+     * 文字水平对齐（对齐原版 desktopLyric.textPosition.x）。
+     * 取 left/center/right 映射到 Gravity，其它值回退 center；直接改两个 TextView 的 gravity。
+     */
+    fun setTextPositionX(value: String) {
+        val gravity = when (value) {
+            "left" -> Gravity.START
+            "right" -> Gravity.END
+            else -> Gravity.CENTER
+        }
+        if (textGravity == gravity) return
+        textGravity = gravity
+        mainText?.gravity = gravity
+        subText?.gravity = gravity
+    }
+
+    /**
      * 显示悬浮歌词。调用前应确保 [canShow] 为 true；
      * 已显示时重复调用是安全的空操作。
      */
@@ -134,7 +191,7 @@ object DesktopLyric {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp)
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
-            gravity = Gravity.CENTER
+            gravity = textGravity
             includeFontPadding = false
             typeface = Typeface.DEFAULT_BOLD
             // 悬浮在任意背景之上：描边阴影保证浅色壁纸下仍可读
@@ -145,7 +202,7 @@ object DesktopLyric {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp * 0.72f)
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
-            gravity = Gravity.CENTER
+            gravity = textGravity
             includeFontPadding = false
             setShadowLayer(5f, 0f, 1f, 0x99000000.toInt())
             visibility = android.view.View.GONE
@@ -269,7 +326,8 @@ object DesktopLyric {
         val sub = subText ?: return
         val index = state.currentLyricIndex
         val line = state.lyricLines.getOrNull(index)
-        val key = "${state.current?.id.orEmpty()}|$index|${state.lyricLines.size}|${state.isPlaying}|$accentColor"
+        // 指纹纳入样式状态：改单行/透明度/对齐后，即便歌词与播放态未变也要重算可见性与 alpha
+        val key = "${state.current?.id.orEmpty()}|$index|${state.lyricLines.size}|${state.isPlaying}|$accentColor|$singleLine|$textOpacity|$textGravity"
         if (key == lastKey) return
         lastKey = key
 
@@ -289,7 +347,8 @@ object DesktopLyric {
             text.setSpan(ForegroundColorSpan(accentColor), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             main.text = text
             val translation = line.translation?.takeIf { it.isNotBlank() }
-            if (translation == null) {
+            // 单行模式或没有翻译时隐藏副行（对齐原版 isSingleLine）
+            if (singleLine || translation == null) {
                 sub.visibility = android.view.View.GONE
             } else {
                 sub.text = translation
@@ -297,12 +356,14 @@ object DesktopLyric {
             }
         }
 
-        // 暂停时整体降到 55% 不透明度：不额外加图标，避免遮挡下层内容
-        val target = if (state.isPlaying) 1f else 0.55f
+        // 目标不透明度 = 文字不透明度 × 播放态系数（播放 1.0 / 暂停 0.55）。
+        // 暂停降透明度不额外加图标，避免遮挡下层内容。
+        val target = (textOpacity / 100f) * if (state.isPlaying) 1f else 0.55f
         val root = container ?: return
-        // areAnimatorsEnabled 是 API 26 才有的：minSdk 24，必须门控后再调用
-        val animatorsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
-            ValueAnimator.areAnimatorsEnabled()
+        // areAnimatorsEnabled 是 API 26 才有的：minSdk 24，必须门控后再调用。
+        // 系统「移除动画」或用户关闭切换动画时直接设 alpha（静帧，省逐帧调度，符合可访问性）。
+        val animatorsEnabled = toggleAnima &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled())
         if (!animatorsEnabled) {
             root.alpha = target
         } else if (root.alpha != target) {
