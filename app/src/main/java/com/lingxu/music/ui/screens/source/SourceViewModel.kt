@@ -42,6 +42,13 @@ class SourceViewModel : ViewModel() {
     var statusIsError by mutableStateOf(false)
         private set
 
+    /**
+     * 网络导入是否进行中（对齐原版 ScriptImportOnline 下载期间禁用确认键）。
+     * 防止连点「导入」重复下载/重复入库；UI 据此禁用按钮并改文案为「导入中…」。
+     */
+    var importing by mutableStateOf(false)
+        private set
+
     private fun setStatus(message: String?, isError: Boolean = false) {
         statusMessage = message
         statusIsError = isError
@@ -76,10 +83,12 @@ class SourceViewModel : ViewModel() {
 
     /** 网络导入（对应原版 ScriptImportOnline） */
     fun importFromUrl(url: String) {
+        if (importing) return
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             setStatus("无效的 URL", isError = true)
             return
         }
+        importing = true
         viewModelScope.launch {
             setStatus("正在下载脚本…")
             runCatching {
@@ -109,6 +118,7 @@ class SourceViewModel : ViewModel() {
             }.onFailure { e ->
                 setStatus("下载失败：${e.message}", isError = true)
             }
+            importing = false
         }
     }
 
