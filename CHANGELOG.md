@@ -1,6 +1,45 @@
 # 更新日志
 
-## 第二十五轮：桌面歌词 + 主题主色 + 歌词阴影（v1.6.0，本次）
+## 第二十六轮：播放缓存 + 元数据缓存 + 音质角标（v1.7.0，本次）
+
+> 对照原版 lx-music-mobile v1.9.2，本轮补三项此前**完全缺失**的能力：播放缓存（离线缓存）、
+> 歌词/链接元数据缓存的管理入口、列表音质角标。零新增依赖（`media3-datasource` 本就是
+> `media3-exoplayer` 的传递依赖）、不改路由/状态管理/播放状态机、不触碰 QuickJS 与音源协议；
+> 全部 `.kt` 改动通过 `scripts/selfcheck.py`，并本地 `assembleRelease`（JDK 20 + SDK 37）验证。
+
+### 功能对齐（原版缺失项）
+
+- **播放缓存**（原版 `player.cacheSize`，新增 `core/player/PlaybackCache.kt`）：移植版此前完全没有
+  播放缓存，同一首歌反复播放每次都要回源，弱网/切后台回来常卡在 buffering。本轮用 `SimpleCache` +
+  `LeastRecentlyUsedCacheEvictor` + `CacheDataSource` 组成 `cache -> http` 数据源链：
+  - 默认 1024 KB（与原版 `'player.cacheSize': '1024'` 一致），档位 关闭 / 1 / 32 / 64 / 128 / 256 / 512 MB；
+  - 缓存目录 `<cacheDir>/player`，与封面 HTTP 缓存（`<cacheDir>/http`）分开，可单独清理；
+  - 设置页「播放设置 → 播放缓存」显示占用/上限，可切换档位与清空。
+  - **关键实现约束**：media3 1.8.0 的 `ExoPlayer` 实例没有 `setMediaSourceFactory`（仅 Builder 有），
+    而重建播放器会打断正在播放的歌。因此 ExoPlayer 持有一个**稳定的** `SwitchableDataSourceFactory`，
+    内部按当前缓存实例决定是否套缓存层——切换容量只换引用，播放器完全无感。
+
+- **歌词与播放链接缓存**（对齐原版 `utils/data.ts` 的 lyric / musicUrl 缓存，新增 `core/repository/MetaCache.kt`）：
+  移植版此前每次切歌都重新取词，且歌词无效时还会触发「五源换源」，最坏单次切歌 6 次网络请求。
+  本轮加「源+id」为键的 LRU 缓存（歌词 300 条、链接 200 条，链接 10 分钟过期以避开签名失效）。
+  设置页「其他 → 歌词与链接缓存」可查看条数并分别清理。
+  - 链接缓存带 10 分钟 TTL；播放报错时自动作废该曲链接缓存，避免「出错→自动下一首→切回来」
+    反复拿到同一个失效链接。
+  - **已知差异**：原版落盘、迁移跨版本；本轮用内存 LRU（落盘需新增序列化 + 损坏隔离，
+    本项目已在该处踩过坑），冷启动后重新取词一次。
+
+- **列表音质角标**（对齐原版 `components/common/Badge` + `OnlineList/ListItem`，新增 `ui/components/QualityBadge.kt`）：
+  原版列表在歌名右侧标出 24bit / 无损 / 高品质，玩家扫一眼即可判断结果质量；
+  移植版此前完全无此信息，128k 与 flac24bit 显示完全相同。本轮在搜索、收藏、歌单详情、
+  我的列表、榜单详情 **5 个列表页**统一接入：判定顺序 `flac24bit > flac/ape > 320k/192k`，
+  9sp 小字 + 淡底圆角标签，歌名过长时优先压缩歌名（`weight(1f, fill = false)`），
+  无可用音质时不渲染（本地文件、部分用户音源）。
+
+### 工程
+- 版本 1.6.0 → 1.7.0（versionCode 28 → 29）；README 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过；`./gradlew assembleRelease --offline` 退出码 0。
+
+## 第二十五轮：桌面歌词 + 主题主色 + 歌词阴影（v1.6.0）
 
 > 对照原版 lx-music-mobile v1.9.2 的源码，本轮补两项此前完全缺失的**功能**（桌面歌词、主题色）、
 > 一项设置对齐（歌词字体阴影），并打磨一处切歌动效。不引入依赖、不改路由/状态管理与播放内核，
