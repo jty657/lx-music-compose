@@ -156,6 +156,7 @@ fun SettingScreen(
     val showLyricProgress by viewModel.showLyricProgress.collectAsState(initial = false)
     // 桌面歌词（原版 desktopLyric.enable）：字号的本地值用于拖动时即时反馈
     val desktopLyricEnabled by viewModel.desktopLyricEnabled.collectAsState(initial = false)
+    val desktopLyricLocked by viewModel.desktopLyricLocked.collectAsState(initial = false)
     val desktopLyricFontSize by viewModel.desktopLyricFontSize.collectAsState(initial = 18f)
     var localLyricFont by remember { mutableFloatStateOf(desktopLyricFontSize) }
     // 持久化字号是异步读出来的：用户尚未拖动前，跟随落盘值回填；
@@ -460,6 +461,7 @@ fun SettingScreen(
         SwitchPreference(
             title = "桌面歌词",
             summary = when {
+                desktopLyricEnabled && desktopLyricLocked -> "已开启：位置已锁定，轻点暂停 / 继续"
                 desktopLyricEnabled -> "已开启：上下拖动移动位置，轻点暂停 / 继续"
                 !canDrawOverlay -> "需要「显示在其他应用上层」权限，点按前往授权"
                 else -> "在其它应用上方悬浮显示当前歌词"
@@ -494,6 +496,14 @@ fun SettingScreen(
                     localLyricFont = it
                     viewModel.setDesktopLyricFontSize(it)
                 },
+            )
+            // 位置锁定（原版 desktopLyric.isLock）：锁定后不能拖动位置，防止误触移动，
+            // 轻点暂停/继续不受影响。默认关，与原版一致。
+            SwitchPreference(
+                title = "锁定歌词位置",
+                summary = if (desktopLyricLocked) "已锁定：拖动不会移动歌词" else "关闭：可上下拖动调整位置",
+                checked = desktopLyricLocked,
+                onCheckedChange = { viewModel.setDesktopLyricLocked(it) },
             )
         }
 

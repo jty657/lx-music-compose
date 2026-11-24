@@ -78,6 +78,8 @@ class SettingViewModel : ViewModel() {
     val showLyricProgress: StateFlow<Boolean> = state(settings.showLyricProgress, false)
     // 原版 desktopLyric.enable：桌面歌词悬浮窗
     val desktopLyricEnabled: StateFlow<Boolean> = state(settings.desktopLyricEnabled, false)
+    // 原版 desktopLyric.isLock：位置锁定（写入后由 LxApp 的 Flow 监听同步给悬浮窗）
+    val desktopLyricLocked: StateFlow<Boolean> = state(settings.desktopLyricLocked, false)
     val desktopLyricFontSize: StateFlow<Float> = state(settings.desktopLyricFontSize, 18f)
 
     // ============ 搜索 ============
@@ -264,6 +266,9 @@ class SettingViewModel : ViewModel() {
             com.lingxu.music.core.system.DesktopLyric.stop()
         }
     }
+
+    /** 桌面歌词位置锁定（原版 desktopLyric.isLock）：只写设置，实时生效由 LxApp 的 Flow 监听负责 */
+    fun setDesktopLyricLocked(value: Boolean) = launch { settings.setDesktopLyricLocked(value) }
 
     /** 桌面歌词字号：悬浮窗存在时实时生效，落盘节流避免滑块每帧写 DataStore */
     private var pendingDesktopLyricFont: Float? = null

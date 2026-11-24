@@ -69,6 +69,8 @@ object DesktopLyric {
     private var screenHeightPx: Int = 0
     private var accentColor: Int = Color.WHITE
     private var fontSizeSp: Float = 18f
+    /** 位置是否锁定（对齐原版 desktopLyric.isLock）：锁定时禁止拖动，轻点暂停/继续仍可用 */
+    private var locked: Boolean = false
     /** 上一次刷新用的内容指纹：只有歌词行/播放状态变化才改 TextView，避免每 500ms 白改一次 */
     private var lastKey: String? = null
 
@@ -102,6 +104,15 @@ object DesktopLyric {
         fontSizeSp = clamped
         mainText?.setTextSize(TypedValue.COMPLEX_UNIT_SP, clamped)
         subText?.setTextSize(TypedValue.COMPLEX_UNIT_SP, clamped * 0.72f)
+    }
+
+    /**
+     * 位置锁定开关（对齐原版 desktopLyric.isLock）。仅影响拖动：
+     * 锁定后手指按下不再移动窗口，但轻点仍能切换播放/暂停，与原版悬浮条语义一致。
+     * 只改内存布尔值，不重建窗口、不触碰播放内核。
+     */
+    fun setLocked(value: Boolean) {
+        locked = value
     }
 
     /**
@@ -190,12 +201,16 @@ object DesktopLyric {
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val delta = (event.rawY - downRawY).toInt()
-                    if (!dragged && abs(delta) > dp(4)) dragged = true
-                    if (dragged && current != null) {
-                        val maxY = (screenHeightPx - view.height).coerceAtLeast(0)
-                        current.y = (startY + delta).coerceIn(0, maxY)
-                        runCatching { windowManager?.updateViewLayout(view, current) }
+                    // 锁定时不移动窗口（对齐原版 isLock）；dragged 保持 false，
+                    // 抬手时仍可按「轻点」语义切换播放/暂停，只是位置不会改变。
+                    if (!locked) {
+                        val delta = (event.rawY - downRawY).toInt()
+                        if (!dragged && abs(delta) > dp(4)) dragged = true
+                        if (dragged && current != null) {
+                            val maxY = (screenHeightPx - view.height).coerceAtLeast(0)
+                            current.y = (startY + delta).coerceIn(0, maxY)
+                            runCatching { windowManager?.updateViewLayout(view, current) }
+                        }
                     }
                     true
                 }

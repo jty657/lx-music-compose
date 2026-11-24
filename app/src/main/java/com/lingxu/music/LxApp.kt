@@ -134,6 +134,11 @@ class LxApp : Application() {
         appScope.launch {
             settings.desktopLyricFontSize.catch { }.collect { DesktopLyric.setFontSize(it) }
         }
+        // 桌面歌词位置锁定（原版 desktopLyric.isLock）：冷启动/设置变更后同步给悬浮窗。
+        // 用独立协程 + catch，偏好损坏时不拖垮其它初始化监听。
+        appScope.launch {
+            settings.desktopLyricLocked.catch { }.collect { DesktopLyric.setLocked(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {

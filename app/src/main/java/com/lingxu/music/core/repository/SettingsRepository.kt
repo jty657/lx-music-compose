@@ -72,6 +72,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_BLUR_RADIUS = floatPreferencesKey("glass.blurRadius")
         // desktopLyric（对齐原版 desktopLyric.enable / desktopLyric.style.fontSize）
         val KEY_DESKTOP_LYRIC_ENABLE = booleanPreferencesKey("desktopLyric.enable")
+        // 原版 desktopLyric.isLock：锁定悬浮歌词位置（锁定后禁止拖动，轻点暂停/继续仍可用）
+        val KEY_DESKTOP_LYRIC_LOCK = booleanPreferencesKey("desktopLyric.isLock")
         // 字号按 sp 存（原版存百分比 100~300），默认 18sp
         val KEY_DESKTOP_LYRIC_FONT_SIZE = floatPreferencesKey("desktopLyric.style.fontSize")
         // userApi
@@ -171,6 +173,8 @@ class SettingsRepository(private val context: Context) {
 
     // 默认 false 与原版 defaultSetting 的 'desktopLyric.enable': false 一致
     val desktopLyricEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_ENABLE] ?: false }
+    // 默认 false 与原版 defaultSetting 的 'desktopLyric.isLock': false 一致
+    val desktopLyricLocked: Flow<Boolean> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_LOCK] ?: false }
     val desktopLyricFontSize: Flow<Float> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_FONT_SIZE] ?: 18f }
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
@@ -217,6 +221,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setEnableUserApiLog(value: Boolean) = context.dataStore.edit { it[KEY_ENABLE_USER_API_LOG] = value }
 
     suspend fun setDesktopLyricEnabled(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_ENABLE] = value }
+    suspend fun setDesktopLyricLocked(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_LOCK] = value }
     suspend fun setDesktopLyricFontSize(value: Float) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_FONT_SIZE] = value }
 
     suspend fun currentApiSource(): String = apiSource.first()
