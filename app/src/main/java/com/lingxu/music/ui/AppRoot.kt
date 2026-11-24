@@ -461,20 +461,40 @@ private fun MiniPlayerBar(navigator: Navigator) {
                     )
                 }
                 Spacer(Modifier.size(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        current.name,
-                        fontSize = MiuixTheme.textStyles.body1.fontSize,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                // 歌名/歌手切歌淡入：封面已有 220ms 淡入，文字此前仍是硬切，
+                // 缓存命中切歌时会出现「封面在动、文字已就位」的割裂感。
+                // 只动 alpha 与极小的 translationY（transform，不触发布局），
+                // 减弱动效时初值即终值，静帧到位。
+                key(current.id) {
+                    var textShown by remember { mutableStateOf(reduceMotion) }
+                    LaunchedEffect(Unit) { textShown = true }
+                    val textEnter by animateFloatAsState(
+                        targetValue = if (textShown) 1f else 0f,
+                        animationSpec = tween(durationMillis = if (reduceMotion) 0 else 200),
+                        label = "miniTextEnter",
                     )
-                    Text(
-                        current.singer,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .graphicsLayer {
+                                alpha = textEnter
+                                translationY = (1f - textEnter) * 6.dp.toPx()
+                            },
+                    ) {
+                        Text(
+                            current.name,
+                            fontSize = MiuixTheme.textStyles.body1.fontSize,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            current.singer,
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 // 触控热区统一到 48dp（Material 无障碍最小Target），图标视觉尺寸不变；
                 // 同时给出与播放页一致的按压缩放反馈
