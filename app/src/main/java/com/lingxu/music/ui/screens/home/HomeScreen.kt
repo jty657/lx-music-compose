@@ -107,6 +107,9 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                             "本地歌单与收藏",
                             fontSize = MiuixTheme.textStyles.body2.fontSize,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            // 与音源卡副标题一致：窄屏/大字号下单行省略，避免撑高卡片与右侧不齐
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -124,6 +127,9 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                             "平台歌单",
                             fontSize = MiuixTheme.textStyles.body2.fontSize,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            // 与音源卡副标题一致：窄屏/大字号下单行省略，避免撑高卡片与左侧不齐
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
