@@ -1,6 +1,36 @@
 # 更新日志
 
-## 第二十八轮：导出音源脚本 + 动效/文案收尾（v1.7.2，本次）
+## 第二十九轮：音源描述/版本格式 + 搜索欢迎语与联想词（v1.7.3，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **音源列表展示脚本描述**（`SourceScreen.kt`）：原版 `List.tsx` 在音源名下方单独一行展示
+  脚本头部 `@description`。此前移植版的 `ApiSourceRepository.matchInfo` 已解析并入库该字段，
+  但 UI 只显示作者+版本，用户在音源列表看不到脚本用途。本轮补一行描述（次要色、最多两行省略）。
+- **版本号补 v 前缀**（`SourceScreen.kt`）：原版 `formatVersionName` 对纯数字版本加 `v`
+  （如 `1.2.3 → v1.2.3`）。本轮新增同语义的 `formatVersionName`，数字开头补 v，其余原样。
+- **搜索页欢迎语**（`SearchScreen.kt`）：原版 `BlankView` 在历史、热搜两个开关都关闭时显示
+  「搜我所想~~😉」。移植版此前该场景一路落到空结果列表、整页空白。本轮在初始空白态
+  （两开关关 + 未搜索 + 输入空 + 无结果）复用 `EmptyHint` 展示居中引导语，沿用全站空态的
+  淡入上浮动效与减弱动效静帧降级。
+
+### UI / 动效 / 可访问性
+
+- **联想词单行截断**（`TextActionButton.kt` / `SearchScreen.kt`）：原版 `TipList` 用
+  `numberOfLines={1}`。移植版联想词此前可换行撑高下拉、挤动结果列表。给公共
+  `TextActionButton` 增加可选 `maxLines`（默认 `Int.MAX_VALUE`，既有调用方行为完全不变），
+  联想词处传 `maxLines = 1` + 尾部省略。只动 Text 的裁行，不触发布局抖动。
+
+### 工程
+
+- 版本 1.7.2 → 1.7.3（versionCode 31 → 32）；README 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过；云端构建由 GitHub Actions 验证。
+
+## 第二十八轮：导出音源脚本 + 动效/文案收尾（v1.7.2）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动通过
 > `scripts/selfcheck.py` 静态自检与本地 `assembleRelease`（JDK 20 + SDK 37）构建。零新增依赖、
