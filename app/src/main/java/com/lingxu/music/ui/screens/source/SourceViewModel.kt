@@ -192,6 +192,32 @@ class SourceViewModel : ViewModel() {
         }
     }
 
+    /**
+     * 导出自定义音源脚本（对齐原版 ScriptImportExport 的导出能力）。
+     *
+     * [uri] 由调用方通过 SAF CreateDocument 取得，这里只负责把已落库的脚本文本写出去：
+     * 复用仓库既有的 [ApiSourceRepository.getScript]，不新增数据源、不改动数据结构；
+     * 全部 IO 走 Dispatchers.IO，结果只更新状态提示，不触碰播放/列表状态。
+     */
+    fun exportScript(id: String, uri: Uri) {
+        viewModelScope.launch {
+            setStatus("正在导出音源…")
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val script = repo.getScript(id)
+                        ?: throw IllegalStateException("脚本文本不存在")
+                    val out = LxApp.app.contentResolver.openOutputStream(uri)
+                        ?: throw IllegalStateException("无法写入目标文件")
+                    out.use { it.write(script.toByteArray(Charsets.UTF_8)) }
+                }
+            }.onSuccess {
+                setStatus("导出成功")
+            }.onFailure { e ->
+                setStatus("导出失败：${e.message}", isError = true)
+            }
+        }
+    }
+
     fun delete(id: String) {
         viewModelScope.launch {
             repo.remove(listOf(id))

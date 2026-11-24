@@ -59,12 +59,26 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     var importUrl by remember { mutableStateOf("") }
     var showUrlInput by remember { mutableStateOf(false) }
-    var deletingId by remember { mutableStateOf<String?>(null) }
+    // 长按音源打开「管理音源」对话框（导出/删除）的目标 id
+    var managingId by remember { mutableStateOf<String?>(null) }
+    // 待导出的音源 id：点击「导出脚本」时先记下，SAF 选好保存位置后再写文件
+    var exportingId by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri: Uri? ->
         uri?.let { viewModel.importFromFile(it) }
+    }
+
+    // 导出脚本文本到用户选择的位置（对齐原版 ScriptImportExport 的导出方向）。
+    // CreateDocument 是 AndroidX Activity 契约，项目已依赖 activity-compose，无需新增依赖。
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/javascript"),
+    ) { uri: Uri? ->
+        if (uri != null) {
+            exportingId?.let { viewModel.exportScript(it, uri) }
+        }
+        exportingId = null
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -183,10 +197,10 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text("自定义音源（${userApis.size}/20）", fontSize = MiuixTheme.textStyles.body2.fontSize)
             Spacer(Modifier.weight(1f))
-            // 删除入口是长按，缺少发现性提示，用户往往不知道如何删除已导入音源。
+            // 管理入口（导出/删除）是长按，缺少发现性提示，用户往往不知道长按可导出已导入音源。
             // 大字号下补单行省略，避免提示换行把计数行撑高。
             Text(
-                "长按音源可删除",
+                "长按音源可导出或删除",
                 fontSize = MiuixTheme.textStyles.footnote1.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 maxLines = 1,
@@ -213,11 +227,11 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                             tint = if (inUse) MiuixTheme.colorScheme.primary.copy(alpha = 0.10f) else null,
                             onClick = { viewModel.switchSource(api.id) },
                             onLongClick = {
-                                deletingId = api.id
+                                managingId = api.id
                             },
-                            // 这里的长按是「删除音源」而非歌曲操作，读屏必须如实播报，
-                            // 否则TalkBack 用户会听到错误的「长按，打开歌曲操作」。
-                            onLongClickLabel = "删除音源",
+                            // 这里的长按是「管理音源」（导出/删除）而非歌曲操作，读屏必须如实播报，
+                            // 否则 TalkBack 用户会听到错误的「长按，打开歌曲操作」。
+                            onLongClickLabel = "管理音源",
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                                 Column(Modifier.weight(1f)) {
@@ -324,26 +338,34 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             }
     }
 
-    // 删除确认
-    deletingId?.let { id ->
-        // 对齐原版 user_api_remove_tip（文案带 {name}）：让用户在确认时看清将要删除的是哪个音源，
+    // 管理音源（导出 / 删除）
+    managingId?.let { id ->
+        // 对齐原版 user_api_remove_tip（文案带 {name}）：让用户在操作时看清针对的是哪个音源，
         // 避免多个脚本时误删；从已收集的 userApis 按 id 取 name，找不到时回退到泛化文案。
-        val deletingName = userApis.find { it.id == id }?.name
-        GlassDialog(onDismissRequest = { deletingId = null }) {
+        val managingName = userApis.find { it.id == id }?.name
+        GlassDialog(onDismissRequest = { managingId = null }) {
             Column(Modifier.padding(horizontal = 4.dp)) {
-                Text("删除音源", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Text("管理音源", fontSize = MiuixTheme.textStyles.title1.fontSize)
                 Spacer(Modifier.size(12.dp))
                 Text(
-                    if (deletingName.isNullOrBlank()) "确定删除该自定义音源吗？"
-                    else "确定删除音源「$deletingName」吗？",
+                    if (managingName.isNullOrBlank()) "选择对该自定义音源的操作"
+                    else "音源「$managingName」",
                 )
                 Spacer(Modifier.size(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    Button(onClick = { deletingId = null }) { Text("取消") }
+                    Button(onClick = { managingId = null }) { Text("取消") }
+                    Spacer(Modifier.size(8.dp))
+                    // 导出脚本（原版 ScriptImportExport 的导出方向）：SAF 选择保存位置后写入，
+                    // 未选位置（取消）时 exportLauncher 回调 uri=null，不会触发写入。
+                    Button(onClick = {
+                        exportingId = id
+                        managingId = null
+                        exportLauncher.launch("${managingName ?: "lx-music-source"}.js")
+                    }) { Text("导出脚本") }
                     Spacer(Modifier.size(8.dp))
                     Button(onClick = {
                         viewModel.delete(id)
-                        deletingId = null
+                        managingId = null
                     }) { Text("删除") }
                 }
             }
