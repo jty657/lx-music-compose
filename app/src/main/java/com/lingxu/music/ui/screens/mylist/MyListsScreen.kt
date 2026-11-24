@@ -190,6 +190,9 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                 Text(
                     openList?.let { id -> lists.firstOrNull { it.id == id }?.name } ?: "我的列表",
                     fontSize = MiuixTheme.textStyles.title1.fontSize,
+                    // 超长自定义列表名单行省略，避免换行把顶栏撑高、挤掉右侧「新建/导入/排序」按钮。
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(start = 12.dp),
                 )
                 if (openList == null) {

@@ -6,7 +6,9 @@ import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.TextActionButton
@@ -34,6 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -175,9 +180,15 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
             // 仅视觉反馈，switchSource 的切换逻辑完全不变。
             val inUse = currentSource == source
             GlassSurface(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    // 读屏播报「按钮 + 已选中/未选中」：此前选中态只有文字「✓ 使用中」，
+                    // TalkBack 用户无法在切换前得知哪一路音源正在使用。
+                    .semantics { selected = inUse },
                 tint = if (inUse) MiuixTheme.colorScheme.primary.copy(alpha = 0.10f) else null,
                 onClick = { viewModel.switchSource(source) },
+                role = Role.Button,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                     Text(
@@ -328,11 +339,14 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                         importUrl = ""
                     }) { Text("取消") }
                         Spacer(Modifier.size(8.dp))
-                    Button(onClick = {
-                        showUrlInput = false
-                        viewModel.importFromUrl(importUrl)
-                        importUrl = ""
-                    }) { Text("导入") }
+                    Button(
+                        enabled = !viewModel.importing,
+                        onClick = {
+                            showUrlInput = false
+                            viewModel.importFromUrl(importUrl)
+                            importUrl = ""
+                        },
+                    ) { Text(if (viewModel.importing) "导入中…" else "导入") }
                     }
                 }
             }
@@ -352,7 +366,11 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                     else "音源「$managingName」",
                 )
                 Spacer(Modifier.size(16.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                // 三按钮改为横向可滚动：窄屏 + 大字号下「删除」不再被裁掉。
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.End,
+                ) {
                     Button(onClick = { managingId = null }) { Text("取消") }
                     Spacer(Modifier.size(8.dp))
                     // 导出脚本（原版 ScriptImportExport 的导出方向）：SAF 选择保存位置后写入，

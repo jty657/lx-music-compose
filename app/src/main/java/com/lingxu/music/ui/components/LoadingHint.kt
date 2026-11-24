@@ -22,8 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import top.yukonga.miuix.kmp.basic.Text
@@ -52,11 +50,12 @@ fun LoadingHint(
     modifier: Modifier = Modifier,
 ) {
     val reduceMotion = LocalReduceMotion.current
+    // 语义由内层 Text 承载即可：此前这里也给整个 Column 设了相同的 contentDescription，
+    // 读屏会把 Container 和 Text 的同一句文案连读两遍。去掉外层语义，避免重复播报。
     Column(
         modifier
             .fillMaxWidth()
-            .padding(vertical = 56.dp)
-            .semantics { contentDescription = text },
+            .padding(vertical = 56.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(

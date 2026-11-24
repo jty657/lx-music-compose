@@ -40,6 +40,7 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.LoadMoreButton
 import com.lingxu.music.ui.components.RetryHint
+import com.lingxu.music.ui.components.TopBarTitle
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.Motion
@@ -106,11 +107,9 @@ fun SongListScreen(
         GlassTopBar {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Dimens.PageH, vertical = 10.dp)) {
                 BackIconButton(onClick = { navigator.pop() })
-                Text(
-                    com.lingxu.music.core.model.SourceConst.displayName(source) + " 歌单",
-                    fontSize = MiuixTheme.textStyles.title1.fontSize,
-                    modifier = Modifier.padding(start = 12.dp),
-                )
+                // 对齐榜单/歌单详情页：顶栏标题用 TopBarTitle 做 weight + 单行省略，
+                // 长来源名不再换行撑高顶栏（其余顶栏项仍始终可见）。
+                TopBarTitle(com.lingxu.music.core.model.SourceConst.displayName(source) + " 歌单")
             }
         }
         Column(
