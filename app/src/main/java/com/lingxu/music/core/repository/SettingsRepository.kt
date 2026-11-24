@@ -22,6 +22,8 @@ class SettingsRepository(private val context: Context) {
         // common
         val KEY_API_SOURCE = stringPreferencesKey("common.apiSource")
         val KEY_THEME = stringPreferencesKey("common.theme")
+        // 主题主色（原版 theme.id 的简化对齐）：default/green/blue/purple/orange/pink
+        val KEY_THEME_COLOR = stringPreferencesKey("common.themeColor")
         val KEY_LANG = stringPreferencesKey("common.langId")
         val KEY_FONT_SCALE = floatPreferencesKey("common.fontScale")
         val KEY_SHARE_TYPE = stringPreferencesKey("common.shareType")
@@ -51,6 +53,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_LYRIC_ALIGN = stringPreferencesKey("playDetail.style.align")
         val KEY_LYRIC_FONT_SIZE = floatPreferencesKey("playDetail.style.lrcFontSize")
         val KEY_IS_ZOOM_ACTIVE_LRC = booleanPreferencesKey("playDetail.isZoomActiveLrc")
+        // 原版 theme.fontShadow：歌词文字加投影，提升浅色封面/壁纸上的可读性
+        val KEY_IS_LYRIC_FONT_SHADOW = booleanPreferencesKey("theme.fontShadow")
         // 原版 playDetail.isShowLyricProgressSetting：滚动歌词时显示逐句定位线
         val KEY_SHOW_LYRIC_PROGRESS = booleanPreferencesKey("playDetail.isShowLyricProgressSetting")
         // search
@@ -85,6 +89,8 @@ class SettingsRepository(private val context: Context) {
 
     val apiSource: Flow<String> = context.dataStore.data.map { it[KEY_API_SOURCE] ?: "kw" }
     val theme: Flow<String> = context.dataStore.data.map { it[KEY_THEME] ?: "system" }
+    // 默认 default：保持 Miuix 自带配色，升级后观感不变（原版默认为 green，见报告待确认项）
+    val themeColor: Flow<String> = context.dataStore.data.map { it[KEY_THEME_COLOR] ?: "default" }
     val lang: Flow<String> = context.dataStore.data.map { it[KEY_LANG] ?: LANG_SYSTEM }
     val fontScale: Flow<Float> = context.dataStore.data.map { it[KEY_FONT_SCALE] ?: 1f }
     val shareType: Flow<String> = context.dataStore.data.map { it[KEY_SHARE_TYPE] ?: SHARE_SYSTEM }
@@ -118,6 +124,8 @@ class SettingsRepository(private val context: Context) {
     val lyricAlign: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_ALIGN] ?: ALIGN_LEFT }
     val lyricFontSize: Flow<Float> = context.dataStore.data.map { it[KEY_LYRIC_FONT_SIZE] ?: 1f }
     val isZoomActiveLrc: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_ZOOM_ACTIVE_LRC] ?: false }
+    // 默认 false 与原版 defaultSetting 的 'theme.fontShadow': false 一致
+    val lyricFontShadow: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_LYRIC_FONT_SHADOW] ?: false }
     // 默认 false 与原版 defaultSetting 一致：手动滚动歌词时是否显示逐句定位线
     val showLyricProgress: Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_LYRIC_PROGRESS] ?: false }
 
@@ -160,6 +168,7 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
+    suspend fun setThemeColor(value: String) = context.dataStore.edit { it[KEY_THEME_COLOR] = value }
     suspend fun setLang(value: String) = context.dataStore.edit { it[KEY_LANG] = value }
     suspend fun setFontScale(value: Float) = context.dataStore.edit { it[KEY_FONT_SCALE] = value }
     suspend fun setShareType(value: String) = context.dataStore.edit { it[KEY_SHARE_TYPE] = value }
@@ -184,6 +193,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setLyricAlign(value: String) = context.dataStore.edit { it[KEY_LYRIC_ALIGN] = value }
     suspend fun setLyricFontSize(value: Float) = context.dataStore.edit { it[KEY_LYRIC_FONT_SIZE] = value }
     suspend fun setIsZoomActiveLrc(value: Boolean) = context.dataStore.edit { it[KEY_IS_ZOOM_ACTIVE_LRC] = value }
+    suspend fun setLyricFontShadow(value: Boolean) = context.dataStore.edit { it[KEY_IS_LYRIC_FONT_SHADOW] = value }
     suspend fun setShowLyricProgress(value: Boolean) = context.dataStore.edit { it[KEY_SHOW_LYRIC_PROGRESS] = value }
 
     suspend fun setIsShowHotSearch(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_HOT_SEARCH] = value }

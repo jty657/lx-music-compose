@@ -93,6 +93,7 @@ fun SettingScreen(
     var newDislike by remember { mutableStateOf("") }
 
     val themeMode by viewModel.themeMode.collectAsState(initial = "system")
+    val themeColor by viewModel.themeColor.collectAsState(initial = "default")
     val lang by viewModel.lang.collectAsState(initial = "system")
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
     val shareType by viewModel.shareType.collectAsState(initial = "system")
@@ -128,6 +129,7 @@ fun SettingScreen(
     val lyricAlign by viewModel.lyricAlign.collectAsState(initial = "left")
     val lyricFontSize by viewModel.lyricFontSize.collectAsState(initial = 1f)
     val isZoomActiveLrc by viewModel.isZoomActiveLrc.collectAsState(initial = false)
+    val lyricFontShadow by viewModel.lyricFontShadow.collectAsState(initial = false)
     val showLyricProgress by viewModel.showLyricProgress.collectAsState(initial = false)
     // 桌面歌词（原版 desktopLyric.enable）：字号的本地值用于拖动时即时反馈
     val desktopLyricEnabled by viewModel.desktopLyricEnabled.collectAsState(initial = false)
@@ -224,6 +226,14 @@ fun SettingScreen(
                 else -> themeMode
             },
             onClick = { viewModel.cycleTheme() },
+        )
+        // 主题主色（对齐原版「主题」皮肤）：只换一个主色，明暗与语义色由 Miuix 自动推导，
+        // 深浅两套对比度保持一致；「默认」即升级前的外观。
+        ArrowPreference(
+            title = "主题色",
+            summary = com.lingxu.music.ui.theme.themeColorLabel(themeColor) +
+                if (themeMode == "monet") "（取色模式下不生效）" else "",
+            onClick = { viewModel.cycleThemeColor() },
         )
         ArrowPreference(
             title = "语言",
@@ -399,6 +409,12 @@ fun SettingScreen(
             title = "放大当前歌词",
             checked = isZoomActiveLrc,
             onCheckedChange = { viewModel.setIsZoomActiveLrc(it) },
+        )
+        SwitchPreference(
+            title = "歌词字体阴影",
+            summary = "给歌词文字加一层投影，浅色封面/壁纸下更清晰（对齐原版）",
+            checked = lyricFontShadow,
+            onCheckedChange = { viewModel.setLyricFontShadow(it) },
         )
         SwitchPreference(
             title = "歌词逐句定位线",

@@ -38,6 +38,7 @@ class SettingViewModel : ViewModel() {
 
     // ============ 基本 ============
     val themeMode: StateFlow<String> = state(settings.theme, "system")
+    val themeColor: StateFlow<String> = state(settings.themeColor, "default")
     val lang: StateFlow<String> = state(settings.lang, "system")
     val fontScale: StateFlow<Float> = state(settings.fontScale, 1f)
     val shareType: StateFlow<String> = state(settings.shareType, "system")
@@ -72,6 +73,7 @@ class SettingViewModel : ViewModel() {
     val lyricAlign: StateFlow<String> = state(settings.lyricAlign, "left")
     val lyricFontSize: StateFlow<Float> = state(settings.lyricFontSize, 1f)
     val isZoomActiveLrc: StateFlow<Boolean> = state(settings.isZoomActiveLrc, false)
+    val lyricFontShadow: StateFlow<Boolean> = state(settings.lyricFontShadow, false)
     // 原版 playDetail.isShowLyricProgressSetting：滚动歌词时显示逐句定位线
     val showLyricProgress: StateFlow<Boolean> = state(settings.showLyricProgress, false)
     // 原版 desktopLyric.enable：桌面歌词悬浮窗
@@ -141,6 +143,10 @@ class SettingViewModel : ViewModel() {
     }
 
     fun cycleTheme() = launch { settings.setTheme(next(themeMode.value, listOf("system", "light", "dark", "monet"))) }
+
+    fun cycleThemeColor() = launch {
+        settings.setThemeColor(next(themeColor.value, com.lingxu.music.ui.theme.ThemeColors.keys.toList()))
+    }
 
     fun cycleLang() = launch { settings.setLang(next(lang.value, listOf("system", "zh_cn", "zh_tw", "en"))) }
 
@@ -230,6 +236,7 @@ class SettingViewModel : ViewModel() {
     fun cycleLyricAlign() = launch { settings.setLyricAlign(next(lyricAlign.value, listOf("left", "center"))) }
     fun setLyricFontSize(value: Float) = launch { settings.setLyricFontSize(value.coerceIn(0.8f, 1.8f)) }
     fun setIsZoomActiveLrc(value: Boolean) = launch { settings.setIsZoomActiveLrc(value) }
+    fun setLyricFontShadow(value: Boolean) = launch { settings.setLyricFontShadow(value) }
     fun setShowLyricProgress(value: Boolean) = launch { settings.setShowLyricProgress(value) }
 
     /**

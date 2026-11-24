@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -119,6 +120,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun AppRoot() {
     val themeMode by LxApp.app.settings.theme.collectAsState(initial = "system")
     val fontScale by LxApp.app.settings.fontScale.collectAsState(initial = 1f)
+    val themeColor by LxApp.app.settings.themeColor.collectAsState(initial = "default")
     val blurSettingEnabled by LxApp.app.settings.blurEnabled.collectAsState(initial = true)
     val blurRadius by LxApp.app.settings.blurRadius.collectAsState(initial = 24f)
     // RenderEffect 需 API 31+；低版本上 backdrop 的 blur 是静默 no-op，只会得到半透明色块，
@@ -127,7 +129,7 @@ fun AppRoot() {
     val runtimeShaderSupported = android.os.Build.VERSION.SDK_INT >= 33
     val blurEnabled = blurSettingEnabled && renderEffectSupported
 
-    LxTheme(themeMode = themeMode, fontScale = fontScale) {
+    LxTheme(themeMode = themeMode, themeColor = themeColor, fontScale = fontScale) {
         val navigator = rememberNavigator()
         // 原版 player.startupPushPlayDetailScreen：开启且有上次播放记录时，冷启动直接进入播放页。
         // 只在本次冷启动的首次组合里执行一次（startupNavDone 守护），且不覆盖用户已手动导航的状态：

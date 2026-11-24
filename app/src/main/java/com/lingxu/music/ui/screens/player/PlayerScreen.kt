@@ -121,6 +121,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
     // 原版 playDetail.isShowLyricProgressSetting：手动滚动歌词时的逐句定位线
     val showLyricProgress by LxApp.app.settings.showLyricProgress.collectAsState(initial = false)
+    // 原版 theme.fontShadow：歌词文字投影
+    val lyricFontShadow by LxApp.app.settings.lyricFontShadow.collectAsState(initial = false)
     val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
     val reduceMotion = LocalReduceMotion.current
     var showMore by remember { mutableStateOf(false) }
@@ -293,6 +295,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 showRoma = showLrcRoma,
                 centered = lyricAlign == "center",
                 showPlayLine = showLyricProgress,
+                fontShadow = lyricFontShadow,
                 reduceMotion = reduceMotion,
                 onSeek = { viewModel.seekTo(it) },
             )
@@ -539,6 +542,7 @@ private fun LyricView(
     showRoma: Boolean = false,
     centered: Boolean = false,
     showPlayLine: Boolean = false,
+    fontShadow: Boolean = false,
     reduceMotion: Boolean = false,
     onSeek: (Long) -> Unit = {},
 ) {
@@ -615,6 +619,7 @@ private fun LyricView(
                     showRoma = showRoma,
                     showTranslation = showTranslation,
                     horizontal = horizontal,
+                    fontShadow = fontShadow,
                     reduceMotion = reduceMotion,
                     onSeek = { timeMs ->
                         // 点歌词跳转是主动定位：恢复自动跟随，让列表跟着新的播放位置继续走
@@ -741,6 +746,7 @@ private fun LyricLineRow(
     showRoma: Boolean,
     showTranslation: Boolean,
     horizontal: Alignment.Horizontal,
+    fontShadow: Boolean = false,
     reduceMotion: Boolean = false,
     onSeek: (Long) -> Unit,
 ) {
@@ -789,6 +795,19 @@ private fun LyricLineRow(
             line.text,
             fontSize = baseSp,
             color = color,
+            // 原版 theme.fontShadow：给歌词文字一层轻投影，浅色封面/壁纸下更清晰。
+            // 只改绘制样式，不改字号与行高，因此不会引起列表重新测量。
+            style = if (fontShadow) {
+                androidx.compose.ui.text.TextStyle(
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.45f),
+                        offset = androidx.compose.ui.geometry.Offset(0f, 1f),
+                        blurRadius = 4f,
+                    ),
+                )
+            } else {
+                androidx.compose.ui.text.TextStyle.Default
+            },
         )
         if (showRoma) {
             line.roma?.let { roma ->
