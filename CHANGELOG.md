@@ -1,6 +1,32 @@
 # 更新日志
 
-## 第二十九轮：音源描述/版本格式 + 搜索欢迎语与联想词（v1.7.3，本次）
+## 第三十轮：播放页状态对齐 + 歌词字号联动（v1.7.4，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检与 `assembleDebug --no-build-cache` 全量编译。
+> 零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **播放缓冲状态提示**（`PlayerScreen.kt`）：原版 `Status.tsx` 在播放页显示加载/缓冲文案
+  （`player__buffering`「缓冲中...」）。移植版 `state.loading` 早已按 `Player.STATE_BUFFERING`
+  维护，但 UI 从未展示——切歌取链接/缓冲时进度条不动、无任何反馈。本轮在错误提示同一位置
+  补一行次要色「缓冲中…」状态（与 error 互斥），淡入淡出、减弱动效时静帧到位，只动 alpha 不挤布局。
+
+### UI / 一致性
+
+- **翻译歌词首帧不再闪现**（`PlayerScreen.kt`）：`showLrcTranslation` 的 `collectAsState(initial=...)`
+  由 `true` 改为 `false`，与落盘默认（`SettingsRepository`、`defaultSetting.ts` 均为 false）一致，
+  消除未改过设置的用户冷启动「先闪出翻译行、DataStore 读到 false 后再熄灭」。
+- **罗马音/翻译副行字号随主歌词联动**（`PlayerScreen.kt`）：副行此前固定 `footnote1`，
+  用户调大「歌词字号」时主行变大、副行不变，层级失衡。改为 `baseSp * 0.8`（对齐原版
+  `Lyric.tsx` 的 `size * 0.8`），字号设置对主副行一致生效。
+
+### 工程
+
+- 版本 1.7.3 → 1.7.4（versionCode 32 → 33）；README 同步。
+
+## 第二十九轮：音源描述/版本格式 + 搜索欢迎语与联想词（v1.7.3）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
 > 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
