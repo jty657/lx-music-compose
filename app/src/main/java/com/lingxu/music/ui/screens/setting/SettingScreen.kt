@@ -541,7 +541,9 @@ fun SettingScreen(
                     viewModel.setDesktopLyricOpacity(v)
                 },
             )
-            SectionTitle("歌词对齐")
+            // 此处是「桌面歌词」的水平位置（left/center/right），与上方主歌词页的
+            // ArrowPreference「歌词对齐」是两个不同设置。原标题同名易让用户误以为是同一项。
+            SectionTitle("桌面歌词对齐")
             Spacer(Modifier.size(4.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),

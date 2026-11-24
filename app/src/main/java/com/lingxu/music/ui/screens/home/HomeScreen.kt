@@ -158,7 +158,10 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     val isTop3 = index < 3
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
+                        // 与同页榜单列表、全站其它 LazyColumn 统一：接入 animateListItem，
+                        // 热搜词刷新时的增删/位移走全站一致的淡入淡出 + 柔和位移，
+                        // 并在系统「减弱动效」时静帧到位。animateItem 放在 Modifier 链首位。
+                        modifier = animateListItem()
                             .fillMaxWidth()
                             .graphicsLayer { scaleX = hotScale; scaleY = hotScale }
                             .clip(RoundedCornerShape(Dimens.CornerS))
