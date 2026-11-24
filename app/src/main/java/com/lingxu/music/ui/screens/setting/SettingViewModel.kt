@@ -74,6 +74,9 @@ class SettingViewModel : ViewModel() {
     val isZoomActiveLrc: StateFlow<Boolean> = state(settings.isZoomActiveLrc, false)
     // 原版 playDetail.isShowLyricProgressSetting：滚动歌词时显示逐句定位线
     val showLyricProgress: StateFlow<Boolean> = state(settings.showLyricProgress, false)
+    // 原版 desktopLyric.enable：桌面歌词悬浮窗
+    val desktopLyricEnabled: StateFlow<Boolean> = state(settings.desktopLyricEnabled, false)
+    val desktopLyricFontSize: StateFlow<Float> = state(settings.desktopLyricFontSize, 18f)
 
     // ============ 搜索 ============
     val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, false)
@@ -228,6 +231,44 @@ class SettingViewModel : ViewModel() {
     fun setLyricFontSize(value: Float) = launch { settings.setLyricFontSize(value.coerceIn(0.8f, 1.8f)) }
     fun setIsZoomActiveLrc(value: Boolean) = launch { settings.setIsZoomActiveLrc(value) }
     fun setShowLyricProgress(value: Boolean) = launch { settings.setShowLyricProgress(value) }
+
+    /**
+     * 桌面歌词开关：写设置的同时立即建/拆悬浮窗。
+     * 权限不足时由 UI 负责引导授权，这里只做「有权限才真正显示」的兜底，
+     * 避免用户在系统设置里撤销权限后再次打开开关时抛异常。
+     */
+    fun setDesktopLyricEnabled(value: Boolean) = launch {
+        settings.setDesktopLyricEnabled(value)
+        if (value) {
+            val context = LxApp.app
+            if (com.lingxu.music.core.system.DesktopLyric.canShow(context)) {
+                com.lingxu.music.core.system.DesktopLyric.start(context)
+            }
+        } else {
+            com.lingxu.music.core.system.DesktopLyric.stop()
+        }
+    }
+
+    /** 桌面歌词字号：悬浮窗存在时实时生效，落盘节流避免滑块每帧写 DataStore */
+    private var pendingDesktopLyricFont: Float? = null
+
+    fun setDesktopLyricFontSize(value: Float) {
+        val sp = value.coerceIn(12f, 30f)
+        pendingDesktopLyricFont = sp
+        com.lingxu.music.core.system.DesktopLyric.setFontSize(sp)
+        if (throttle("desktopLyricFont", 150)) {
+            pendingDesktopLyricFont = null
+            launch { settings.setDesktopLyricFontSize(sp) }
+        }
+    }
+
+    /** 离开设置页时补写节流跳过的最终字号，避免拖完即返回导致设置丢失 */
+    fun commitDesktopLyricFontSize() {
+        val value = pendingDesktopLyricFont ?: return
+        pendingDesktopLyricFont = null
+        clearThrottle("desktopLyricFont")
+        launch { settings.setDesktopLyricFontSize(value) }
+    }
 
     fun setIsShowHotSearch(value: Boolean) = launch { settings.setIsShowHotSearch(value) }
     fun setIsShowHistorySearch(value: Boolean) = launch { settings.setIsShowHistorySearch(value) }

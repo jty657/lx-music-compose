@@ -21,6 +21,7 @@ import com.lingxu.music.ui.components.TextActionButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -128,6 +129,19 @@ fun SettingScreen(
     val lyricFontSize by viewModel.lyricFontSize.collectAsState(initial = 1f)
     val isZoomActiveLrc by viewModel.isZoomActiveLrc.collectAsState(initial = false)
     val showLyricProgress by viewModel.showLyricProgress.collectAsState(initial = false)
+    // 桌面歌词（原版 desktopLyric.enable）：字号的本地值用于拖动时即时反馈
+    val desktopLyricEnabled by viewModel.desktopLyricEnabled.collectAsState(initial = false)
+    val desktopLyricFontSize by viewModel.desktopLyricFontSize.collectAsState(initial = 18f)
+    var localLyricFont by remember { mutableFloatStateOf(desktopLyricFontSize) }
+    // 持久化字号是异步读出来的：只在其首次到达时回填一次，
+    // 之后不再回灌（否则拖动滑块过程中会被旧值拽回，与倍速/模糊滑块同一处理约定）。
+    var lyricFontSeeded by remember { mutableStateOf(false) }
+    LaunchedEffect(desktopLyricFontSize) {
+        if (!lyricFontSeeded) {
+            lyricFontSeeded = true
+            localLyricFont = desktopLyricFontSize
+        }
+    }
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
@@ -149,6 +163,32 @@ fun SettingScreen(
         onDispose {
             viewModel.commitPlaybackRate()
             viewModel.commitVolume()
+            viewModel.commitDesktopLyricFontSize()
+        }
+    }
+
+    // 桌面歌词需要「显示在其他应用上层」权限：授权页是独立 Activity，返回时不重建本页，
+    // 因此用窗口焦点变化来复检权限（无需引入 lifecycle-compose 依赖）。
+    // 授权回来且用户此前点过开关时，自动把开关打开，避免「点了没反应」的观感。
+    val overlayContext = androidx.compose.ui.platform.LocalContext.current
+    var canDrawOverlay by remember { mutableStateOf(com.lingxu.music.core.system.DesktopLyric.canShow(overlayContext)) }
+    var pendingLyricAuth by remember { mutableStateOf(false) }
+    val overlayHostView = androidx.compose.ui.platform.LocalView.current
+    DisposableEffect(overlayHostView) {
+        val listener = android.view.ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+            if (hasFocus) {
+                canDrawOverlay = com.lingxu.music.core.system.DesktopLyric.canShow(overlayContext)
+            }
+        }
+        overlayHostView.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+        onDispose {
+            overlayHostView.viewTreeObserver.removeOnWindowFocusChangeListener(listener)
+        }
+    }
+    LaunchedEffect(canDrawOverlay) {
+        if (pendingLyricAuth && canDrawOverlay) {
+            pendingLyricAuth = false
+            viewModel.setDesktopLyricEnabled(true)
         }
     }
 
@@ -366,6 +406,46 @@ fun SettingScreen(
             checked = showLyricProgress,
             onCheckedChange = { viewModel.setShowLyricProgress(it) },
         )
+        // 桌面歌词（对应原版 desktopLyric.enable）：悬浮在其它应用之上显示当前歌词。
+        // 未授权时先引导去系统页授权，返回后由窗口焦点复检自动打开开关。
+        SwitchPreference(
+            title = "桌面歌词",
+            summary = when {
+                desktopLyricEnabled -> "已开启：上下拖动移动位置，轻点暂停 / 继续"
+                !canDrawOverlay -> "需要「显示在其他应用上层」权限，点按前往授权"
+                else -> "在其它应用上方悬浮显示当前歌词"
+            },
+            checked = desktopLyricEnabled,
+            onCheckedChange = { checked ->
+                if (!checked) {
+                    viewModel.setDesktopLyricEnabled(false)
+                } else if (canDrawOverlay) {
+                    viewModel.setDesktopLyricEnabled(true)
+                } else {
+                    pendingLyricAuth = true
+                    runCatching {
+                        overlayContext.startActivity(
+                            android.content.Intent(
+                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:${overlayContext.packageName}"),
+                            ),
+                        )
+                    }.onFailure { toast = "无法打开授权页，请在系统设置中手动授予悬浮窗权限" }
+                }
+            },
+        )
+        if (desktopLyricEnabled) {
+            SliderPreference(
+                title = "桌面歌词字号",
+                summary = "${localLyricFont.toInt()}sp",
+                value = localLyricFont,
+                valueRange = 12f..28f,
+                onValueChange = {
+                    localLyricFont = it
+                    viewModel.setDesktopLyricFontSize(it)
+                },
+            )
+        }
 
         Spacer(Modifier.size(12.dp))
 

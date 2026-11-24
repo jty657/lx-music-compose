@@ -14,6 +14,7 @@ import com.lingxu.music.core.repository.DislikeRepository
 import com.lingxu.music.core.repository.SettingsRepository
 import com.lingxu.music.core.repository.ShareRepository
 import com.lingxu.music.core.repository.UpdateRepository
+import com.lingxu.music.core.system.DesktopLyric
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -125,6 +126,10 @@ class LxApp : Application() {
         appScope.launch {
             settings.isShowNotificationImage.catch { }.collect { playerRepository.setShowNotificationImage(it) }
         }
+        // 桌面歌词字号：设置页滑块写入后同步到悬浮窗（悬浮窗是原生 View，不参与 Compose 重组）
+        appScope.launch {
+            settings.desktopLyricFontSize.catch { }.collect { DesktopLyric.setFontSize(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {
@@ -164,6 +169,13 @@ class LxApp : Application() {
                         timeoutMinutes,
                         settings.timeoutExitPlayed.first(),
                     )
+                }
+            }
+            // 桌面歌词：上次开启过且仍有悬浮窗权限时恢复悬浮层。
+            // 进程被杀后悬浮窗随进程消失，这一步是它唯一的恢复路径。
+            runCatching {
+                if (settings.desktopLyricEnabled.first() && DesktopLyric.canShow(this@LxApp)) {
+                    DesktopLyric.start(this@LxApp)
                 }
             }
             // 音频焦点 / 日志开关 / 倍速 / 音量的首值与变化监听已由上方独立协程统一处理，

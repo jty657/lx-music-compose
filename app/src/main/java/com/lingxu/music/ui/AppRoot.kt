@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -146,6 +147,12 @@ fun AppRoot() {
             }
         }
         val dark = isInDarkTheme()
+        // 桌面歌词悬浮窗不在 Compose 树内，拿不到 CompositionLocal：
+        // 把主题主色推过去作为「正在唱」的标记色，深浅色/取色主题切换后即时跟随。
+        val accentColor = MiuixTheme.colorScheme.primary
+        LaunchedEffect(accentColor) {
+            com.lingxu.music.core.system.DesktopLyric.setAccentColor(accentColor.toArgb())
+        }
         // 系统「动画时长缩放 = 关闭」时降级为静帧动效（无障碍 + 低端机省电）
         val reduceMotion = rememberReduceMotion()
         // 状态栏图标极性跟随应用实际主题：深色主题用浅色图标，避免深色图标压在深色内容上不可读。

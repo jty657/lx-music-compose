@@ -64,9 +64,12 @@ class SettingsRepository(private val context: Context) {
         // glass（本项目自有）
         val KEY_BLUR_ENABLED = booleanPreferencesKey("glass.blurEnabled")
         val KEY_BLUR_RADIUS = floatPreferencesKey("glass.blurRadius")
+        // desktopLyric（对齐原版 desktopLyric.enable / desktopLyric.style.fontSize）
+        val KEY_DESKTOP_LYRIC_ENABLE = booleanPreferencesKey("desktopLyric.enable")
+        // 字号按 sp 存（原版存百分比 100~300），默认 18sp
+        val KEY_DESKTOP_LYRIC_FONT_SIZE = floatPreferencesKey("desktopLyric.style.fontSize")
         // userApi
         val KEY_ENABLE_USER_API_LOG = booleanPreferencesKey("userApi.log")
-
         const val LANG_SYSTEM = "system"
         const val SHARE_SYSTEM = "system"
         const val SOURCE_NAME_REAL = "real"
@@ -149,6 +152,12 @@ class SettingsRepository(private val context: Context) {
 
     val enableUserApiLog: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLE_USER_API_LOG] ?: false }
 
+    // ================= desktopLyric =================
+
+    // 默认 false 与原版 defaultSetting 的 'desktopLyric.enable': false 一致
+    val desktopLyricEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_ENABLE] ?: false }
+    val desktopLyricFontSize: Flow<Float> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_FONT_SIZE] ?: 18f }
+
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
     suspend fun setLang(value: String) = context.dataStore.edit { it[KEY_LANG] = value }
@@ -188,6 +197,9 @@ class SettingsRepository(private val context: Context) {
     suspend fun setBlurEnabled(value: Boolean) = context.dataStore.edit { it[KEY_BLUR_ENABLED] = value }
     suspend fun setBlurRadius(value: Float) = context.dataStore.edit { it[KEY_BLUR_RADIUS] = value }
     suspend fun setEnableUserApiLog(value: Boolean) = context.dataStore.edit { it[KEY_ENABLE_USER_API_LOG] = value }
+
+    suspend fun setDesktopLyricEnabled(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_ENABLE] = value }
+    suspend fun setDesktopLyricFontSize(value: Float) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_FONT_SIZE] = value }
 
     suspend fun currentApiSource(): String = apiSource.first()
     suspend fun currentQuality(): String = quality.first()
