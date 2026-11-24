@@ -1,5 +1,42 @@
 # 更新日志
 
+## 第二十五轮：桌面歌词 + 主题主色 + 歌词阴影（v1.6.0，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 的源码，本轮补两项此前完全缺失的**功能**（桌面歌词、主题色）、
+> 一项设置对齐（歌词字体阴影），并打磨一处切歌动效。不引入依赖、不改路由/状态管理与播放内核，
+> 不触碰 QuickJS 与音源协议；全部 `.kt` 改动通过 `scripts/selfcheck.py`，并由本地 `assembleRelease`
+> 与 GitHub Actions 云端构建双重验证。
+
+### 功能对齐（原版缺失项）
+- **桌面歌词悬浮窗**（原版 `desktopLyric.*`，新增 `core/system/DesktopLyric.kt`）：移植版此前完全没有
+  悬浮歌词——切到其它应用后只能靠通知栏判断在放什么。本轮用 `WindowManager` + 原生 `TextView` 实现：
+  单行歌词 + 翻译副行、主题主色标记「♪」、暂停时整体降到 55% 不透明度；上下拖动移动并记住位置
+  （`SharedPreferences`），轻点切换播放/暂停。**不进 Compose 树**：悬浮窗是独立 Window，没有
+  `ViewTreeLifecycleOwner`，放 `ComposeView` 需要额外挂 lifecycle/savedstate 所有者，属于为样式引入
+  新风险；原生 View 也不会随播放进度触发任何 Compose 重组。
+  - 权限：清单补 `SYSTEM_ALERT_WINDOW`；设置页开关在未授权时引导 `ACTION_MANAGE_OVERLAY_PERMISSION`，
+    返回后按**窗口焦点变化**复检权限并自动打开开关（不引入 lifecycle-compose 依赖）。
+  - 生命周期：只在开关开启且已授权时创建；进程被杀则悬浮窗随之消失，下次打开 App 按开关自动恢复；
+    所有窗口操作 `runCatching` 兜底，权限被撤销或 ROM 拒绝时只静默失败，不影响播放。
+- **主题主色**（原版 `theme.id` 皮肤体系）：此前只有「跟随系统 / 浅色 / 深色 / 取色」四种**明暗模式**，
+  没有任何主色可选。本轮不照搬原版多份色板文件（每套几十个色值，与 Miuix 色彩体系不兼容），
+  而是由**一个主色**交给 Miuix 推导整套调色板（明暗两套、语义色全部自动生成，对比度由库保证）：
+  默认 / 青绿 / 靛蓝 / 黛紫 / 暖橙 / 绯粉，`default` 即升级前外观；取色模式下用户主色不生效（与原版一致）。
+
+### 设置对齐
+- **歌词字体阴影**（原版 `theme.fontShadow`，默认 `false`）：给歌词文字加一层轻投影，浅色封面/壁纸下更清晰。
+  只改绘制样式，不改字号与行高，因此不会引起 LazyColumn 重新测量。
+
+### UI / 动效打磨
+- **迷你条歌名/歌手切歌淡入**（`ui/AppRoot.kt`）：封面已有 220ms 淡入而文字此前是硬切，缓存命中切歌时
+  出现「封面在动、文字已就位」的割裂感；补 200ms 淡入 + 6dp 上浮（仅 alpha/translationY），
+  减弱动效时初值即终值、静帧到位。
+
+### 工程
+- 版本 1.5.3 → 1.6.0（versionCode 27 → 28）；README 功能表同步。
+- 验证：`python3 scripts/selfcheck.py` 通过；本地 `./gradlew assembleRelease --offline` 退出码 0（JDK 20 + SDK 37）；
+  云端 `Build APK` 工作流复核。
+
 ## 第二十四轮：榜单详情显示设置对齐与歌词空态统一（v1.5.3，本次）
 
 > 对照原版 lx-music-mobile v1.9.2 补齐一项列表显示设置，并统一一处空态语言。不引入依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议；全部 `.kt` 改动通过 `scripts/selfcheck.py`。
