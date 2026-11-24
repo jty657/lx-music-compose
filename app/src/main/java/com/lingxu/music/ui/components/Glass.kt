@@ -77,12 +77,13 @@ val LocalGlass = staticCompositionLocalOf<GlassContext?> { null }
 
 /** 玻璃面色板：不依赖 backdrop，用半透明填充 + 高光描边模拟磨砂玻璃 */
 private fun glassFill(dark: Boolean): Color =
-    // 深色下略提透明度（0.07 → 0.09）：原值在纯黑背景上对比只有约 1.15:1，
-    // 卡片与背景几乎融成一片；0.09 后卡片边界可辨，又不至于变成「灰块」。
-    if (dark) Color.White.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.58f)
+    // 深色下填充 0.09 → 0.13：原值在纯黑背景上对比约 1.2:1，卡片与背景几乎融成一片；
+    // 0.13 后边界更可辨，仍远低于「灰块」程度，浅色模式不动。可真机复核再定最终值。
+    if (dark) Color.White.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.58f)
 
 private fun glassBorder(dark: Boolean): Color =
-    if (dark) Color.White.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.75f)
+    // 深色描边 0.13 → 0.19：描边是玻璃质感的关键高光线，适度提亮强化卡片轮廓层级。
+    if (dark) Color.White.copy(alpha = 0.19f) else Color.White.copy(alpha = 0.75f)
 
 /** 圆角尺度统一入口：来自 [com.lingxu.music.ui.theme.Dimens]，卡片 20dp，弹窗 28dp */
 private val CardShape = RoundedCornerShape(Dimens.CardCorner)
