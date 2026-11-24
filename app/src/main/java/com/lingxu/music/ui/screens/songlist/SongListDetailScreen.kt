@@ -35,6 +35,7 @@ import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.QualityBadge
 import com.lingxu.music.ui.components.LoadMoreButton
 import com.lingxu.music.ui.components.LoadingHint
 import com.lingxu.music.ui.components.RetryHint
@@ -231,12 +232,17 @@ fun SongListDetailScreen(
                         TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
                         Spacer(Modifier.size(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(
-                                music.name,
-                                fontSize = MiuixTheme.textStyles.main.fontSize,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    music.name,
+                                    fontSize = MiuixTheme.textStyles.main.fontSize,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
+                                // 音质角标（对齐原版）：紧跟歌名，歌名过长时优先压缩歌名
+                                QualityBadge(music, Modifier.padding(start = 6.dp))
+                            }
                             // 副标题字段由设置开关决定，组装方式与收藏页 FavoriteCard 一致：
                             // 歌手恒显示，专辑名/来源/时长按开关按需拼接；空片段过滤后不会出现悬空的「 · 」。
                             val subtitle = buildList {

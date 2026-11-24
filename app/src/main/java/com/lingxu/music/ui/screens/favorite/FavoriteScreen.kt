@@ -41,6 +41,7 @@ import com.lingxu.music.ui.components.dialogOptionClickable
 import androidx.compose.foundation.layout.Arrangement
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassTopBar
+import com.lingxu.music.ui.components.QualityBadge
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.theme.Dimens
@@ -235,12 +236,17 @@ private fun FavoriteCard(
             TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
             Spacer(Modifier.size(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    music.name,
-                    fontSize = MiuixTheme.textStyles.main.fontSize,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        music.name,
+                        fontSize = MiuixTheme.textStyles.main.fontSize,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    // 音质角标（对齐原版）：紧跟歌名，歌名过长时优先压缩歌名
+                    QualityBadge(music, Modifier.padding(start = 6.dp))
+                }
                 val subtitle = buildList {
                     add(music.singer)
                     if (showAlbumName) music.meta.albumName.takeIf { it.isNotBlank() }?.let { add(it) }
