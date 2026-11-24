@@ -98,6 +98,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     var newName by remember { mutableStateOf("") }
     var renaming by remember { mutableStateOf<Playlist?>(null) }
     var openList by remember { mutableStateOf<String?>(null) }
+    // 长按歌曲弹出的操作菜单目标（null = 未打开）
+    var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
     var musics by remember { mutableStateOf<List<MusicInfo>>(emptyList()) }
 
     // 歌曲内搜索
@@ -265,6 +267,8 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                 viewModel.play(musics, music)
                             }
                         },
+                        // 多选态下不弹菜单：否则长按与多选点击语义冲突
+                        onLongClick = if (selectMode) null else ({ actionTarget = music }),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                             val isCurrent = !selectMode && music.id == currentPlayingId
@@ -375,6 +379,15 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
             }
         }
         }
+    }
+
+    // 长按弹出的歌曲操作菜单（播放走与点击同一条 viewModel.play，队列为本列表）
+    actionTarget?.let { music ->
+        com.lingxu.music.ui.components.SongActionMenu(
+            music = music,
+            onPlay = { viewModel.play(musics, music) },
+            onDismiss = { actionTarget = null },
+        )
     }
 
     if (showCreate) {

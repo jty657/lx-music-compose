@@ -83,6 +83,8 @@ fun SongListDetailScreen(
     }
     var collecting by remember { mutableStateOf(false) }
     var collectTip by remember { mutableStateOf<String?>(null) }
+    // 长按歌曲弹出的操作菜单目标（null = 未打开）
+    var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
     val searchState = remember { androidx.compose.foundation.text.input.TextFieldState() }
     val keyword = searchState.text.toString()
     val shownMusic = remember(musicList, keyword) {
@@ -210,6 +212,8 @@ fun SongListDetailScreen(
                 GlassSurface(
                     modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                     onClick = { viewModel.play(musicList, music) },
+                    // 长按弹出歌曲操作菜单（对齐原版歌单详情长按 Menu）
+                    onLongClick = { actionTarget = music },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         // 整卡已可点且读屏会播报歌名/歌手，这里只是装饰图标；描述置空避免重复播报「播放」
@@ -254,6 +258,15 @@ fun SongListDetailScreen(
             }
         }
         }
+    }
+
+    // 长按弹出的歌曲操作菜单：播放带上当前歌单队列，与点击播放一致
+    actionTarget?.let { music ->
+        com.lingxu.music.ui.components.SongActionMenu(
+            music = music,
+            onPlay = { viewModel.play(musicList, music) },
+            onDismiss = { actionTarget = null },
+        )
     }
 }
 

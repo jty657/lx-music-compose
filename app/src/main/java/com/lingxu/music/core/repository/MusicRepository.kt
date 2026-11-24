@@ -269,4 +269,19 @@ class MusicRepository(
 
     /** 通用文本 GET（设置页等用） */
     suspend fun fetchText(url: String): String = HttpClient.instance.fetchText(url)
+
+    /**
+     * 歌曲在平台的详情页地址（对应原版列表菜单「歌曲详情」→ `musicSdk[source].getMusicDetailPageUrl`）。
+     *
+     * 本地歌曲、聚合源、用户音源没有平台详情页，直接返回 null，由 UI 隐藏入口。
+     * 整个调用包在 runCatching 里：这是**辅助功能**，不能因为某个源未实现而让
+     * 长按菜单整体报错或崩溃。
+     */
+    suspend fun getMusicDetailPageUrl(musicInfo: MusicInfo): String? {
+        if (musicInfo.source == SourceConst.LOCAL) return null
+        if (!sdk.isReady()) return null
+        return runCatching {
+            sdk.getMusicDetailPageUrl(musicInfo.source, musicInfo.toOldMusicInfo())
+        }.getOrNull()
+    }
 }

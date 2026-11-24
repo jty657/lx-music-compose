@@ -642,8 +642,39 @@ class PlayerRepository(context: Context) {
         ensureResolved(next.lastIndex)
     }
 
-    fun togglePlay() {
-        if (player.isPlaying) player.pause() else player.play()
+    /**
+     * 「稍后播放」：插入到**当前曲目之后**（对应原版列表菜单的 playLater / addTempPlayList）。
+     *
+     * 与 [addToQueue] 的区别只在插入位置：addToQueue 追加到队尾，本方法插到当前位置之后。
+     * 队列为空时退化为「立即入队但不自动播放」，避免出现「点了稍后播放却开始播放」。
+     * 队列索引完全交给 ExoPlayer 的 mediaItemIndex 维护（与 next()/playAt() 同一套），
+     * 不手改 queueIndex，因此不会与 onMediaItemTransition 的既有状态同步逻辑打架。
+     */
+    fun playNext(musicInfo: MusicInfo) {
+        val current = _state.value.queue
+        if (current.isEmpty()) {
+            // 空队列：入队并解析 URL，但不抢播放（autoPlay = false）
+            _state.update { it.copy(queue = current + musicInfo) }
+            player.addMediaItem(musicInfo.toMediaItem())
+            ensureResolved(0)
+            return
+        }
+        // 与 addToQueue 一致：id 是 LazyColumn 稳定 key，重复会导致 "Duplicate key" 崩溃
+        if (current.any { it.id == musicInfo.id }) return
+        val insertAt = player.currentMediaItemIndex.coerceAtLeast(0) + 1
+        val next = current.toMutableList().also { it.add(insertAt.coerceAtMost(it.size), musicInfo) }
+        _state.update { it.copy(queue = next) }
+        // Media3 没有 insertMediaItem：addMediaItem(index, item) 语义就是「插入到 index 位置」，
+        // 不会打断正在播放的音频（与重建整个播放列表相比），正是「下一首播放」需要的行为
+        runCatching { player.addMediaItem(insertAt, musicInfo.toMediaItem()) }
+            .onFailure { // 插入失败（媒体项被并发修改）时，退回追加到队尾，保证「稍后播放」不丢歌
+                runCatching { player.addMediaItem(musicInfo.toMediaItem()) }
+            }
+        // 解析在后台进行；只有轮到它时才会用到 URL，不打断当前播放
+        ensureResolved(insertAt)
+    }
+
+    fun togglePlay() {        if (player.isPlaying) player.pause() else player.play()
         saveLastPlay()
     }
 

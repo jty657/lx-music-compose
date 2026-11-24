@@ -42,8 +42,8 @@ class ShareRepository(private val context: Context) {
         }
     }
 
-    /** 各平台歌曲详情页（用于 link 分享） */
-    private fun songPageUrl(musicInfo: MusicInfo): String {
+    /** 各平台歌曲详情页（用于 link 分享 / 列表菜单「歌曲详情」） */
+    fun songPageUrl(musicInfo: MusicInfo): String {
         // 注意：kg 的 meta.songId 是 audio_id，不是 hash；mg 需要 copyrightId。
         // 用错字段拼出来的链接是死页（原版 kg/mg 分别用 songInfo.hash / copyrightId）。
         return when (musicInfo.source) {

@@ -73,6 +73,8 @@ fun BoardDetailScreen(
     var page by remember { mutableStateOf(1) }
     var error by remember { mutableStateOf<String?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
+    // 长按歌曲弹出的操作菜单目标（null = 未打开）
+    var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
     // 列表副标题字段开关：对齐原版 list.isShowSource / isShowInterval / isShowAlbumName，
     // 与收藏页/歌单详情/搜索结果/我的列表四处保持同一视觉语言（最后一页对齐）
     val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
@@ -187,6 +189,8 @@ fun BoardDetailScreen(
                         .fillMaxWidth()
                         .padding(vertical = Dimens.ItemGap),
                     onClick = { viewModel.play(musicList, music) },
+                    // 长按弹出歌曲操作菜单（对齐原版榜单详情长按 Menu）
+                    onLongClick = { actionTarget = music },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         // 整卡已可点且读屏会播报歌名/歌手，这里只是装饰图标；描述置空避免重复播报「播放」
@@ -234,6 +238,15 @@ fun BoardDetailScreen(
             }
         }
         }
+    }
+
+    // 长按弹出的歌曲操作菜单：播放带上当前榜单队列，与点击播放一致
+    actionTarget?.let { music ->
+        com.lingxu.music.ui.components.SongActionMenu(
+            music = music,
+            onPlay = { viewModel.play(musicList, music) },
+            onDismiss = { actionTarget = null },
+        )
     }
 
     toast?.let { msg ->

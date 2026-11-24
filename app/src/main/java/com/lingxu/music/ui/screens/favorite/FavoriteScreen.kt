@@ -65,6 +65,8 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
     val favorites by viewModel.favorites.collectAsState()
     val scope = rememberCoroutineScope()
     var addTarget by remember { mutableStateOf<MusicInfo?>(null) }
+    // 长按歌曲弹出的操作菜单目标（null = 未打开）
+    var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
     val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
     val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
     val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
@@ -99,7 +101,7 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
             Spacer(Modifier.weight(1f))
             // 长按加入列表此前无任何提示，用户无从发现（与音源页「长按音源可删除」同类）
             Text(
-                "长按歌曲可加入列表",
+                "长按歌曲可加入列表等更多操作",
                 fontSize = MiuixTheme.textStyles.footnote1.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             )
@@ -120,7 +122,7 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
                     onRemove = {
                         scope.launch { viewModel.remove(music.id) }
                     },
-                    onAddToList = { addTarget = music },
+                    onAddToList = { actionTarget = music },
                     showSource = showSource,
                     showInterval = showInterval,
                     showAlbumName = showAlbumName,
@@ -128,6 +130,15 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
             }
         }
         }
+    }
+
+    // 长按弹出的歌曲操作菜单（播放走与点击同一条 viewModel.play）
+    actionTarget?.let { music ->
+        com.lingxu.music.ui.components.SongActionMenu(
+            music = music,
+            onPlay = { scope.launch { viewModel.play(music) } },
+            onDismiss = { actionTarget = null },
+        )
     }
 
     addTarget?.let { music ->
@@ -210,6 +221,8 @@ private fun FavoriteCard(
             .fillMaxWidth()
             .padding(vertical = Dimens.ItemGap),
         onClick = onPlay,
+        // 长按改开统一歌曲操作菜单：菜单首项即「添加到我的列表」，
+        // 原长按直接进选列表面板的行为不丢，同时补上稍后播放/复制歌名/歌曲详情/不喜欢等入口
         onLongClick = onAddToList,
     ) {
         Row(

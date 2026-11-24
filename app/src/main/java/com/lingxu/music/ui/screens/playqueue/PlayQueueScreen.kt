@@ -65,6 +65,8 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     val queue = state.queue
     val currentIndex = state.queueIndex
     var showClearConfirm by remember { mutableStateOf(false) }
+    // 长按歌曲弹出的操作菜单目标（null = 未打开）
+    var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
@@ -112,6 +114,8 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                         null
                     },
                     onClick = { viewModel.playAt(index) },
+                    // 长按弹出歌曲操作菜单：补上「复制歌名」「歌曲详情」等队列页缺失的入口
+                    onLongClick = { actionTarget = music },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         if (index == currentIndex) {
@@ -200,6 +204,15 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                 }
             }
         }
+        }
+
+        // 长按弹出的歌曲操作菜单：播放走 playAt(当前下标)，与点击行为一致
+        actionTarget?.let { music ->
+            com.lingxu.music.ui.components.SongActionMenu(
+                music = music,
+                onPlay = { viewModel.playAt(queue.indexOfFirst { it.id == music.id }.coerceAtLeast(0)) },
+                onDismiss = { actionTarget = null },
+            )
         }
 
         if (showClearConfirm) {

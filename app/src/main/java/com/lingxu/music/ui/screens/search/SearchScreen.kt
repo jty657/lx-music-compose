@@ -90,6 +90,8 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
     val textFieldState = remember { TextFieldState() }
     val sources = listOf("all") + SourceConst.ONLINE
     var selectedSource by rememberSaveable { mutableStateOf("all") }
+    // 长按歌曲弹出的操作菜单目标（null = 未打开）
+    var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
     // 搜索结果副标题字段开关：对齐原版 list.isShowSource / isShowInterval / isShowAlbumName。
     // 此前本页固定显示「歌手 · 时长」，三项开关在搜索结果里全部无效。
     val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
@@ -438,6 +440,9 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                         }
                     },
                     onToggleFavorite = { viewModel.toggleFavorite(music) },
+                    // 长按弹出歌曲操作菜单（对齐原版列表长按 Menu）：
+                    // 此前搜索结果只有「点击播放」与「收藏」两个入口，无法稍后播放/复制歌名/看歌曲详情/不喜欢
+                    onLongClick = { actionTarget = music },
                 )
             }
             if (viewModel.hasMore) {
@@ -459,6 +464,15 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         }
         }
     }
+
+    // 长按弹出的歌曲操作菜单。播放仍走 viewModel.play，保证与点击播放同一条解析路径
+    actionTarget?.let { music ->
+        com.lingxu.music.ui.components.SongActionMenu(
+            music = music,
+            onPlay = { scope.launch { viewModel.play(music) } },
+            onDismiss = { actionTarget = null },
+        )
+    }
 }
 
 @Composable
@@ -471,12 +485,14 @@ private fun SearchResultCard(
     showInterval: Boolean = true,
     showAlbumName: Boolean = false,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
 ) {
     GlassSurface(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         onClick = onClick,
+        onLongClick = onLongClick,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

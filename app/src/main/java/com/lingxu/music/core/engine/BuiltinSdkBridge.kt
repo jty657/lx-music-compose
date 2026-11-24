@@ -631,6 +631,29 @@ class BuiltinSdkBridge(context: Context) {
         }
     }
 
+    // ================= 歌曲详情页地址 =================
+
+    /**
+     * 歌曲在所属平台的详情页地址（对应原版 `musicSdk[source].getMusicDetailPageUrl`）。
+     *
+     * 与 getPic/getMusicUrl 不同，这个方法在 5 个内置源里都是**同步纯函数**
+     * （直接拼 `kuwo.cn/play_detail/...` 之类的字符串），不返回 Promise，
+     * 因此不需要 awaitPromise，也不需要超时兜底。
+     * 返回 null 表示该源未实现或调用异常——调用方只需不展示入口，不能因此让整行操作失败。
+     */
+    suspend fun getMusicDetailPageUrl(source: String, oldInfo: JsonObject): String? = runCatching {
+        withSdkThread {
+            val module = getModule(source) ?: return@withSdkThread null
+            val fn = module.getJSFunction("getMusicDetailPageUrl") ?: return@withSdkThread null
+            when (val raw = callJSFunction(fn, arrayOf(oldInfo.toJsObject()))) {
+                is String -> raw.takeIf { it.isNotBlank() }
+                null -> null
+                // 个别源（如原版 xm）返回 Promise：这里不阻塞等待，直接放弃
+                else -> raw.toString().takeIf { it.startsWith("http") }
+            }
+        }
+    }.getOrNull()
+
     // ================= 歌曲 URL（内置源无 api-list 时走 global.lx.apis） =================
 
     suspend fun getMusicUrl(source: String, oldInfo: JsonObject, type: String): String {
