@@ -67,6 +67,11 @@ class SearchViewModel : ViewModel() {
         viewModelScope.launch {
             history = LxApp.app.database.loadSearchHistory()
         }
+        // 对齐原版 getSearchSetting：冷启动恢复上次的搜索类型（音乐/歌单）
+        viewModelScope.launch {
+            val saved = LxApp.app.settings.searchType.first()
+            searchType = if (saved == "songlist") SearchType.SONGLIST else SearchType.MUSIC
+        }
     }
 
     /**
@@ -171,6 +176,10 @@ class SearchViewModel : ViewModel() {
     fun setType(type: SearchType) {
         if (searchType == type) return
         searchType = type
+        // 对齐原版 saveSearchSetting：类型选择即时落盘，冷启动恢复
+        viewModelScope.launch {
+            LxApp.app.settings.setSearchType(if (type == SearchType.SONGLIST) "songlist" else "music")
+        }
         // 切换类型后旧结果不再适用，清空并重搜（否则会显示出另一类的旧列表）
         results = emptyList()
         songLists = emptyList()
