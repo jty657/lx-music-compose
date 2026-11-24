@@ -1,5 +1,34 @@
 # 更新日志
 
+## 第三十一轮：搜索类型持久化 + 导入上限前置 + 首页副标题省略（v1.7.5，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **搜索类型冷启动恢复**（`SettingsRepository.kt` / `SearchViewModel.kt`）：原版 `utils/data.ts`
+  的 `getSearchSetting/saveSearchSetting` 会持久化 `search.type`（音乐/歌单），冷启动恢复。移植版
+  此前 `SearchViewModel.searchType` 仅为内存默认值，用户切到「歌单」后重启 App 会回到「音乐」。
+  本轮新增 `search.type` DataStore key（默认 `music`），`init` 读取恢复、`setType` 即时写回，
+  搜索链路与类型切换逻辑不变。
+- **音源导入上限前置拦截**（`SourceViewModel.kt`）：原版 `ImportBtn.tsx` 点导入即校验数量上限。
+  移植版此前在网络下载/文件读取**完成后**才 `count()` 校验，达到 20 个上限仍会白跑一次下载/读文件。
+  本轮把上限校验前移到下载/读文件之前入口处立即 return，落库前保留原有二次校验（防并发），
+  错误文案统一按 `MAX_COUNT` 常量生成。
+
+### UI / 响应式
+
+- **首页入口卡副标题单行省略**（`HomeScreen.kt`）：「本地歌单与收藏」「平台歌单」两处副标题此前
+  无 `maxLines`，系统大字号或窄屏下会换行撑高卡片、与相邻卡片不等高。补 `maxLines=1` +
+  `TextOverflow.Ellipsis`，与同页「音源管理」副标题的处理保持一致。纯静态裁行，无逐帧开销。
+
+### 工程
+
+- 版本 1.7.4 → 1.7.5（versionCode 33 → 34）；README、ANALYSIS 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过；云端构建由 GitHub Actions 验证。
+
 ## 第三十轮：播放页状态对齐 + 歌词字号联动（v1.7.4，本次）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
