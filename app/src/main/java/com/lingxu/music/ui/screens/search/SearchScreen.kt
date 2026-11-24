@@ -243,6 +243,9 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                             color = MiuixTheme.colorScheme.onSurface,
                             fontSize = MiuixTheme.textStyles.body1.fontSize,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                            // 对齐原版 TipList 的 numberOfLines={1}：超长联想词单行省略，
+                            // 避免换行撑高下拉、挤动下方结果列表。
+                            maxLines = 1,
                         )
                     }
                 }
@@ -347,6 +350,22 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     }
                 }
             }
+            return@Column
+        }
+
+        // 欢迎引导语（对齐原版 BlankView 的 search__welcome）：原版在历史、热搜两个
+        // 设置开关都关闭时显示「搜我所想~~😉」，移植版此前该场景一路落到空结果列表、
+        // 整页空白，让用户误以为加载失败。复用 EmptyHint 沿用全站空态的居中布局与
+        // 淡入上浮动效（减弱动效时静帧呈现）。仅命中「两个开关都关 + 未搜索 + 输入空 +
+        // 无结果」这一初始空白态，不影响任何已有分支。
+        if (!showHistory && !showHot && inputIsBlank && !viewModel.hasSearched
+            && viewModel.results.isEmpty() && viewModel.songLists.isEmpty()
+        ) {
+            EmptyHint(
+                icon = MiuixIcons.Search,
+                text = "搜我所想~~😉",
+                modifier = Modifier.weight(1f),
+            )
             return@Column
         }
 

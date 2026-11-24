@@ -48,6 +48,11 @@ fun TextActionButton(
     fontSize: androidx.compose.ui.unit.TextUnit = MiuixTheme.textStyles.body2.fontSize,
     /** 文本水平对齐；联想下拉需要左对齐，历史「清空」等保持默认居中 */
     textAlign: androidx.compose.ui.text.style.TextAlign? = null,
+    /**
+     * 最大行数，默认不限制（保持既有调用方行为不变）。搜索联想词传 1 截断超长词，
+     * 对齐原版 TipList 的 `numberOfLines={1}`：避免长词换行撑高下拉、挤动下方结果列表。
+     */
+    maxLines: Int = Int.MAX_VALUE,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -62,6 +67,8 @@ fun TextActionButton(
         color = color,
         fontSize = fontSize,
         textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         modifier = modifier
             // 命中区前置兜底 48dp，避免被圆角裁剪；缩放只作用于文字本身
             .minimumInteractiveComponentSize()
