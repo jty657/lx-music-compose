@@ -145,6 +145,12 @@ fun GlassSurface(
     tint: Color? = null,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    /**
+     * 长按的无障碍动作名（读屏播报为「长按，<label>」）。
+     * 不给的话 TalkBack 只会念「长按」，用户无法知道长按能做什么——
+     * 列表项长按现在统一弹出「歌曲操作」菜单，必须让读屏用户也能发现这个入口。
+     */
+    onLongClickLabel: String? = "打开歌曲操作",
     /** 读屏语义角色：可点卡片传入 [Role.Button] 让读屏识别为按钮；默认 null 保持原语义 */
     role: Role? = null,
     content: @Composable BoxScope.() -> Unit,
@@ -190,6 +196,7 @@ fun GlassSurface(
             interactionSource = interaction,
             indication = indication,
             role = role,
+            onLongClickLabel = onLongClickLabel,
             onLongClick = onLongClick,
             onClick = onClick,
         )

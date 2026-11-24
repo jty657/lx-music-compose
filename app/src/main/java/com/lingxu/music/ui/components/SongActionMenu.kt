@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -24,6 +27,8 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.db.Playlist
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.isInDarkTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -79,7 +84,11 @@ fun SongActionMenu(
     // 二级面板：null = 主菜单；非空 = 「添加到我的列表」的歌单选择
     var pickingList by remember { mutableStateOf(false) }
     var lists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+    // 两阶段关闭：直接同时弹「菜单」与「提示」两个 Dialog 会让遮罩叠两层、
+    // 关一个开一个时闪烁。这里先关菜单，等 GlassDialog 的退出动画走完（约 120ms）
+    // 再弹提示；提示关闭即回调 onDismiss。用 150ms 略长于退出动画，保证不重叠。
     var tip by remember { mutableStateOf<String?>(null) }
+    var menuVisible by remember { mutableStateOf(true) }
     val isLocal = music.source == SourceConst.LOCAL
     val disliked = remember(music.id) { runCatching { app.dislikeRepository.isDisliked(music) }.getOrDefault(false) }
     // 是否已缓存播放链接：决定「清除链接缓存」是否可用。
@@ -97,15 +106,24 @@ fun SongActionMenu(
         if (pickingList) lists = runCatching { app.myListsRepository.load() }.getOrDefault(emptyList())
     }
 
-    /** 统一的「执行 → 关菜单 → 提示」收尾，避免每项各写一遍 */
-    fun finishAsync(tipText: String, block: suspend () -> Unit) {
+    /** 先关菜单（播退出动画），稍后再弹提示，避免两层遮罩叠加闪烁 */
+    fun showTip(text: String) {
+        menuVisible = false
         scope.launch {
-            val result = runCatching { block() }
-            tip = result.exceptionOrNull()?.let { "操作失败：${it.message}" } ?: tipText
+            kotlinx.coroutines.delay(150)
+            tip = text
         }
     }
 
-    GlassDialog(onDismissRequest = onDismiss) {
+    /** 统一的「执行 → 提示」收尾；成功/失败都给反馈，不再静默 */
+    fun finishAsync(tipText: String, block: suspend () -> Unit) {
+        scope.launch {
+            val result = runCatching { block() }
+            showTip(result.exceptionOrNull()?.let { "操作失败：${it.message}" } ?: tipText)
+        }
+    }
+
+    if (menuVisible) GlassDialog(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .padding(horizontal = 4.dp)
@@ -140,12 +158,13 @@ fun SongActionMenu(
                 }
                 MenuRow(MiuixIcons.Playlist, "下一首播放") {
                     app.playerRepository.playNext(music)
-                    tip = "已添加到下一首播放"
+                    showTip("已添加到下一首播放")
                 }
                 MenuRow(MiuixIcons.Playlist, "加入播放队列") {
                     app.playerRepository.addToQueue(music)
-                    tip = "已加入播放队列"
+                    showTip("已加入播放队列")
                 }
+                MenuDivider()
                 MenuRow(MiuixIcons.Copy, "复制歌名") {
                     val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                         as? android.content.ClipboardManager
@@ -155,7 +174,7 @@ fun SongActionMenu(
                             "${music.name} - ${music.singer}",
                         ),
                     )
-                    tip = "已复制歌名"
+                    showTip("已复制歌名")
                 }
                 MenuRow(MiuixIcons.Link, "歌曲详情") {
                     finishAsync("已打开歌曲详情") {
@@ -177,12 +196,12 @@ fun SongActionMenu(
                 }
                 // 本地歌曲的「分享」没有平台链接，仍可用（只分享歌名-歌手），与原版一致
                 MenuRow(MiuixIcons.Share, "分享") {
-                    finishAsync("分享") {
+                    finishAsync("已打开分享") {
                         val type = app.settings.shareType.first()
                         app.shareRepository.share(music, type)
                     }
-                    onDismiss()
                 }
+                MenuDivider()
                 if (!isLocal) {
                     MenuRow(
                         MiuixIcons.Reset,
@@ -255,6 +274,25 @@ fun SongActionMenu(
             }
         }
     }
+}
+
+/**
+ * 菜单内分组细分隔：只画一条 0.5dp 的弱色线（深浅两套极性），
+ * 让「播放/入队」与「复制/详情/分享/管理」在视觉上分成两组，
+ * 长菜单不再是一整片等权重的文字列表。
+ */
+@Composable
+private fun MenuDivider() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp, horizontal = 4.dp)
+            .height(Dimens.Hairline)
+            .background(
+                if (isInDarkTheme()) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f)
+                else androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.06f),
+            ),
+    )
 }
 
 /**

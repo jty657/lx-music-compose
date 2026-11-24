@@ -151,6 +151,15 @@ fun BoardDetailScreen(
                 }) {
                     Text("收藏榜单")
                 }
+                Spacer(Modifier.weight(1f))
+                // 长按菜单此前无任何可发现性提示（与收藏页/歌单页同类问题）
+                Text(
+                    "长按歌曲可查看更多操作",
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Spacer(Modifier.size(8.dp))
             TextField(

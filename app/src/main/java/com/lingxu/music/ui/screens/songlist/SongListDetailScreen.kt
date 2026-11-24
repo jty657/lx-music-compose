@@ -157,6 +157,15 @@ fun SongListDetailScreen(
             ) {
                 Text(if (collected) "已收藏" else "收藏歌单")
             }
+            Spacer(Modifier.weight(1f))
+            // 长按菜单的可发现性提示（与收藏页、榜单详情保持一致）
+            Text(
+                "长按歌曲可查看更多操作",
+                fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         // 收藏结果轻提示：仅在页内展示一行文字，不引入 Snackbar 依赖
         collectTip?.let { tip ->
