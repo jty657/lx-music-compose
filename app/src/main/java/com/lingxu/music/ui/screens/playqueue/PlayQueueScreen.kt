@@ -76,6 +76,12 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     var showClearConfirm by remember { mutableStateOf(false) }
     // 长按歌曲弹出的操作菜单目标（null = 未打开）
     var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
+    // 副标题字段由设置开关决定（对齐原版 list.isShowSource / isShowInterval / isShowAlbumName），
+    // 与收藏页/搜索页等其它列表页一致。此前本页固定显示「歌手 · 来源」，
+    // 用户在设置里关掉「显示来源/时长/专辑名」后队列页仍强制显示，属全站唯一未接入该设置的列表页。
+    val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
+    val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
+    val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
@@ -152,8 +158,16 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                            // 副标题组装与收藏页 FavoriteCard / 搜索页 SearchResultCard 完全一致：
+                            // 歌手恒显示，专辑名/来源/时长按设置开关按需拼接，空片段过滤掉悬空的「 · 」。
+                            val subtitle = buildList {
+                                add(music.singer)
+                                if (showAlbumName) music.meta.albumName.takeIf { it.isNotBlank() }?.let { add(it) }
+                                if (showSource) add(SourceConst.displayName(music.source))
+                                if (showInterval) music.interval?.let { add(it) }
+                            }.filter { it.isNotBlank() }
                             Text(
-                                "${music.singer} · ${SourceConst.displayName(music.source)}",
+                                subtitle.joinToString(" · "),
                                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 maxLines = 1,

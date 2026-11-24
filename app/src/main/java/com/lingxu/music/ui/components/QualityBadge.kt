@@ -33,7 +33,12 @@ private enum class QualityTier { LOSSLESS_24BIT, LOSSLESS, HIGH }
  */
 @Composable
 fun QualityBadge(music: MusicInfo, modifier: Modifier = Modifier) {
-    val tier = remember(music.id) { qualityTierOf(music) } ?: return
+    // 音质档位由 _qualitys / qualitys 决定，而不是恒定不变的 id：同一首歌换源后 id 可能不变、
+    // 但可用音质会变（如从 128k 源切到 flac 源）。原 key 只含 id 会缓存旧档位、角标不刷新。
+    // 把音质字段纳入 key，换源重组时会重新判定；这些对象都很小，比较成本可忽略。
+    val tier = remember(music.id, music.source, music._qualitys, music.qualitys) {
+        qualityTierOf(music)
+    } ?: return
     val dark = isInDarkTheme()
     val (label, color) = when (tier) {
         QualityTier.LOSSLESS_24BIT -> "24bit" to if (dark) {

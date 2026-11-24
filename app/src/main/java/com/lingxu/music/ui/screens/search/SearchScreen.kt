@@ -560,15 +560,9 @@ private fun SearchResultCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // 可用音质标签（对应原版列表项的音质角标）
-                val qualities = music.qualitys.mapNotNull { it.type }.distinct()
-                if (qualities.isNotEmpty()) {
-                    Text(
-                        qualities.joinToString(" "),
-                        fontSize = MiuixTheme.textStyles.footnote1.fontSize,
-                        color = MiuixTheme.colorScheme.primary,
-                    )
-                }
+                // 音质信息由紧跟歌名的 QualityBadge 角标统一表达（对齐原版 ListItem 的角标），
+                // 此前这里另有一行纯文字音质标签，与角标重复展示——全站仅搜索页有此双重标注，
+                // 副标题下方多出一行还把卡片撑高、压缩了长列表的可见条数，故去重、只保留角标。
             }
             // 与播放页收藏键一致：48dp 热区 + 按压缩放反馈 + 收藏/取消图标淡变，
             // 消除此前「点下去毫无变化、图标硬切」的不一致。减弱动效时退化为静帧。
