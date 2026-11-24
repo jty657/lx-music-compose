@@ -1,6 +1,7 @@
 package com.lingxu.music.core.repository
 
 import android.util.Log
+import com.lingxu.music.LxApp
 import com.lingxu.music.core.engine.BuiltinSdkBridge
 import com.lingxu.music.core.engine.ScriptEngineManager
 import com.lingxu.music.core.engine.toOldMusicInfo
@@ -86,6 +87,20 @@ class MusicRepository(
 
     suspend fun search(text: String, page: Int, source: String, limit: Int = 30): List<MusicInfo> =
         sdk.search(text, page, source, limit).list
+
+    /**
+     * 搜索联想词（对齐原版 musicSdk[source].tipSearch.getList）。
+     * "all" 时取当前默认音源（原版联想框也只对单一音源生效）；失败返回空列表静默降级。
+     */
+    suspend fun getSearchTips(text: String, source: String): List<String> {
+        val src = if (source == "all") currentApiSourceForTips() else source
+        if (src.startsWith("user_api")) return emptyList()
+        return runCatching { sdk.getSearchTips(text, src) }.getOrDefault(emptyList())
+    }
+
+    private suspend fun currentApiSourceForTips(): String =
+        runCatching { LxApp.app.settings.currentApiSource() }.getOrDefault("kw")
+            .let { if (it.startsWith("user_api")) "kw" else it }
 
     // ================= 榜单 =================
 

@@ -96,6 +96,22 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
     val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
     val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
 
+    // 搜素联想（对齐原版搜索框输入下拉）：输入变化防抖 250ms 取当前音源联想词。
+    // 只在「还没搜索」时展示，按下搜索后立即收起，避免下拉盖住结果。
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        snapshotFlow { textFieldState.text.toString() }
+            .collect { text ->
+                if (text.isBlank()) viewModel.clearSuggestions()
+                else if (!viewModel.loading) viewModel.suggest(text, selectedSource)
+            }
+    }
+    // 切换音源后按新音源重取一次联想，保证下拉内容与 chip 选中项一致
+    androidx.compose.runtime.LaunchedEffect(selectedSource) {
+        viewModel.setTipSource(selectedSource)
+        val text = textFieldState.text.toString()
+        if (text.isNotBlank() && !viewModel.loading) viewModel.suggest(text, selectedSource)
+    }
+
     // 由热词/历史进入时自动搜索
     androidx.compose.runtime.LaunchedEffect(initialKeyword) {
         if (initialKeyword.isNotBlank()) {
@@ -125,6 +141,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                     onClick = {
                         val text = textFieldState.text.toString()
                         if (text.isNotBlank()) {
+                            viewModel.clearSuggestions()
                             scope.launch {
                                 viewModel.search(text, selectedSource)
                             }
@@ -177,6 +194,46 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         }
 
         Spacer(Modifier.height(8.dp))
+
+        // 搜索联想下拉：位于输入框下方、结果列表之上；只在未搜索状态下出现。
+        // 进场淡入 + 轻微上浮（只动 alpha/transform，不触发布局），减弱动效时直接到位。
+        val suggestions = viewModel.suggestions
+        if (suggestions.isNotEmpty() && !viewModel.hasSearched) {
+            val reduceMotion = LocalReduceMotion.current
+            val appear by animateFloatAsState(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = if (reduceMotion) 0 else MotionBaseMs),
+                label = "tipFade",
+            )
+            GlassSurface(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier
+                        .graphicsLayer {
+                            alpha = appear
+                            translationY = (1f - appear) * 8f
+                        }
+                        .padding(vertical = 2.dp),
+                ) {
+                    suggestions.forEach { word ->
+                        TextActionButton(
+                            text = word,
+                            onClick = {
+                                textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                viewModel.clearSuggestions()
+                                scope.launch { viewModel.search(word, selectedSource) }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "联想搜索：$word" },
+                            color = MiuixTheme.colorScheme.onSurface,
+                            fontSize = MiuixTheme.textStyles.body1.fontSize,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
 
         // 错误提示统一放在结果列表底部的可点「重试项」展示（见下方两个分支），
         // 这里不再单独渲染红字，避免加载失败时同一句错误文案出现两遍。
@@ -233,6 +290,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                                 description = "搜索历史：$word，长按删除",
                                 onClick = {
                                     textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                    viewModel.clearSuggestions()
                                     scope.launch { viewModel.search(word, selectedSource) }
                                 },
                                 onLongClick = { viewModel.removeHistory(word) },
@@ -267,6 +325,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                             selected = false,
                             onClick = {
                                 textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                viewModel.clearSuggestions()
                                 scope.launch { viewModel.search(word, selectedSource) }
                             },
                         )

@@ -77,12 +77,53 @@ class SearchViewModel : ViewModel() {
         }
     }
 
+    /** 搜索联想词（对齐原版搜索框输入下拉；空列表时界面不展示） */
+    var suggestions by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    private var tipJob: kotlinx.coroutines.Job? = null
+    private var tipSeq: Int = 0
+    private var tipSource: String = "kw"
+
+    /**
+     * 输入变化时拉取联想词（防抖 250ms，对齐原版 debounceTipSearch 200ms）。
+     * 文案不变或为空时直接清空；切源时由 [setTipSource] 触发重取，保证下拉与当前音源一致。
+     */
+    fun suggest(text: String, source: String, immediate: Boolean = false) {
+        tipSource = if (source == "all") tipSource else source
+        tipJob?.cancel()
+        // 代次号在取消之后立即递增：被取消的旧协程即使已越过挂起点也无法回写
+        val seq = ++tipSeq
+        if (text.isBlank()) {
+            suggestions = emptyList()
+            return
+        }
+        tipJob = viewModelScope.launch {
+            if (!immediate) kotlinx.coroutines.delay(250)
+            val list = LxApp.app.musicRepository.getSearchTips(text, tipSource)
+            if (seq == tipSeq) suggestions = list
+        }
+    }
+
+    /** 音源切换后按新音源重新拉取联想 */
+    fun setTipSource(source: String) {
+        if (source != "all") tipSource = source
+    }
+
+    /** 联想词被点击/搜索确认后收起下拉 */
+    fun clearSuggestions() {
+        tipJob?.cancel()
+        suggestions = emptyList()
+    }
+
     fun search(text: String, source: String) {
         val seq = ++requestSeq
         lastQuery = text
         lastSource = source
         page = 1
         hasSearched = true
+        // 搜索确认后收起联想下拉（对齐原版：按下搜索键立即隐藏 TipList）
+        clearSuggestions()
         // 同步置位：让翻页守卫能立即感知「正在搜索」，避免 launch 异步执行前 loadMore 插队重复请求
         loading = true
         errorMessage = null

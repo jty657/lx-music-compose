@@ -526,6 +526,46 @@ class BuiltinSdkBridge(context: Context) {
         )
     }
 
+    // ================= 搜索联想 =================
+
+    /**
+     * 搜索联想词（对齐原版 musicSdk[source].tipSearch.getList）。
+     * 原版在搜索框输入时展示联想下拉，本项目此前完全没有这条链路；
+     * 失败/无数据一律返回空列表，由界面静默降级（不影响正常搜索）。
+     */
+    suspend fun getSearchTips(text: String, source: String): List<String> {
+        if (text.isBlank()) return emptyList()
+        val promise = withSdkThread {
+            val module = getModule(source) ?: return@withSdkThread null
+            val tipSearch = module.getJSObject("tipSearch") ?: return@withSdkThread null
+            val fn = tipSearch.getJSFunction("getList") ?: return@withSdkThread null
+            asPromise(callJSFunction(fn, arrayOf(text)))
+        } ?: return emptyList()
+        val result = runCatching { awaitPromise(promise) }.getOrNull() ?: return emptyList()
+        return withSdkThread { parseTipList(result) }
+    }
+
+    /** 联想词返回的是字符串数组；兼容 { list: [...] } 包装 */
+    private fun parseTipList(raw: Any?): List<String> {
+        val context = jsContext ?: return emptyList()
+        val arr: JSArray = when (raw) {
+            is JSArray -> raw
+            is JSObject -> {
+                val inner = raw.getJSObject("list")
+                if (inner is JSArray) inner else return emptyList()
+            }
+            else -> return emptyList()
+        }
+        val words = mutableListOf<String>()
+        val len = context.length(arr)
+        for (i in 0 until len) {
+            val v = context.get(arr, i)
+            val word = v as? String ?: (v as? JSObject)?.getString("text")
+            if (!word.isNullOrBlank()) words.add(word.trim())
+        }
+        return words.distinct().take(10)
+    }
+
     /**
      * 归一化 SDK 返回值：SDK 多数方法返回 { promise } 或直接返回 Promise/thenable
      */
