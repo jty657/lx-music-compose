@@ -90,6 +90,12 @@ class SourceViewModel : ViewModel() {
         }
         importing = true
         viewModelScope.launch {
+            // 对齐原版 ImportBtn：达到上限立即拦截，不做无谓的网络下载
+            if (repo.count() >= ApiSourceRepository.MAX_COUNT) {
+                setStatus("最多只能添加 ${ApiSourceRepository.MAX_COUNT} 个自定义音源", isError = true)
+                importing = false
+                return@launch
+            }
             setStatus("正在下载脚本…")
             runCatching {
                 withContext(Dispatchers.IO) {
@@ -125,6 +131,11 @@ class SourceViewModel : ViewModel() {
     /** 文件导入（对应原版 ScriptImportExport） */
     fun importFromFile(uri: Uri) {
         viewModelScope.launch {
+            // 对齐原版 ImportBtn：达到上限立即拦截，不做无谓的文件读取
+            if (repo.count() >= ApiSourceRepository.MAX_COUNT) {
+                setStatus("最多只能添加 ${ApiSourceRepository.MAX_COUNT} 个自定义音源", isError = true)
+                return@launch
+            }
             setStatus("正在读取文件…")
             runCatching {
                 withContext(Dispatchers.IO) {
