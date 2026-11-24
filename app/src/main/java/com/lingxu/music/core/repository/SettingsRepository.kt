@@ -46,6 +46,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_IS_SHOW_NOTIFICATION_IMAGE = booleanPreferencesKey("player.isShowNotificationImage")
         val KEY_PLAYBACK_RATE = floatPreferencesKey("player.playbackRate")
         val KEY_VOLUME = floatPreferencesKey("player.volume")
+        // 原版 player.cacheSize：播放缓存上限，单位 KB（原版存字符串，默认 '1024'）
+        val KEY_PLAY_CACHE_SIZE = androidx.datastore.preferences.core.intPreferencesKey("player.cacheSize")
         // 定时退出（对应原版 player.timeoutExit / timeoutExitPlayed）
         val KEY_TIMEOUT_EXIT_MINUTES = androidx.datastore.preferences.core.intPreferencesKey("player.timeoutExit")
         val KEY_TIMEOUT_EXIT_PLAYED = booleanPreferencesKey("player.timeoutExitPlayed")
@@ -116,6 +118,11 @@ class SettingsRepository(private val context: Context) {
     val isShowNotificationImage: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_NOTIFICATION_IMAGE] ?: true }
     val playbackRate: Flow<Float> = context.dataStore.data.map { it[KEY_PLAYBACK_RATE] ?: 1f }
     val volume: Flow<Float> = context.dataStore.data.map { it[KEY_VOLUME] ?: 1f }
+    // 默认 1024 KB，与原版 defaultSetting 的 'player.cacheSize': '1024' 一致。
+    // 老版本（本项不存在）读到默认值，升级后首次启动即启用缓存，与原版行为一致。
+    val playCacheSizeKb: Flow<Int> = context.dataStore.data.map {
+        runCatching { it[KEY_PLAY_CACHE_SIZE] }.getOrNull() ?: 1024
+    }
     val timeoutExitMinutes: Flow<Int> = context.dataStore.data.map { it[KEY_TIMEOUT_EXIT_MINUTES] ?: 0 }
     val timeoutExitPlayed: Flow<Boolean> = context.dataStore.data.map { it[KEY_TIMEOUT_EXIT_PLAYED] ?: true }
 
@@ -187,6 +194,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setIsShowNotificationImage(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_NOTIFICATION_IMAGE] = value }
     suspend fun setPlaybackRate(value: Float) = context.dataStore.edit { it[KEY_PLAYBACK_RATE] = value }
     suspend fun setVolume(value: Float) = context.dataStore.edit { it[KEY_VOLUME] = value }
+    suspend fun setPlayCacheSizeKb(value: Int) = context.dataStore.edit { it[KEY_PLAY_CACHE_SIZE] = value }
     suspend fun setTimeoutExitMinutes(value: Int) = context.dataStore.edit { it[KEY_TIMEOUT_EXIT_MINUTES] = value }
     suspend fun setTimeoutExitPlayed(value: Boolean) = context.dataStore.edit { it[KEY_TIMEOUT_EXIT_PLAYED] = value }
 

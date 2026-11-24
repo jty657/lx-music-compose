@@ -94,10 +94,17 @@ data class PlayState(
  * 播放仓库：Media3 ExoPlayer + 播放队列管理。
  * 对应原版 react-native-track-player + core/player/player.ts 的职责。
  */
-class PlayerRepository(context: Context) {
+class PlayerRepository(private val context: Context) {
 
     private val _state = MutableStateFlow(PlayState())
     val state: StateFlow<PlayState> = _state.asStateFlow()
+
+    /**
+     * 播放缓存容量（原版 `player.cacheSize`，单位 KB，默认 1024）。
+     * 只决定数据源链是否套一层 [PlaybackCache]，不改任何播放逻辑。
+     */
+    @Volatile
+    private var cacheSizeKb: Int = PlaybackCache.DEFAULT_SIZE_KB
 
     val player: ExoPlayer = ExoPlayer.Builder(context)
         .setAudioAttributes(
@@ -107,7 +114,28 @@ class PlayerRepository(context: Context) {
                 .build(),
             /* handleAudioFocus = */ true,
         )
-        .build()
+        // 数据源链：默认按当前设置开启缓存（与原版默认 1MB 一致）。
+        // 工厂实例是稳定的，后续调整容量只换内部引用，不重建播放器。
+        .setMediaSourceFactory(
+            androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
+                PlaybackCache.dataSourceFactory(context),
+            ),
+        )
+        .build().also {
+            // 首次按落盘容量创建缓存层（此时设置可能尚未读出来，先用默认值；LxApp 读到后会再次校准）
+            PlaybackCache.get(context, cacheSizeKb)
+        }
+
+    /**
+     * 设置播放缓存容量（KB）。容量变更只重建缓存层，**不重建播放器**：
+     * 数据源工厂内部按当前缓存实例决定是否套缓存，因此切换设置不打断正在播放的歌曲。
+     */
+    fun setCacheSize(sizeKb: Int) {
+        val target = sizeKb.coerceIn(PlaybackCache.DISABLED_SIZE_KB, PlaybackCache.MAX_SIZE_KB)
+        if (target == cacheSizeKb) return
+        cacheSizeKb = target
+        PlaybackCache.get(context, target)
+    }
 
     /**
      * 音频焦点处理开关（设置项 player.isHandleAudioFocus）。

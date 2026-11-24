@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -122,6 +123,16 @@ fun SettingScreen(
         LxApp.app.playerRepository.state.map { it.timeoutExitRemaining }
     }.collectAsState(initial = -1)
     var showTimeoutExit by remember { mutableStateOf(false) }
+
+    // ============ 播放缓存（原版 player.cacheSize） ============
+    // 当前缓存占用随播放增长，进入设置页与清理后各读一次即可（每次读都要遍历缓存索引，
+    // 不做轮询），避免在滚动设置页时反复 IO。
+    val playCacheKb by viewModel.playCacheSizeKb.collectAsState(initial = 1024)
+    var showPlayCache by remember { mutableStateOf(false) }
+    var playCacheUsedBytes by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(showPlayCache) {
+        if (showPlayCache) playCacheUsedBytes = com.lingxu.music.core.player.PlaybackCache.sizeBytes()
+    }
 
     // initial 与落盘默认（SettingsRepository）保持一致，避免首帧闪出错误状态再跳变。
     val showLyricTranslation by viewModel.showLyricTranslation.collectAsState(initial = false)
@@ -367,6 +378,19 @@ fun SettingScreen(
             },
             onClick = { showTimeoutExit = true },
         )
+        ArrowPreference(
+            title = "播放缓存",
+            summary = if (playCacheKb <= 0) {
+                "不缓存：每次播放都从网络重新加载"
+            } else {
+                if (playCacheUsedBytes > 0) {
+                    "已用 ${formatSize(playCacheUsedBytes)} / 上限 ${formatSize(playCacheKb.toLong() * 1024)}"
+                } else {
+                    "上限 ${formatSize(playCacheKb.toLong() * 1024)}，听过的歌会缓存在本地（点按调整）"
+                }
+            },
+            onClick = { showPlayCache = true },
+        )
         SwitchPreference(
             title = "播完当前歌曲再停",
             summary = "定时到点后等当前歌曲播完再停止",
@@ -571,7 +595,7 @@ fun SettingScreen(
             onClick = {
                 val size = com.lingxu.music.core.request.HttpClient.instance.diskCacheSizeBytes()
                 com.lingxu.music.core.request.HttpClient.instance.clearDiskCache()
-                toast = if (size > 0) "已清理 ${size / 1024} KB 缓存" else "没有可清理的缓存"
+                toast = if (size > 0) "已清理 ${formatSize(size)} 缓存" else "没有可清理的缓存"
             },
         )
 
@@ -801,6 +825,87 @@ fun SettingScreen(
         }
     }
     }
+
+    if (showPlayCache) {
+        // 容量档位按 MB 选，不弹键盘输入：原版是数字输入框，但移动端弹一次键盘再校验
+        // 反而比点选慢；档位覆盖 1MB~512MB，「关闭」单独作为 0（不缓存）。
+        GlassDialog(onDismissRequest = { showPlayCache = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("播放缓存", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    "已缓存 ${formatSize(playCacheUsedBytes)}" +
+                        if (playCacheKb <= 0) "（当前已关闭）"
+                        else " / 上限 ${formatSize(playCacheKb.toLong() * 1024)}",
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                Spacer(Modifier.size(12.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        label = "关闭",
+                        selected = playCacheKb <= 0,
+                        onClick = {
+                            viewModel.setPlayCacheSizeKb(0)
+                            playCacheUsedBytes = 0L
+                        },
+                    )
+                    FilterChip(
+                        label = "1 MB",
+                        selected = playCacheKb == 1024,
+                        onClick = { viewModel.setPlayCacheSizeKb(1024) },
+                    )
+                    FilterChip(
+                        label = "32 MB",
+                        selected = playCacheKb == 32 * 1024,
+                        onClick = { viewModel.setPlayCacheSizeKb(32 * 1024) },
+                    )
+                }
+                Spacer(Modifier.size(8.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(64, 128, 256, 512).forEach { mb ->
+                        FilterChip(
+                            label = "$mb MB",
+                            selected = playCacheKb == mb * 1024,
+                            onClick = { viewModel.setPlayCacheSizeKb(mb * 1024) },
+                        )
+                    }
+                }
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    "听过的歌会写入本地，重复播放不再重新下载；关闭后每次播放都走网络。",
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                Spacer(Modifier.size(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = {
+                        val cleared = viewModel.clearPlayCache()
+                        playCacheUsedBytes = 0L
+                        toast = if (cleared > 0) "已清理 ${formatSize(cleared)} 播放缓存" else "没有可清理的播放缓存"
+                        showPlayCache = false
+                    }) { Text("清空缓存") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = { showPlayCache = false }) { Text("完成") }
+                }
+            }
+        }
+    }
+}
+
+/** 字节数转可读大小（与设置页「清除缓存」提示同一口径，保留一位小数） */
+private fun formatSize(bytes: Long): String = when {
+    bytes <= 0L -> "0 B"
+    bytes < 1024L -> "$bytes B"
+    bytes < 1024L * 1024L -> String.format("%.1f KB", bytes / 1024.0)
+    bytes < 1024L * 1024L * 1024L -> String.format("%.1f MB", bytes / 1024.0 / 1024.0)
+    else -> String.format("%.2f GB", bytes / 1024.0 / 1024.0 / 1024.0)
 }
 
 @Composable

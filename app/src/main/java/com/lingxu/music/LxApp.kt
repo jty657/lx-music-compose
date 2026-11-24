@@ -118,6 +118,10 @@ class LxApp : Application() {
         appScope.launch {
             settings.playbackRate.catch { }.collect { playerRepository.setPlaybackRate(it) }
         }
+        // 播放缓存容量（原版 player.cacheSize）：变更时重建缓存层，不打断正在播放的曲目
+        appScope.launch {
+            settings.playCacheSizeKb.catch { }.collect { playerRepository.setCacheSize(it) }
+        }
         appScope.launch {
             settings.volume.catch { }.collect { playerRepository.setVolume(it) }
         }

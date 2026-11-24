@@ -97,7 +97,16 @@ class SettingViewModel : ViewModel() {
     // ============ 播放增强 ============
     val playbackRate: StateFlow<Float> = state(settings.playbackRate, 1f)
     val volume: StateFlow<Float> = state(settings.volume, 1f)
+    // 原版 player.cacheSize：播放缓存上限（KB）。0 = 不缓存。
+    val playCacheSizeKb: StateFlow<Int> = state(settings.playCacheSizeKb, 1024)
     val timeoutExitPlayed: StateFlow<Boolean> = state(settings.timeoutExitPlayed, true)
+
+    fun setPlayCacheSizeKb(kb: Int) {
+        viewModelScope.launch { settings.setPlayCacheSizeKb(kb.coerceAtLeast(0)) }
+    }
+
+    /** 清空播放缓存，返回清理前的占用字节数（供 UI 提示） */
+    fun clearPlayCache(): Long = com.lingxu.music.core.player.PlaybackCache.clear()
 
     // ============ 自定义音源 ============
     val userApiLog: StateFlow<Boolean> = state(settings.enableUserApiLog, false)
