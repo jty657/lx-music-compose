@@ -16,6 +16,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -70,9 +71,11 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.lingxu.music.LxApp
+import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.ui.components.GlassContext
 import com.lingxu.music.ui.components.GlassHost
 import com.lingxu.music.ui.components.LocalGlass
+import com.lingxu.music.ui.components.SongActionMenu
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalBottomBarHeight
 import com.lingxu.music.ui.navigation.LocalMiniBarHeight
@@ -362,6 +365,11 @@ private fun MiniPlayerBar(navigator: Navigator) {
     val barInteraction = remember { MutableInteractionSource() }
     val barPressed by barInteraction.collectIsPressedAsState()
     val reduceMotion = LocalReduceMotion.current
+    // 长按目标歌曲：对齐原版迷你条长按操作（原版是「跳转到当前歌曲在列表中的位置」，
+    // 移植版没有 home 列表上下文可跳，改为弹出与全站列表一致的歌曲操作菜单，
+    // 复用 [SongActionMenu]，给迷你条补上「复制歌名 / 歌曲详情 / 稍后播放 / 不喜欢」等入口）。
+    // 用独立状态保存目标：切歌后菜单仍指向打开时长按的那一首，不随播放进度漂移。
+    var menuTarget by remember { mutableStateOf<MusicInfo?>(null) }
     val barScale by animateFloatAsState(
         targetValue = if (barPressed && !reduceMotion) 0.985f else 1f,
         animationSpec = Motion.press(),
@@ -426,14 +434,16 @@ private fun MiniPlayerBar(navigator: Navigator) {
                     // 按压缩放只作用于内容 Row（transform，不触发布局），不套到外层 backdrop 节点；
                     // 放在 clickable 之前，缩放封面+文字整体。减弱动效时 barScale 恒为 1f。
                     .graphicsLayer { scaleX = barScale; scaleY = barScale }
-                    .clickable(
+                    .combinedClickable(
                         interactionSource = barInteraction,
                         indication = null,
                         role = Role.Button,
                         onClickLabel = "进入播放页",
+                        onLongClickLabel = "歌曲操作",
                         onClick = {
                             if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
                         },
+                        onLongClick = { menuTarget = current },
                     ),
             ) {
                 // 切歌时封面淡入 + 轻微缩放，与播放页封面的入场语言一致：
@@ -617,6 +627,26 @@ private fun MiniPlayerBar(navigator: Navigator) {
                 }
             }
         }
+    }
+
+    // 迷你条长按弹出的歌曲操作菜单：与全站列表长按完全同一套组件与手感，
+    // 不引入新弹窗体系；onPlay 交给 MiniPlayerBar 用「当前队列 + 当前下标」播放，
+    // 保证「播放」语义与从播放页进入时一致（不会丢队列）。
+    menuTarget?.let { target ->
+        SongActionMenu(
+            music = target,
+            onPlay = {
+                val st = LxApp.app.playerRepository.state.value
+                val idx = st.queue.indexOfFirst { it.id == target.id }
+                if (idx >= 0) {
+                    LxApp.app.playerRepository.playAt(idx)
+                } else {
+                    LxApp.app.playerRepository.playSingle(target)
+                }
+                if (navigator.backStack.last() != Screen.Player) navigator.push(Screen.Player)
+            },
+            onDismiss = { menuTarget = null },
+        )
     }
 }
 
