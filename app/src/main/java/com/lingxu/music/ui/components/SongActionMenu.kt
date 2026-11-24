@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +24,9 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.db.Playlist
 import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.core.model.SourceConst
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
@@ -35,6 +38,7 @@ import top.yukonga.miuix.kmp.icon.extended.Copy
 import top.yukonga.miuix.kmp.icon.extended.Link
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Playlist
+import top.yukonga.miuix.kmp.icon.extended.Reset
 import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -78,6 +82,15 @@ fun SongActionMenu(
     var tip by remember { mutableStateOf<String?>(null) }
     val isLocal = music.source == SourceConst.LOCAL
     val disliked = remember(music.id) { runCatching { app.dislikeRepository.isDisliked(music) }.getOrDefault(false) }
+    // 是否已缓存播放链接：决定「清除链接缓存」是否可用。
+    // 订阅队列并在每次变化时重算（链接解析完成后菜单会立刻变为可用），
+    // 但只保留布尔值，不会因播放进度变化反复重组。
+    val hasCachedUrl by remember(music.id) {
+        app.playerRepository.state.map { st -> st.queue.any { it.id == music.id && !it.meta.filePath.isNullOrBlank() } }
+            .distinctUntilChanged()
+    }.collectAsState(initial = false)
+    // 缓存的封面在磁盘 OkHttp 缓存里，与「链接缓存」是两件事；
+    // 原版的「清除缓存」也只清链接，这里保持一致。
 
     // 只在需要展示歌单选择时才读一次磁盘：避免每次打开菜单都做 IO
     LaunchedEffect(pickingList) {
@@ -169,6 +182,20 @@ fun SongActionMenu(
                         app.shareRepository.share(music, type)
                     }
                     onDismiss()
+                }
+                if (!isLocal) {
+                    MenuRow(
+                        MiuixIcons.Reset,
+                        "清除链接缓存",
+                        summary = if (hasCachedUrl) null else "无缓存",
+                        enabled = hasCachedUrl,
+                    ) {
+                        finishAsync("已清除播放链接缓存，下次播放将重新取链") {
+                            if (!app.playerRepository.clearMusicUrl(music.id)) {
+                                throw IllegalStateException("没有可清除的链接缓存")
+                            }
+                        }
+                    }
                 }
                 if (!isLocal) {
                     MenuRow(

@@ -421,9 +421,38 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         val resultState = rememberLazyListState()
         com.lingxu.music.ui.components.ReportScrollForMiniBar(resultState)
         AutoLoadMore(resultState, viewModel.hasMore, viewModel.loading) { viewModel.loadMore() }
-        // 搜索后无结果：给出明确空态，避免只剩一片空白让用户以为卡住
-        if (results.isEmpty() && !viewModel.loading && viewModel.hasSearched && viewModel.errorMessage == null) {
-            EmptyHint(icon = MiuixIcons.Search, text = "没有找到相关音乐")
+        // 搜索后无结果：给出明确空态，避免只剩一片空白让用户以为卡住。
+        // 同时在空态下补「换源重搜」出口：原版用户遇到单源无结果时习惯切到聚合源，
+        // 但此前空态只是一行字，用户得自己往上滚回音源 chip 再点一次搜索。
+        // 这里把「一次点击换到另一个源并立即重搜」直接放到空态下方，属于纯交互增强，
+        // 不改搜索流程本身（仍走同一个 viewModel.search）。
+        val musicEmpty = results.isEmpty() && !viewModel.loading &&
+            viewModel.hasSearched && viewModel.errorMessage == null
+        if (musicEmpty) {
+            val lastQuery = textFieldState.text.toString().trim()
+            // 候选源：单源搜不到时优先聚合搜索；已在聚合源则提示换单个源
+            val fallbackSource = if (selectedSource == "all") {
+                sources.firstOrNull { it != "all" }
+            } else {
+                "all"
+            }
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                EmptyHint(icon = MiuixIcons.Search, text = "没有找到相关音乐")
+                if (lastQuery.isNotBlank() && fallbackSource != null) {
+                    TextActionButton(
+                        text = if (fallbackSource == "all") {
+                            "在聚合搜索中重试"
+                        } else {
+                            "换到「${SourceConst.displayName(fallbackSource)}」重试"
+                        },
+                        onClick = {
+                            selectedSource = fallbackSource
+                            scope.launch { viewModel.search(lastQuery, fallbackSource) }
+                        },
+                        modifier = Modifier.padding(bottom = 24.dp),
+                    )
+                }
+            }
         }
         LazyColumn(state = resultState, modifier = Modifier.weight(1f)) {
             items(results, key = { it.id }) { music ->

@@ -709,6 +709,35 @@ class PlayerRepository(context: Context) {
         // 同上：由 onMediaItemTransition 在 state 更新后统一保存，避免写入旧曲目
     }
 
+    /**
+     * 清除某首歌已解析的播放链接（对应原版列表菜单「清除链接缓存」→ clearMusicUrlByMusic）。
+     *
+     * 链接会过期（平台签名有时效），原版在菜单里给用户手动清缓存的出口，
+     * 这样下次播放会重新取链。这里做同样的处理：
+     * - 清理队列中同 id 条目的 meta.filePath（不重建播放列表，不打断播放）；
+     * - 若清的正是当前曲目，同步 state.current，避免 UI 仍显示旧链接。
+     * 返回是否真的清到了东西——没有链接时菜单项置灰，与原版一致。
+     */
+    fun clearMusicUrl(musicId: String): Boolean {
+        val state = _state.value
+        val hasUrl = state.queue.any { it.id == musicId && !it.meta.filePath.isNullOrBlank() }
+        if (!hasUrl) return false
+        val next = state.queue.map { info ->
+            if (info.id == musicId && !info.meta.filePath.isNullOrBlank()) {
+                info.copy(meta = info.meta.copy(filePath = null))
+            } else info
+        }
+        _state.update { st ->
+            st.copy(
+                queue = next,
+                current = st.current?.let { cur ->
+                    if (cur.id == musicId) cur.copy(meta = cur.meta.copy(filePath = null)) else cur
+                },
+            )
+        }
+        return true
+    }
+
     fun seekTo(positionMs: Long) {
         player.seekTo(positionMs)
         _state.update { it.copy(positionMs = positionMs) }

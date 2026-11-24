@@ -97,6 +97,7 @@ import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.isInDarkTheme
 import com.lingxu.music.ui.theme.motionMs
 import com.lingxu.music.ui.theme.rememberReduceMotion
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
@@ -244,7 +245,15 @@ private fun MainScaffold(
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { padding ->
         val current = navigator.backStack.last()
-        val playState by LxApp.app.playerRepository.state.collectAsState()
+        // 只订阅「是否有当前曲目」这一个派生值，而不是整个 PlayState。
+        // PlayState.positionMs 每 500ms 更新一次，整对象订阅会让 Scaffold 及其下所有页面
+        // 内容每 500ms 重组一遍（列表、封面、转场容器全部跟着重组），低端机上尤其明显。
+        // map{}.distinctUntilChanged() 保证只有布尔值真正变化时才发新值。
+        val hasCurrent by remember {
+            LxApp.app.playerRepository.state
+                .map { it.current != null }
+                .distinctUntilChanged()
+        }.collectAsState(initial = LxApp.app.playerRepository.state.value.current != null)
         // 页面转场用：系统要求减弱动效时退化为纯淡入淡出
         val reduceMotion = LocalReduceMotion.current
         // 系统返回键：非根页时回退一级
@@ -262,7 +271,7 @@ private fun MainScaffold(
         val miniBarHeight = LocalMiniBarHeight.current
         val bottomInset = when {
             isPlayer -> 0.dp
-            playState.current != null -> bottomBarHeight + miniBarHeight
+            hasCurrent -> bottomBarHeight + miniBarHeight
             else -> bottomBarHeight
         }
         Box(

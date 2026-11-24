@@ -46,6 +46,8 @@ import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.animateListItem
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -61,9 +63,16 @@ import top.yukonga.miuix.kmp.utils.PressFeedbackType
 @Composable
 fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     val navigator = LocalNavigator.current
-    val state by LxApp.app.playerRepository.state.collectAsState()
-    val queue = state.queue
-    val currentIndex = state.queueIndex
+    // 只订阅本页真正用到的三项（队列 / 当前下标 / 是否播放中），而不是整个 PlayState。
+    // 整对象订阅会让本页所有行在播放时每 500ms（positionMs 轮询）重组一次，
+    // 包括每行的 TrackCover 与图标 —— 队列长时滚动明显掉帧。
+    // 拆成三项后，只有切歌/播放暂停/队列变化才会重组。
+    val queue by remember { LxApp.app.playerRepository.state.map { it.queue }.distinctUntilChanged() }
+        .collectAsState(initial = LxApp.app.playerRepository.state.value.queue)
+    val currentIndex by remember { LxApp.app.playerRepository.state.map { it.queueIndex }.distinctUntilChanged() }
+        .collectAsState(initial = LxApp.app.playerRepository.state.value.queueIndex)
+    val isPlaying by remember { LxApp.app.playerRepository.state.map { it.isPlaying }.distinctUntilChanged() }
+        .collectAsState(initial = LxApp.app.playerRepository.state.value.isPlaying)
     var showClearConfirm by remember { mutableStateOf(false) }
     // 长按歌曲弹出的操作菜单目标（null = 未打开）
     var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
@@ -121,7 +130,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                         if (index == currentIndex) {
                             // 当前曲目：三条律动音柱（暂停时静帧），比单纯染色更易识别
                             PlayingIndicator(
-                                playing = state.isPlaying,
+                                playing = isPlaying,
                                 modifier = Modifier.size(24.dp),
                             )
                         } else {
