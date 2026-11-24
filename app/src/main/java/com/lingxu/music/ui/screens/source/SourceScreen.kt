@@ -254,13 +254,31 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                                         overflow = TextOverflow.Ellipsis,
                                         color = if (inUse) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
                                     )
+                                    // 对齐原版 List.tsx：版本号纯数字时补 v 前缀（formatVersionName），
+                                    // 并把脚本头部的 @description 单独一行展示。description 早已由
+                                    // ApiSourceRepository.matchInfo 解析入库，但 UI 此前只显示作者+版本，
+                                    // 用户在音源列表里看不到该脚本的用途说明。
                                     Text(
-                                        "${api.author} ${api.version}".trim(),
+                                        listOfNotNull(
+                                            api.version.takeIf { it.isNotBlank() }?.let { formatVersionName(it) },
+                                            api.author.takeIf { it.isNotBlank() },
+                                        ).joinToString("  "),
                                         fontSize = MiuixTheme.textStyles.body2.fontSize,
                                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
+                                    if (api.description.isNotBlank()) {
+                                        Text(
+                                            api.description,
+                                            fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                            // 描述至多两行：脚本头部注释已限制 36 字符 + "...",
+                                            // 两行足够完整展示，超长仍省略以免撑高列表行。
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                 }
                                 if (currentSource == api.id) {
                                     Text("✓ 使用中", color = MiuixTheme.colorScheme.primary)
@@ -390,3 +408,10 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         }
     }
 }
+
+/**
+ * 对齐原版 formatVersionName：版本号以数字开头时补 v 前缀（如 1.2.3 → v1.2.3），
+ * 已是 v 开头或非数字开头（如日期型）则原样显示。空串由调用方 takeIf 过滤，不进这里。
+ */
+private fun formatVersionName(version: String): String =
+    if (version.firstOrNull()?.isDigit() == true) "v$version" else version
