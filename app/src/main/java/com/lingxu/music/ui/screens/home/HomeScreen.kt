@@ -235,10 +235,12 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                             IconWrap(MiuixIcons.Music)
-                            // 长榜单名单行省略：与首页其余列表项一致，超长名称以省略号收尾，不撑破卡片
+                            // 长榜单名单行省略：与首页其余列表项一致，超长名称以省略号收尾，不撑破卡片。
+                            // weight(1f, fill=false)：把剩余宽度交给名称收缩，overflow 才会真正生效，
+                            // 否则 wrap 内容宽度时长名称会顶破卡片右侧。
                             Text(
                                 board.name,
-                                modifier = Modifier.padding(start = 12.dp),
+                                modifier = Modifier.padding(start = 12.dp).weight(1f, fill = false),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )

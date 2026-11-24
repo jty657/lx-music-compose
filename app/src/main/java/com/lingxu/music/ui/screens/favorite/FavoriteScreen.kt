@@ -100,11 +100,14 @@ fun FavoriteScreen(viewModel: FavoriteViewModel = viewModel()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = { viewModel.playAll(favorites) }) { Text("播放全部") }
             Spacer(Modifier.weight(1f))
-            // 长按加入列表此前无任何提示，用户无从发现（与音源页「长按音源可删除」同类）
+            // 长按加入列表此前无任何提示，用户无从发现（与音源页「长按音源可删除」同类）。
+            // 大字号/窄屏下补单行省略，避免长提示换行挤压左侧「播放全部」按钮。
             Text(
                 "长按歌曲可加入列表等更多操作",
                 fontSize = MiuixTheme.textStyles.footnote1.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.size(8.dp))

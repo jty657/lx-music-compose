@@ -129,6 +129,10 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                 "音源脚本编写说明：",
                 fontSize = MiuixTheme.textStyles.footnote1.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                // 与右侧 FAQ 按钮同处一行：大字号下允许前缀收缩省略，避免把按钮挤出屏幕
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
             TextActionButton(
                 text = "FAQ",
@@ -176,14 +180,17 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
 
         Spacer(Modifier.size(8.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text("自定义音源（${userApis.size}/20）", fontSize = MiuixTheme.textStyles.body2.fontSize)
             Spacer(Modifier.weight(1f))
-            // 删除入口是长按，缺少发现性提示，用户往往不知道如何删除已导入音源
+            // 删除入口是长按，缺少发现性提示，用户往往不知道如何删除已导入音源。
+            // 大字号下补单行省略，避免提示换行把计数行撑高。
             Text(
                 "长按音源可删除",
                 fontSize = MiuixTheme.textStyles.footnote1.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.size(4.dp))
