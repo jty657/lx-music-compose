@@ -285,7 +285,10 @@ object DesktopLyric {
         // 暂停时整体降到 55% 不透明度：不额外加图标，避免遮挡下层内容
         val target = if (state.isPlaying) 1f else 0.55f
         val root = container ?: return
-        if (!ValueAnimator.areAnimatorsEnabled()) {
+        // areAnimatorsEnabled 是 API 26 才有的：minSdk 24，必须门控后再调用
+        val animatorsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            ValueAnimator.areAnimatorsEnabled()
+        if (!animatorsEnabled) {
             root.alpha = target
         } else if (root.alpha != target) {
             root.animate().alpha(target).setDuration(180L).start()

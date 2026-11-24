@@ -135,14 +135,11 @@ fun SettingScreen(
     val desktopLyricEnabled by viewModel.desktopLyricEnabled.collectAsState(initial = false)
     val desktopLyricFontSize by viewModel.desktopLyricFontSize.collectAsState(initial = 18f)
     var localLyricFont by remember { mutableFloatStateOf(desktopLyricFontSize) }
-    // 持久化字号是异步读出来的：只在其首次到达时回填一次，
-    // 之后不再回灌（否则拖动滑块过程中会被旧值拽回，与倍速/模糊滑块同一处理约定）。
-    var lyricFontSeeded by remember { mutableStateOf(false) }
+    // 持久化字号是异步读出来的：用户尚未拖动前，跟随落盘值回填；
+    // 一旦用户开始拖动就不再回灌（否则拖动过程中会被旧值拽回，与倍速/模糊滑块同一约定）。
+    var lyricFontTouched by remember { mutableStateOf(false) }
     LaunchedEffect(desktopLyricFontSize) {
-        if (!lyricFontSeeded) {
-            lyricFontSeeded = true
-            localLyricFont = desktopLyricFontSize
-        }
+        if (!lyricFontTouched) localLyricFont = desktopLyricFontSize
     }
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
@@ -457,6 +454,7 @@ fun SettingScreen(
                 value = localLyricFont,
                 valueRange = 12f..28f,
                 onValueChange = {
+                    lyricFontTouched = true
                     localLyricFont = it
                     viewModel.setDesktopLyricFontSize(it)
                 },
