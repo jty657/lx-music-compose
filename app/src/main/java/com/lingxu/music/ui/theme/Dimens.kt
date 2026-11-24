@@ -33,6 +33,13 @@ object Dimens {
     /** 列表项内部 padding */
     val ItemPad: Dp = 8.dp
 
+    /**
+     * 空态 / 加载态的上下留白：全站空列表、加载中、重试提示共用同一垂直节奏。
+     * 此前 EmptyHint / LoadingHint / RetryHint 各自硬编码 56dp，改一处即可整体对齐，
+     * 避免后续某个页面单独调留白造成「空态忽高忽低」的漂移。
+     */
+    val EmptyStateVPadding: Dp = 56.dp
+
     /** 封面尺寸：列表行 44dp，迷你条 40dp，播放页自适应 */
     val CoverRow: Dp = 44.dp
     val CoverMini: Dp = 40.dp

@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -55,7 +56,7 @@ fun LoadingHint(
     Column(
         modifier
             .fillMaxWidth()
-            .padding(vertical = 56.dp),
+            .padding(vertical = Dimens.EmptyStateVPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.MotionBaseMs
 import top.yukonga.miuix.kmp.basic.Icon
@@ -63,11 +64,12 @@ fun EmptyHint(
                 // dp → px：graphicsLayer 的 translationY 是像素
                 translationY = offsetDp * density
             }
-            .padding(vertical = 56.dp),
+            .padding(vertical = Dimens.EmptyStateVPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
             icon,
+            // 装饰性图标：文案已由下方 Text 承载，读屏不应再播报一次「图标」。
             contentDescription = null,
             modifier = Modifier.size(40.dp),
             tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
