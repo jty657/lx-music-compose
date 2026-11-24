@@ -1,6 +1,48 @@
 # 更新日志
 
-## 第二十六轮：播放缓存 + 元数据缓存 + 音质角标（v1.7.0，本次）
+## 第二十七轮：列表显示设置对齐 + 音质角标去重 + 读屏语义（v1.7.1，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐，本轮三批改动均通过
+> `scripts/selfcheck.py` 静态自检与本地 `assembleRelease`（JDK 20 + SDK 37）构建。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **播放队列副标题接入列表显示设置**（`PlayQueueScreen.kt`）：原版 `list.isShowSource / isShowInterval /
+  isShowAlbumName` 三项开关此前在收藏页、搜索页、歌单/榜单详情均已生效，唯独播放队列固定显示
+  「歌手 · 来源」、无视设置。本轮按收藏页 `FavoriteCard` 同一套 `buildList` 组装逻辑接入三项开关，
+  全站列表页显示设置至此完全一致。
+
+### UI / 视觉层级
+
+- **搜索页音质角标去重**（`SearchScreen.kt`）：搜索结果此前在歌名右侧有 `QualityBadge` 角标、副标题下方
+  又有一行纯文字音质标签，是全站唯一的「双重音质」展示，多出的一行还撑高卡片、压缩长列表可见条数。
+  去重后只保留角标，与收藏/歌单/榜单/我的列表一致。
+- **音质角标换源刷新**（`QualityBadge.kt`）：角标档位此前用 `remember(music.id)` 缓存，同一首歌换源后
+  id 可能不变、但可用音质会变（如 128k 源切到 flac 源），导致角标停留在旧档位。key 纳入
+  `music.source / _qualitys / qualitys`，换源重组时重新判定。
+
+### 可访问性 / 响应式
+
+- **长按读屏语义化**（`SourceScreen.kt` / `SongListScreen.kt` / `MyListsScreen.kt`）：`GlassSurface` 的
+  `onLongClickLabel` 默认是「打开歌曲操作」，但音源页长按是删音源、歌单广场是收藏、我的列表是重命名，
+  TalkBack 会误播。三处分别传入准确标签（删除音源 / 收藏歌单 / 重命名列表）。
+- **音源导入按钮响应式**（`SourceScreen.kt`）：网络/文件/剪贴板三个导入按钮原用固定 `Row`，系统大字号或
+  窄屏下「剪贴板导入」被挤出屏幕。改 `LazyRow` + `spacedBy(8.dp)`，与搜索页音源 chip、多选底栏一致，
+  超出可横滑、按钮不压缩不裁切。
+
+### 已知差异 / 待确认
+
+- 音源「更新提示」开关当前仅存储状态、未接入实际更新检测（原版 `syncSourceList`）；完整实现需在数据库
+  保存脚本来源 URL 并新增网络检测与冲突提示，改动面偏大，本轮未纳入——列为后续待确认项。
+
+### 工程
+- 版本 1.7.0 → 1.7.1（versionCode 29 → 30）；README / ANALYSIS 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过；`./gradlew assembleRelease --offline` 三批 + 最终构建退出码均为 0。
+
+---
+
+## 第二十六轮：播放缓存 + 元数据缓存 + 音质角标（v1.7.0）
 
 > 对照原版 lx-music-mobile v1.9.2，本轮补三项此前**完全缺失**的能力：播放缓存（离线缓存）、
 > 歌词/链接元数据缓存的管理入口、列表音质角标。零新增依赖（`media3-datasource` 本就是
