@@ -67,12 +67,17 @@ class SearchViewModel : ViewModel() {
         viewModelScope.launch {
             history = LxApp.app.database.loadSearchHistory()
         }
-        // 热搜词来自内置 SDK（用户音源不提供热搜），失败静默为空由界面回退
+    }
+
+    /**
+     * 按音源拉取热搜（对齐原版 BlankView 的切源刷新热搜行为）。
+     * 热搜词来自内置 SDK，用户音源不提供：all（聚合）与 user_api 回落到 kw，与原版默认一致。
+     * 首次进入由 SearchScreen 的 selectedSource effect 触发，切源时再次触发，失败静默为空由界面回退。
+     */
+    fun refreshHot(source: String) {
+        val s = if (source == "all" || source.startsWith("user_api")) "kw" else source
         viewModelScope.launch {
-            val source = runCatching { LxApp.app.settings.currentApiSource() }
-                .getOrDefault("kw")
-                .let { if (it.startsWith("user_api")) "kw" else it }
-            runCatching { LxApp.app.musicRepository.getHotSearch(source) }
+            runCatching { LxApp.app.musicRepository.getHotSearch(s) }
                 .onSuccess { hotWords = it.take(12) }
         }
     }

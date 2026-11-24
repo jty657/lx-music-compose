@@ -108,8 +108,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                 else if (!viewModel.loading) viewModel.suggest(text, selectedSource)
             }
     }
-    // 切换音源后按新音源重取一次联想，保证下拉内容与 chip 选中项一致
+    // 音源切换后：热搜按新音源刷新（对齐原版切源重取热搜），联想词也按新音源重取，
+    // 保证下拉与热搜都与 chip 选中项一致。首次组合同样触发一次（selectedSource="all"→回落 kw），
+    // 因此 ViewModel 的 init 里不再单独加载热搜，避免首屏重复请求。
     androidx.compose.runtime.LaunchedEffect(selectedSource) {
+        viewModel.refreshHot(selectedSource)
         viewModel.setTipSource(selectedSource)
         val text = textFieldState.text.toString()
         if (text.isNotBlank() && !viewModel.loading) viewModel.suggest(text, selectedSource)
@@ -175,7 +178,16 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                 FilterChip(
                     label = SourceConst.displayName(source),
                     selected = selectedSource == source,
-                    onClick = { selectedSource = source },
+                    onClick = {
+                        if (selectedSource == source) return@FilterChip
+                        // 对齐原版 handleSourceChange：切源后若已有搜索词，立即按新源重搜，
+                        // 结果不再停留在旧音源（此前只改选中态，非要再点一次搜索才刷新）。
+                        selectedSource = source
+                        val query = textFieldState.text.toString().trim()
+                        if (viewModel.hasSearched && query.isNotBlank()) {
+                            viewModel.search(query, source)
+                        }
+                    },
                 )
             }
         }
