@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
@@ -135,6 +136,11 @@ fun FilterChip(
             label,
             color = textColor,
             fontSize = MiuixTheme.textStyles.body2.fontSize,
+            // 设置页字号 chip 用 weight 平分宽度，系统 1.5x 字号下文字可能换行、
+            // 撑高胶囊并挤歪同排其它 chip。统一单行省略：所有 chip label 都是短词，
+            // 正常字号下不会触发省略，仅作为大字号/窄屏的兜底（与全站文案同一语言）。
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

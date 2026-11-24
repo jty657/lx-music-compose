@@ -15,3 +15,4 @@ anthropic-skills/
 
 # 交付产物不入库（本地保留）
 dist/
+reports/
