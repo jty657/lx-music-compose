@@ -650,6 +650,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.ListOfLists(
                 modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                 onClick = { onOpen(list) },
                 onLongClick = { onRename(list) },
+                // 我的列表长按是「重命名列表」，非歌曲操作，读屏需如实播报。
+                onLongClickLabel = "重命名列表",
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                     Icon(

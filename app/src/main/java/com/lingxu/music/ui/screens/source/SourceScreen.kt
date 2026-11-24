@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
@@ -93,18 +94,27 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         ) {
         Spacer(Modifier.size(8.dp))
 
-        Row(Modifier.fillMaxWidth()) {
-            Button(onClick = { showUrlInput = true }) {
-                Text("网络导入")
+        // 三个导入按钮改横向可滚动：系统大字号或窄屏下，固定 Row 会把「剪贴板导入」挤出屏幕，
+        // 与搜索页音源 chip、多选底栏一致改 LazyRow，按钮既不压缩也不裁切，超出部分可横滑。
+        LazyRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                Button(onClick = { showUrlInput = true }) {
+                    Text("网络导入")
+                }
             }
-            Spacer(Modifier.size(8.dp))
-            Button(onClick = { filePicker.launch(arrayOf("text/*", "application/javascript")) }) {
-                Text("文件导入")
+            item {
+                Button(onClick = { filePicker.launch(arrayOf("text/*", "application/javascript")) }) {
+                    Text("文件导入")
+                }
             }
-            Spacer(Modifier.size(8.dp))
             // 剪贴板导入：对齐手机版「复制音源链接或脚本文本后一键导入」的习惯
-            Button(onClick = { viewModel.importFromClipboard() }) {
-                Text("剪贴板导入")
+            item {
+                Button(onClick = { viewModel.importFromClipboard() }) {
+                    Text("剪贴板导入")
+                }
             }
         }
 
@@ -198,6 +208,9 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                             onLongClick = {
                                 deletingId = api.id
                             },
+                            // 这里的长按是「删除音源」而非歌曲操作，读屏必须如实播报，
+                            // 否则TalkBack 用户会听到错误的「长按，打开歌曲操作」。
+                            onLongClickLabel = "删除音源",
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                                 Column(Modifier.weight(1f)) {

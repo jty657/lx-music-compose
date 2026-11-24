@@ -196,6 +196,8 @@ fun SongListScreen(
                         navigator.push(Screen.SongListDetail(item.source, item.id, item.name))
                     },
                     onLongClick = { viewModel.collect(item) },
+                    // 歌单广场长按是「收藏歌单」，非歌曲操作，读屏需如实播报。
+                    onLongClickLabel = "收藏歌单",
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
                         top.yukonga.miuix.kmp.basic.Icon(
