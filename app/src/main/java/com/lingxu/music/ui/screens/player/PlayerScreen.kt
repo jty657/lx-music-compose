@@ -116,7 +116,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val scope = rememberCoroutineScope()
     val lyricFontScale by LxApp.app.settings.lyricFontSize.collectAsState(initial = 1f)
     val zoomActiveLrc by LxApp.app.settings.isZoomActiveLrc.collectAsState(initial = false)
-    val showLrcTranslation by LxApp.app.settings.showLyricTranslation.collectAsState(initial = true)
+    // initial 与落盘默认（SettingsRepository: false，原版 defaultSetting 亦为 false）一致：
+    // 此前写死 true 会让未改过设置的用户冷启动先闪出翻译行、DataStore 读到 false 后再熄灭。
+    val showLrcTranslation by LxApp.app.settings.showLyricTranslation.collectAsState(initial = false)
     val showLrcRoma by LxApp.app.settings.showLyricRoma.collectAsState(initial = false)
     val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
     // 原版 playDetail.isShowLyricProgressSetting：手动滚动歌词时的逐句定位线
@@ -299,6 +301,29 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 reduceMotion = reduceMotion,
                 onSeek = { viewModel.seekTo(it) },
             )
+
+            // 原版 Status.tsx 在时间行显示加载/缓冲状态文案（player__buffering「缓冲中...」）。
+            // 移植版 state.loading 早已按 Player.STATE_BUFFERING 维护，但 UI 从未展示：
+            // 切歌取链接/缓冲时进度条不动、无任何反馈，用户以为卡死。这里在错误提示同一位置
+            // 补一行次要色状态（与 error 互斥），淡入淡出、减弱动效静帧到位，只动 alpha 不挤布局。
+            androidx.compose.animation.AnimatedVisibility(
+                visible = state.loading && state.error == null,
+                enter = androidx.compose.animation.fadeIn(
+                    animationSpec = tween(if (reduceMotion) 0 else 180),
+                ),
+                exit = androidx.compose.animation.fadeOut(
+                    animationSpec = tween(if (reduceMotion) 0 else 180),
+                ),
+            ) {
+                Text(
+                    "缓冲中…",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier
+                        .padding(bottom = 4.dp)
+                        .semantics { contentDescription = "缓冲中" },
+                )
+            }
 
             state.error?.let { err ->
                 Row(
@@ -809,11 +834,15 @@ private fun LyricLineRow(
                 androidx.compose.ui.text.TextStyle.Default
             },
         )
+        // 罗马音/翻译副行字号随主歌词等比缩放（原版 Lyric.tsx 用 size * 0.8）：
+        // 此前固定 footnote1，用户调大「歌词字号」时主行变大、副行不变，层级失衡。
+        // 用 baseSp（已含 fontScale）乘 0.8，字号设置对两行一致生效，且不引入新变量。
+        val subSp = baseSp * 0.8f
         if (showRoma) {
             line.roma?.let { roma ->
                 Text(
                     roma,
-                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    fontSize = subSp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
@@ -822,7 +851,7 @@ private fun LyricLineRow(
             line.translation?.let { tr ->
                 Text(
                     tr,
-                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    fontSize = subSp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
