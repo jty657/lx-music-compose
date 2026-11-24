@@ -63,6 +63,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -123,6 +124,19 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
     val reduceMotion = LocalReduceMotion.current
     var showMore by remember { mutableStateOf(false) }
+    // 手动切到下一首且发生回绕时的轻提示（对齐原版 toast「已回到列表开头」的语义）。
+    // 仅在用户主动点「下一首」时出现，自动切歌不打扰。
+    var wrappedTip by remember { mutableStateOf(false) }
+    LaunchedEffect(wrappedTip) {
+        if (wrappedTip) {
+            kotlinx.coroutines.delay(1600)
+            wrappedTip = false
+        }
+    }
+    // 下一首统一入口：回绕时给一次轻提示
+    val goNext: () -> Unit = {
+        if (viewModel.next()) wrappedTip = true
+    }
     // 播放模式行横向滚动状态：只用于「右侧是否还有内容」的渐隐提示
     val modeScrollState = rememberScrollState()
 
@@ -242,6 +256,30 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
 
             Spacer(Modifier.height(12.dp))
 
+            // 回绕轻提示：队尾点「下一首」回到第一首时，在原位淡入一行小字，
+            // 1.6s 后自动淡出（只动 alpha/位移，不挤动下方歌词）。
+            androidx.compose.animation.AnimatedVisibility(
+                visible = wrappedTip,
+                enter = androidx.compose.animation.fadeIn(
+                    animationSpec = tween(if (reduceMotion) 0 else 180),
+                ) + androidx.compose.animation.slideInVertically(
+                    animationSpec = tween(if (reduceMotion) 0 else 180),
+                    initialOffsetY = { -it / 3 },
+                ),
+                exit = androidx.compose.animation.fadeOut(
+                    animationSpec = tween(if (reduceMotion) 0 else 200),
+                ),
+            ) {
+                Text(
+                    "已回到列表开头",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(bottom = 4.dp)
+                        .semantics { contentDescription = "已回到列表开头" },
+                )
+            }
+
             // 只传歌词视图真正依赖的值，而非整个 PlayState：positionMs 每 500ms 变化，
             // 传整个 state 会让歌词列表每 500ms 全量重组；拆分后只有当行号/歌曲变化时才重组。
             LyricView(
@@ -275,7 +313,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                     // 统一走 TextActionButton：48dp 命中区 + 按压缩放 + Role.Button + 静帧降级
                     TextActionButton(
                         text = "下一首",
-                        onClick = { viewModel.next() },
+                        onClick = goNext,
                         color = MiuixTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp),
                     )
@@ -330,7 +368,7 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                         Spacer(Modifier.size(20.dp))
                         PlayerMainButton(playing = state.isPlaying) { viewModel.togglePlay() }
                         Spacer(Modifier.size(20.dp))
-                        PlayerIconButton(MiuixIcons.Forward, 32.dp, "下一首") { viewModel.next() }
+                        PlayerIconButton(MiuixIcons.Forward, 32.dp, "下一首") { goNext() }
                     }
 
                     Spacer(Modifier.height(10.dp))

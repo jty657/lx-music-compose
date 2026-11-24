@@ -647,18 +647,23 @@ class PlayerRepository(context: Context) {
         saveLastPlay()
     }
 
-    fun next() {
-        if (_state.value.queue.isEmpty()) return
+    /** 下一首：先轮到队尾，再从头部重新开始。返回本次是否回绕（界面据此提示「已回到列表开头」） */
+    fun next(): Boolean {
+        if (_state.value.queue.isEmpty()) return false
         // 手动切歌在队尾/队首要回绕（原版 playNext/playPrev 会把 single/list 重映射成 listLoop）
+        val wrapped: Boolean
         if (player.shuffleModeEnabled) {
-            if (player.hasNextMediaItem()) player.seekToNextMediaItem() else player.seekTo(0, 0L)
+            wrapped = !player.hasNextMediaItem()
+            if (!wrapped) player.seekToNextMediaItem() else player.seekTo(0, 0L)
         } else {
             val last = _state.value.queue.lastIndex
-            val target = if (player.currentMediaItemIndex < last) player.currentMediaItemIndex + 1 else 0
+            wrapped = player.currentMediaItemIndex >= last
+            val target = if (!wrapped) player.currentMediaItemIndex + 1 else 0
             player.seekTo(target, 0L)
         }
         // 不在 seekTo 后立即 saveLastPlay：此刻 state.current 还是切歌前的旧曲目。
         // onMediaItemTransition 会在 state 更新后统一保存正确曲目。
+        return wrapped
     }
 
     fun prev() {

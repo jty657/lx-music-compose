@@ -75,6 +75,14 @@ fun SongListDetailScreen(
     var hasMore by remember { mutableStateOf(true) }
     var page by remember { mutableStateOf(1) }
     var error by remember { mutableStateOf<String?>(null) }
+    // 收藏状态：收藏成功后立即变为「已收藏」，避免用户重复点击反复走一次全量同步。
+    // 以 myListsRepository 的列表快照为准（同一歌单已有对应 sourceListId 的本地列表即视为已收藏）。
+    val myLists by LxApp.app.myListsRepository.lists.collectAsState()
+    val collected = remember(myLists, source, id) {
+        myLists.any { it.source == source && it.sourceListId == id }
+    }
+    var collecting by remember { mutableStateOf(false) }
+    var collectTip by remember { mutableStateOf<String?>(null) }
     val searchState = remember { androidx.compose.foundation.text.input.TextFieldState() }
     val keyword = searchState.text.toString()
     val shownMusic = remember(musicList, keyword) {
@@ -131,9 +139,31 @@ fun SongListDetailScreen(
                 Text("播放全部")
             }
             Spacer(Modifier.size(8.dp))
-            Button(onClick = { viewModel.collect(source, id, name) }) {
-                Text("收藏歌单")
+            // 已收藏时按钮变为不可点的「已收藏」（对齐原版：重复收藏会弹「歌单已存在」确认框，
+            // 本实现选择更轻的禁用态，避免用户误以为点击无效）
+            Button(
+                onClick = {
+                    if (collected || collecting) return@Button
+                    collecting = true
+                    collectTip = null
+                    viewModel.collect(source, id, name, musicList.size) { ok ->
+                        collecting = false
+                        collectTip = if (ok) "已收藏到「我的列表」" else "收藏失败，请检查网络后重试"
+                    }
+                },
+                enabled = !collected && !collecting,
+            ) {
+                Text(if (collected) "已收藏" else "收藏歌单")
             }
+        }
+        // 收藏结果轻提示：仅在页内展示一行文字，不引入 Snackbar 依赖
+        collectTip?.let { tip ->
+            Spacer(Modifier.size(6.dp))
+            Text(
+                tip,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                color = if (collected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
         }
 
         Spacer(Modifier.size(8.dp))
@@ -255,14 +285,19 @@ class SongListDetailViewModel : ViewModel() {
         }
     }
 
-    fun collect(source: String, id: String, name: String) {
+    fun collect(source: String, id: String, name: String, knownSize: Int = 0, onDone: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            runCatching {
-                val list = LxApp.app.myListsRepository.collectSongList(
+            val ok = runCatching {
+                val existing = LxApp.app.myListsRepository.lists.value
+                    .firstOrNull { it.source == source && it.sourceListId == id }
+                val list = existing ?: LxApp.app.myListsRepository.collectSongList(
                     com.lingxu.music.core.model.SongListInfo(id = id, name = name, source = source),
                 )
+                // 对齐原版 handleCollect：收藏即同步全部歌曲。首屏已有内容时不必等同步完成即可反馈
                 LxApp.app.myListsRepository.syncOnlineList(list)
-            }
+                true
+            }.getOrDefault(false)
+            onDone(ok)
         }
     }
 }
