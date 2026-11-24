@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -133,6 +134,17 @@ fun SettingScreen(
     LaunchedEffect(showPlayCache) {
         if (showPlayCache) playCacheUsedBytes = com.lingxu.music.core.player.PlaybackCache.sizeBytes()
     }
+
+    // ============ 歌词与链接缓存（对齐原版 MetaCache） ============
+    // 条数在进入「其他」分区与清理后各读一次：LruCache 快照是 O(n) 拷贝，不做轮询。
+    var showMetaCache by remember { mutableStateOf(false) }
+    var metaLyricCount by remember { mutableIntStateOf(0) }
+    var metaUrlCount by remember { mutableIntStateOf(0) }
+    fun refreshMetaCounts() {
+        metaLyricCount = com.lingxu.music.core.repository.MetaCache.lyricCount()
+        metaUrlCount = com.lingxu.music.core.repository.MetaCache.urlCount()
+    }
+    LaunchedEffect(showMetaCache) { if (showMetaCache) refreshMetaCounts() }
 
     // initial 与落盘默认（SettingsRepository）保持一致，避免首帧闪出错误状态再跳变。
     val showLyricTranslation by viewModel.showLyricTranslation.collectAsState(initial = false)
@@ -598,6 +610,13 @@ fun SettingScreen(
                 toast = if (size > 0) "已清理 ${formatSize(size)} 缓存" else "没有可清理的缓存"
             },
         )
+        ArrowPreference(
+            title = "歌词与链接缓存",
+            // 对齐原版「元数据缓存」：分别显示歌词/换源地址条数，可分别清理。
+            // 移植版这两类缓存都在内存里，清理即时生效，无需重启。
+            summary = "歌词 ${metaLyricCount} 条 · 播放链接 ${metaUrlCount} 条",
+            onClick = { showMetaCache = true },
+        )
 
         // ============ 系统能力（对齐原版 utils / 版本更新源） ============
         SectionTitle("系统")
@@ -893,6 +912,54 @@ fun SettingScreen(
                     }) { Text("清空缓存") }
                     Spacer(Modifier.size(8.dp))
                     Button(onClick = { showPlayCache = false }) { Text("完成") }
+                }
+            }
+        }
+    }
+
+    if (showMetaCache) {
+        GlassDialog(onDismissRequest = { showMetaCache = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("歌词与链接缓存", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    "切歌/回上一首时直接复用，命中后不再重复取词与取址。清空后下次播放会重新获取。",
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                Spacer(Modifier.size(12.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("歌词", modifier = Modifier.weight(1f))
+                    Text(
+                        "$metaLyricCount 条",
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    Button(onClick = {
+                        val n = com.lingxu.music.core.repository.MetaCache.clearLyric()
+                        refreshMetaCounts()
+                        toast = if (n > 0) "已清理 $n 条歌词缓存" else "没有可清理的歌词缓存"
+                    }) { Text("清空") }
+                }
+                Spacer(Modifier.size(8.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("播放链接", modifier = Modifier.weight(1f))
+                    Text(
+                        "$metaUrlCount 条",
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    Button(onClick = {
+                        val n = com.lingxu.music.core.repository.MetaCache.clearUrl()
+                        refreshMetaCounts()
+                        toast = if (n > 0) "已清理 $n 条链接缓存" else "没有可清理的链接缓存"
+                    }) { Text("清空") }
+                }
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { showMetaCache = false }) { Text("完成") }
                 }
             }
         }

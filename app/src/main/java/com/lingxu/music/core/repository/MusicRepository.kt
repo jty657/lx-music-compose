@@ -138,8 +138,14 @@ class MusicRepository(
     // ================= 歌词 =================
 
     suspend fun getLyricInfo(musicInfo: MusicInfo, allowToggleSource: Boolean = true): LyricInfo {
+        // 命中歌词缓存直接返回：切回上一首 / 换首再回来不再重复取词，
+        // 也避免再次触发下面「五源换源」的多次网络请求。只缓存有效歌词，空结果不占用缓存。
+        MetaCache.getLyric(musicInfo.source, musicInfo.id)?.let { return it }
         val primary = fetchLyricOnce(musicInfo)
-        if (!allowToggleSource || isValidLyric(primary.lyric)) return primary
+        if (!allowToggleSource || isValidLyric(primary.lyric)) {
+            if (isValidLyric(primary.lyric)) MetaCache.putLyric(musicInfo.source, musicInfo.id, primary)
+            return primary
+        }
         // 当前源没有带时间标签的有效歌词时换源重取（对应原版的换源取词）：
         // 在其它内置源搜同名同歌手，取到第一个有效歌词就返回
         for (source in SourceConst.ONLINE.filter { it != musicInfo.source }) {
@@ -148,7 +154,11 @@ class MusicRepository(
                     .firstOrNull { it.name == musicInfo.name && it.singer == musicInfo.singer }
             }.getOrNull() ?: continue
             val lyric = runCatching { fetchLyricOnce(candidate) }.getOrNull() ?: continue
-            if (isValidLyric(lyric.lyric)) return lyric
+            if (isValidLyric(lyric.lyric)) {
+                // 换源取到的歌词按「原歌曲」的键缓存：下次播放同一首仍能直接命中
+                MetaCache.putLyric(musicInfo.source, musicInfo.id, lyric)
+                return lyric
+            }
         }
         return primary
     }
@@ -231,12 +241,22 @@ class MusicRepository(
     }
 
     private suspend fun getOnlineMusicUrl(musicInfo: MusicInfo, targetQuality: String): String {
-        if (SourceConst.isUserApi(currentUserApiId())) {
-            val oldInfo = musicInfo.toOldMusicInfo()
-            return engineManager.getMusicUrl(musicInfo.source, oldInfo, targetQuality)
+        // 命中链接缓存（10 分钟有效）直接返回：反复播放/切回上一首不再重新取址。
+        // 本地文件没有签名过期问题，走下面的 local 分支。
+        if (musicInfo.source != SourceConst.LOCAL) {
+            MetaCache.getUrl(musicInfo.source, musicInfo.id, targetQuality)?.let { return it }
         }
-        // 内置源不提供取址：必须导入用户音源（与原版一致）
-        return sdk.getMusicUrl(musicInfo.source, musicInfo.toOldMusicInfo(), targetQuality)
+        val url = if (SourceConst.isUserApi(currentUserApiId())) {
+            val oldInfo = musicInfo.toOldMusicInfo()
+            engineManager.getMusicUrl(musicInfo.source, oldInfo, targetQuality)
+        } else {
+            // 内置源不提供取址：必须导入用户音源（与原版一致）
+            sdk.getMusicUrl(musicInfo.source, musicInfo.toOldMusicInfo(), targetQuality)
+        }
+        if (musicInfo.source != SourceConst.LOCAL && url.isNotBlank()) {
+            MetaCache.putUrl(musicInfo.source, musicInfo.id, targetQuality, url)
+        }
+        return url
     }
 
     /** 换源搜索并尝试取 URL（原版 findMusic + getOnlineOtherSourceMusicUrl 简化实现） */

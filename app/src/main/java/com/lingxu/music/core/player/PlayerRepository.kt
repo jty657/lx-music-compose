@@ -11,6 +11,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.lingxu.music.core.model.LyricInfo
 import com.lingxu.music.core.model.MusicInfo
+import com.lingxu.music.core.repository.MetaCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -338,6 +339,9 @@ class PlayerRepository(private val context: Context) {
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 _state.update { it.copy(error = error.message ?: "播放失败", loading = false) }
+                // 播放链接可能已被源站判失效（签名过期/防盗链），把这首歌的地址缓存作废：
+                // 否则 5 秒后自动切回来（或用户重播）仍拿到同一个坏链接，形成死循环。
+                _state.value.current?.let { MetaCache.invalidateUrl(it.source, it.id) }
                 // 对齐原版：音频加载出错 5 秒后自动切下一首（lang 里 player__error 即「5 秒后切换下一首」），
                 // 否则某一首取不到播放链接时，播放会永久停在这一首。
                 errorNextJob?.cancel()
