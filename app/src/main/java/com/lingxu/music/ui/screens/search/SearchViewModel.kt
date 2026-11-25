@@ -32,6 +32,14 @@ class SearchViewModel : ViewModel() {
     var searchType by mutableStateOf(SearchType.MUSIC)
         private set
 
+    /**
+     * 持久化的搜索音源（对应原版 search.source）。null = 冷启动尚未读到。
+     * 与 searchType 同属原版 getSearchSetting/saveSearchSetting：切源即落盘、冷启动恢复。
+     * 移植版此前 selectedSource 仅 rememberSaveable，进程死亡后回到 "all"，重启丢失用户选择。
+     */
+    var persistedSource by mutableStateOf<String?>(null)
+        private set
+
     /** 搜索历史（最近在前，最多 30 条） */
     var history by mutableStateOf<List<String>>(emptyList())
         private set
@@ -71,6 +79,10 @@ class SearchViewModel : ViewModel() {
         viewModelScope.launch {
             val saved = LxApp.app.settings.searchType.first()
             searchType = if (saved == "songlist") SearchType.SONGLIST else SearchType.MUSIC
+        }
+        // 对齐原版 getSearchSetting 的 source 字段：冷启动恢复上次搜索音源
+        viewModelScope.launch {
+            persistedSource = LxApp.app.settings.searchSource.first()
         }
     }
 
@@ -185,6 +197,13 @@ class SearchViewModel : ViewModel() {
         songLists = emptyList()
         hasMore = false
         if (lastQuery.isNotBlank()) search(lastQuery, lastSource)
+    }
+
+    /** 对齐原版 saveSearchSetting({source})：切源即时落盘，冷启动恢复（白名单由调用方校验） */
+    fun saveSource(source: String) {
+        viewModelScope.launch {
+            LxApp.app.settings.setSearchSource(source)
+        }
     }
 
     private suspend fun recordHistory(text: String) {

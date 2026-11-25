@@ -91,6 +91,21 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
     val textFieldState = remember { TextFieldState() }
     val sources = listOf("all") + SourceConst.ONLINE
     var selectedSource by rememberSaveable { mutableStateOf("all") }
+    val sourceRowState = rememberLazyListState()
+    // 对齐原版 getSearchSetting 的 source：冷启动恢复上次选择的搜索音源。
+    // 持久化值可能来自旧版本/自定义源，做白名单校验，非法值一律回落 "all"，避免选中态落空。
+    val persistedSource = viewModel.persistedSource
+    androidx.compose.runtime.LaunchedEffect(persistedSource) {
+        val saved = persistedSource
+        if (saved != null && saved in sources && selectedSource == "all") {
+            selectedSource = saved
+        }
+    }
+    // 恢复的音源（如 wy/mg）在 chip 行较靠后，自动滚到选中项，避免选中态停在可视区外。
+    androidx.compose.runtime.LaunchedEffect(selectedSource) {
+        val idx = sources.indexOf(selectedSource)
+        if (idx >= 0) sourceRowState.animateScrollToItem(idx)
+    }
     // 长按歌曲弹出的操作菜单目标（null = 未打开）
     var actionTarget by remember { mutableStateOf<MusicInfo?>(null) }
     // 搜索结果副标题字段开关：对齐原版 list.isShowSource / isShowInterval / isShowAlbumName。
@@ -170,6 +185,7 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
 
         // 音源选择（横向滚动：6 个按钮挤在固定 Row 里会溢出屏幕）
         LazyRow(
+            state = sourceRowState,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -183,6 +199,8 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                         // 对齐原版 handleSourceChange：切源后若已有搜索词，立即按新源重搜，
                         // 结果不再停留在旧音源（此前只改选中态，非要再点一次搜索才刷新）。
                         selectedSource = source
+                        // 对齐原版 handleSourceChange：切源即时落盘，冷启动恢复（原版 saveSearchSetting({source})）
+                        viewModel.saveSource(source)
                         val query = textFieldState.text.toString().trim()
                         if (viewModel.hasSearched && query.isNotBlank()) {
                             viewModel.search(query, source)

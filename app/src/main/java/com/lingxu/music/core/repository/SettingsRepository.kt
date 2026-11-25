@@ -64,6 +64,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_IS_SHOW_HISTORY_SEARCH = booleanPreferencesKey("search.isShowHistorySearch")
         // 原版 search.type：记住用户上次选择的搜索类型（音乐/歌单），冷启动恢复
         val KEY_SEARCH_TYPE = stringPreferencesKey("search.type")
+        // 原版 search.source：与上同属 getSearchSetting/saveSearchSetting，记住用户上次选择的搜索音源
+        val KEY_SEARCH_SOURCE = stringPreferencesKey("search.source")
         // list
         val KEY_IS_SHOW_SOURCE = booleanPreferencesKey("list.isShowSource")
         val KEY_IS_SHOW_ALBUM_NAME = booleanPreferencesKey("list.isShowAlbumName")
@@ -155,6 +157,7 @@ class SettingsRepository(private val context: Context) {
     val isShowHistorySearch: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_HISTORY_SEARCH] ?: false }
     // 搜索类型：对齐原版 search.type（"music" / "songlist"），默认音乐
     val searchType: Flow<String> = context.dataStore.data.map { it[KEY_SEARCH_TYPE] ?: "music" }
+    val searchSource: Flow<String> = context.dataStore.data.map { it[KEY_SEARCH_SOURCE] ?: "all" }
 
     // ================= list =================
 
@@ -232,6 +235,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setIsShowHotSearch(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_HOT_SEARCH] = value }
     suspend fun setIsShowHistorySearch(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_HISTORY_SEARCH] = value }
     suspend fun setSearchType(value: String) = context.dataStore.edit { it[KEY_SEARCH_TYPE] = value }
+    suspend fun setSearchSource(value: String) = context.dataStore.edit { it[KEY_SEARCH_SOURCE] = value }
 
     suspend fun setIsShowSource(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_SOURCE] = value }
     suspend fun setIsShowAlbumName(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_ALBUM_NAME] = value }
