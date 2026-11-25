@@ -81,6 +81,8 @@ object DesktopLyric {
     private var textGravity: Int = Gravity.CENTER
     /** 悬浮歌词显示行数（对齐原版 desktopLyric.maxLineNum）：1~8，默认 5。单行模式下强制为 1 */
     private var maxLineNum: Int = 5
+    /** 悬浮窗宽度占屏幕的百分比（对齐原版 desktopLyric.width）：10~100，默认 100 */
+    private var widthPercent: Int = 100
     /** 上一次刷新用的内容指纹：只有歌词行/播放状态变化才改 TextView，避免每 500ms 白改一次 */
     private var lastKey: String? = null
 
@@ -190,6 +192,39 @@ object DesktopLyric {
     }
 
     /**
+     * 悬浮窗宽度百分比（对齐原版 desktopLyric.width，10~100，默认 100）。
+     *
+     * 窗口已存在时按新百分比重算宽度并 `updateViewLayout`——只改 width、保留当前 x/y 位置，
+     * 避免调宽度时歌词跳回初始位置。不重建窗口、不触碰播放内核，
+     * 最坏情况（updateViewLayout 失败）保持原宽度。
+     */
+    fun setWidthPercent(value: Int) {
+        val clamped = value.coerceIn(10, 100)
+        if (widthPercent == clamped) return
+        widthPercent = clamped
+        val view = container ?: return
+        val current = params ?: return
+        val wm = windowManager ?: return
+        current.width = computeWidth(view.context)
+        runCatching { wm.updateViewLayout(view, current) }
+    }
+
+    /**
+     * 按当前 [widthPercent] 计算悬浮窗宽度（px）。start 与 setWidthPercent 共用，保证两处一致：
+     * 100% 保留「屏幕宽 - 24dp」内边距观感，低于 100% 按占比计算，最小 160dp 保证可读。
+     */
+    private fun computeWidth(context: android.content.Context): Int {
+        val density = context.resources.displayMetrics.density
+        fun dp(value: Int): Int = (value * density).toInt()
+        val screenW = context.resources.displayMetrics.widthPixels
+        return if (widthPercent >= 100) {
+            (screenW - dp(24)).coerceAtLeast(dp(160))
+        } else {
+            (screenW * widthPercent / 100f).toInt().coerceAtLeast(dp(160))
+        }
+    }
+
+    /**
      * 显示悬浮歌词。调用前应确保 [canShow] 为 true；
      * 已显示时重复调用是安全的空操作。
      */
@@ -201,7 +236,8 @@ object DesktopLyric {
         fun dp(value: Int): Int = (value * density).toInt()
 
         screenHeightPx = context.resources.displayMetrics.heightPixels
-        val width = (context.resources.displayMetrics.widthPixels - dp(24)).coerceAtLeast(dp(160))
+        // 悬浮窗宽度占屏幕百分比（原版 desktopLyric.width，默认 100）
+        val width = computeWidth(context)
 
         val main = TextView(context).apply {
             setTextColor(Color.WHITE)

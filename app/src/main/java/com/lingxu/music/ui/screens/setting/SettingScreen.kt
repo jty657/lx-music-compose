@@ -182,6 +182,13 @@ fun SettingScreen(
     LaunchedEffect(desktopLyricMaxLineNum) {
         if (!lyricMaxLineTouched) localLyricMaxLineNum = desktopLyricMaxLineNum
     }
+    // 悬浮歌词悬浮窗宽度（原版 desktopLyric.width，10~100，默认 100）
+    val desktopLyricWidth by viewModel.desktopLyricWidth.collectAsState(initial = 100)
+    var localLyricWidth by remember { mutableIntStateOf(desktopLyricWidth) }
+    var lyricWidthTouched by remember { mutableStateOf(false) }
+    LaunchedEffect(desktopLyricWidth) {
+        if (!lyricWidthTouched) localLyricWidth = desktopLyricWidth
+    }
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
@@ -207,6 +214,7 @@ fun SettingScreen(
             viewModel.commitDesktopLyricFontSize()
             viewModel.commitDesktopLyricOpacity()
             viewModel.commitDesktopLyricMaxLineNum()
+            viewModel.commitDesktopLyricWidth()
         }
     }
 
@@ -544,6 +552,20 @@ fun SettingScreen(
                     val v = it.toInt().coerceIn(1, 8)
                     localLyricMaxLineNum = v
                     viewModel.setDesktopLyricMaxLineNum(v)
+                },
+            )
+            // 悬浮窗宽度（原版 desktopLyric.width，10~100，默认 100）：
+            // 100% 保留屏幕宽减内边距的历史观感，调小可让歌词不遮挡屏幕两侧内容。
+            SliderPreference(
+                title = "歌词宽度",
+                summary = "$localLyricWidth%",
+                value = localLyricWidth.toFloat(),
+                valueRange = 10f..100f,
+                onValueChange = {
+                    lyricWidthTouched = true
+                    val v = it.toInt().coerceIn(10, 100)
+                    localLyricWidth = v
+                    viewModel.setDesktopLyricWidth(v)
                 },
             )
             SwitchPreference(

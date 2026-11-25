@@ -157,6 +157,10 @@ class LxApp : Application() {
         appScope.launch {
             settings.desktopLyricMaxLineNum.catch { }.collect { DesktopLyric.setMaxLineNum(it) }
         }
+        // 桌面歌词悬浮窗宽度（原版 desktopLyric.width）：冷启动/设置变更后同步给悬浮窗。
+        appScope.launch {
+            settings.desktopLyricWidth.catch { }.collect { DesktopLyric.setWidthPercent(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {

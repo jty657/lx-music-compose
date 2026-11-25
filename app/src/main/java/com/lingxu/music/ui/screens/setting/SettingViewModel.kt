@@ -88,6 +88,8 @@ class SettingViewModel : ViewModel() {
     val desktopLyricTextPositionX: StateFlow<String> = state(settings.desktopLyricTextPositionX, "center")
     // 原版 desktopLyric.maxLineNum：悬浮歌词显示行数 1~8，默认 5
     val desktopLyricMaxLineNum: StateFlow<Int> = state(settings.desktopLyricMaxLineNum, 5)
+    // 原版 desktopLyric.width：悬浮窗宽度百分比 10~100，默认 100
+    val desktopLyricWidth: StateFlow<Int> = state(settings.desktopLyricWidth, 100)
 
     // ============ 搜索 ============
     val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, false)
@@ -302,6 +304,26 @@ class SettingViewModel : ViewModel() {
         pendingDesktopLyricMaxLineNum = null
         clearThrottle("desktopLyricMaxLineNum")
         launch { settings.setDesktopLyricMaxLineNum(value) }
+    }
+
+    /** 桌面歌词宽度（原版 width）：滑块回调即时生效，节流写盘，离开页面补写 */
+    private var pendingDesktopLyricWidth: Int? = null
+
+    fun setDesktopLyricWidth(value: Int) {
+        val v = value.coerceIn(10, 100)
+        pendingDesktopLyricWidth = v
+        com.lingxu.music.core.system.DesktopLyric.setWidthPercent(v)
+        if (throttle("desktopLyricWidth", 150)) {
+            pendingDesktopLyricWidth = null
+            launch { settings.setDesktopLyricWidth(v) }
+        }
+    }
+
+    fun commitDesktopLyricWidth() {
+        val value = pendingDesktopLyricWidth ?: return
+        pendingDesktopLyricWidth = null
+        clearThrottle("desktopLyricWidth")
+        launch { settings.setDesktopLyricWidth(value) }
     }
 
     /** 桌面歌词不透明度：滑块高频回调，立即生效 + 节流写盘（同字号），离开页面补写 */

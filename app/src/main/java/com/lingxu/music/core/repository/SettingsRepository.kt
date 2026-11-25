@@ -92,6 +92,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_DESKTOP_LYRIC_TEXT_POSITION_X = stringPreferencesKey("desktopLyric.textPosition.x")
         // 原版 desktopLyric.maxLineNum：悬浮歌词最多显示行数 1~8，默认 5
         val KEY_DESKTOP_LYRIC_MAX_LINE_NUM = androidx.datastore.preferences.core.intPreferencesKey("desktopLyric.maxLineNum")
+        // 原版 desktopLyric.width：悬浮窗宽度占屏幕的百分比 10~100，默认 100
+        val KEY_DESKTOP_LYRIC_WIDTH = androidx.datastore.preferences.core.intPreferencesKey("desktopLyric.width")
         // userApi
         val KEY_ENABLE_USER_API_LOG = booleanPreferencesKey("userApi.log")
         const val LANG_SYSTEM = "system"
@@ -210,6 +212,10 @@ class SettingsRepository(private val context: Context) {
     val desktopLyricMaxLineNum: Flow<Int> = context.dataStore.data.map {
         (it[KEY_DESKTOP_LYRIC_MAX_LINE_NUM] ?: 5).coerceIn(1, 8)
     }
+    // 原版 desktopLyric.width：默认 100%（铺满），容错钳制读到的异常值
+    val desktopLyricWidth: Flow<Int> = context.dataStore.data.map {
+        (it[KEY_DESKTOP_LYRIC_WIDTH] ?: 100).coerceIn(10, 100)
+    }
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
@@ -265,6 +271,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDesktopLyricOpacity(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_OPACITY] = value.coerceIn(10, 100) }
     suspend fun setDesktopLyricTextPositionX(value: String) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_TEXT_POSITION_X] = value }
     suspend fun setDesktopLyricMaxLineNum(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_MAX_LINE_NUM] = value.coerceIn(1, 8) }
+    suspend fun setDesktopLyricWidth(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_WIDTH] = value.coerceIn(10, 100) }
 
     suspend fun currentApiSource(): String = apiSource.first()
     suspend fun currentQuality(): String = quality.first()

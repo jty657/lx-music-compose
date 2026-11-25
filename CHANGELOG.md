@@ -1,5 +1,33 @@
 # 更新日志
 
+## 第三十六轮：悬浮歌词宽度设置（v1.8.1，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **悬浮歌词宽度设置**（`SettingsRepository.kt` / `SettingViewModel.kt` / `DesktopLyric.kt` / `SettingScreen.kt`）：
+  原版 `desktopLyric.width`（10~100%，默认 100%）此前移植版完全缺失——悬浮窗宽度固定为
+  「屏幕宽 − 24dp」，窄屏/横屏或想让歌词不遮挡两侧内容时无法调整。本轮沿上一轮
+  `maxLineNum` 的同一条「DataStore → ViewModel → 原生悬浮窗」链路补齐：
+  - 新增 `desktopLyric.width` 偏好键（钳制 10~100，默认 100）与同步 setter；
+  - `DesktopLyric` 新增 `widthPercent` 与 `setWidthPercent()`，抽 `computeWidth()` 供启动与实时调整共用，
+    窗口已存在时按新百分比 `updateViewLayout` 且保留当前 x/y 位置，不重建窗口、不打断播放；
+  - 设置页「歌词设置 → 歌词宽度」新增滑块，拖动即时生效、节流写盘、离开页面补写；
+  - `LxApp` 冷启动订阅新设置，偏好损坏时 `catch` 隔离，不拖垮其它初始化。
+
+### 视觉 / 兼容性
+
+- **默认观感不变**：100% 时沿用历史「屏幕宽 − 24dp」内边距（非真正满屏），老用户升级后视觉零突变；
+  低于 100% 才按占比计算，最小 160dp 保证歌词可读。
+- 宽度变化只改 Window 布局参数，不触发歌词文本重算、不进刷新指纹，零额外逐帧开销。
+
+### 工程
+
+- 版本 1.8.0 → 1.8.1（versionCode 37 → 38）；README 同步。
+
 ## 第三十五轮：桌面歌词多行显示（v1.8.0）
 
 > 对照原版 lx-music-mobile v1.9.2 的 `desktopLyric.maxLineNum` 补齐移植版缺失的一项能力。

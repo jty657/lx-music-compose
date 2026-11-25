@@ -359,7 +359,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.7.6（第三十二轮）：搜索音源冷启动恢复与切源落盘（对齐原版 search.source，与 search.type 同属 getSearchSetting/saveSearchSetting）+ 音源 chip 恢复后自动滚动到选中项
 - v1.7.7（第三十三轮）：确认搜索即记历史（对齐原版 handleSearch，失败/断网也留存）+ 搜索结果到底提示（对齐 list_end）+ 音源删除二次确认（对齐 user_api_remove_tip）
 - v1.7.7（第三十四轮）：记住列表滚动位置（对齐 `list.isSaveScrollLocation`），公共组件 `ScrollPositionStore`
-- **v1.8.0（本轮 · 第三十五轮）**：桌面歌词多行显示（对齐 `desktopLyric.maxLineNum`，1~8 行默认 5）——沿「DataStore → ViewModel → 原生悬浮窗」链路新增行数设置与滑块，`DesktopLyric.refresh` 按行数拼接当前行起连续歌词，当前行主题色高亮、后续行次要色；不改播放内核与音源协议
+- v1.8.0（第三十五轮）：桌面歌词多行显示（对齐 `desktopLyric.maxLineNum`，1~8 行默认 5）——沿「DataStore → ViewModel → 原生悬浮窗」链路新增行数设置与滑块，`DesktopLyric.refresh` 按行数拼接当前行起连续歌词，当前行主题色高亮、后续行次要色；不改播放内核与音源协议
+- **v1.8.1（本轮 · 第三十六轮）**：悬浮歌词宽度设置（对齐 `desktopLyric.width`，10~100% 默认 100）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增宽度偏好键、setter 与设置页滑块，`DesktopLyric` 抽 `computeWidth()` 供启动与实时 `updateViewLayout` 共用并保留 x/y 位置；100% 沿用历史内边距观感、最小 160dp；节流写盘 + onDispose 补写；不改播放内核与音源协议
 
 ---
 
