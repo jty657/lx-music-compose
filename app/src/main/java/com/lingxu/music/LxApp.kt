@@ -161,6 +161,10 @@ class LxApp : Application() {
         appScope.launch {
             settings.desktopLyricWidth.catch { }.collect { DesktopLyric.setWidthPercent(it) }
         }
+        // 桌面歌词主题色（原版 desktopLyric.style.lyricPlayedColor）：null = 跟随主题主色。
+        appScope.launch {
+            settings.desktopLyricPlayedColor.catch { }.collect { DesktopLyric.setPlayedColor(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {

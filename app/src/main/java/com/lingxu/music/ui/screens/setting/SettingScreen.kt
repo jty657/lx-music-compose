@@ -189,6 +189,8 @@ fun SettingScreen(
     LaunchedEffect(desktopLyricWidth) {
         if (!lyricWidthTouched) localLyricWidth = desktopLyricWidth
     }
+    // 桌面歌词当前行颜色（原版 desktopLyric.style.lyricPlayedColor）：null = 跟随主题主色
+    val desktopLyricPlayedColor by viewModel.desktopLyricPlayedColor.collectAsState(initial = null)
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
@@ -601,6 +603,30 @@ fun SettingScreen(
                         onClick = { viewModel.setDesktopLyricTextPositionX(id) },
                     )
                 }
+            }
+            // 原版 LyricDesktop/Theme.tsx 的 9 色色板；额外「跟随主题」为移植版默认，
+            // 保证老用户升级零突变。分成两行避免窄屏/大字号把胶囊挤成多行。
+            SectionTitle("歌词颜色")
+            Spacer(Modifier.size(4.dp))
+            listOf(
+                listOf<Pair<String?, String>>(null to "跟随主题", "#08E664" to "绿", "#FFFA12" to "黄", "#019CE4" to "蓝", "#FF1222" to "红"),
+                listOf<Pair<String?, String>>("#EF6976" to "粉", "#C851D4" to "紫", "#FFA600" to "橙", "#000000" to "黑", "#FFFFFF" to "白"),
+            ).forEach { row ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    row.forEach { (hex, label) ->
+                        FilterChip(
+                            label = label,
+                            selected = desktopLyricPlayedColor == hex,
+                            onClick = { if (desktopLyricPlayedColor != hex) viewModel.setDesktopLyricPlayedColor(hex) },
+                            horizontalPadding = 8,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Spacer(Modifier.size(6.dp))
             }
         }
 

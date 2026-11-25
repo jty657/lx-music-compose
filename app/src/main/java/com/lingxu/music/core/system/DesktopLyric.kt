@@ -68,6 +68,8 @@ object DesktopLyric {
     /** 屏幕高度（px），用于把窗口钳制在可视区域内 */
     private var screenHeightPx: Int = 0
     private var accentColor: Int = Color.WHITE
+    /** 当前行颜色覆盖（原版 desktopLyric.style.lyricPlayedColor）；null = 跟随主题主色 */
+    private var playedColorOverride: Int? = null
     private var fontSizeSp: Float = 18f
     /** 位置是否锁定（对齐原版 desktopLyric.isLock）：锁定时禁止拖动，轻点暂停/继续仍可用 */
     private var locked: Boolean = false
@@ -105,6 +107,19 @@ object DesktopLyric {
         if (accentColor == color) return
         accentColor = color
         // 只重绘当前行，不重建窗口
+        lastKey = null
+        runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
+    }
+
+    /**
+     * 当前行歌词颜色（原版 desktopLyric.style.lyricPlayedColor）。
+     * hex 为 #RRGGBB；传 null 回到「跟随主题主色」。只重绘文本，
+     * 不重建窗口、不触碰播放内核；解析失败时保持原色（不把非法值推给原生层）。
+     */
+    fun setPlayedColor(hex: String?) {
+        val parsed = hex?.let { runCatching { Color.parseColor(it) }.getOrNull() }
+        if (playedColorOverride == parsed) return
+        playedColorOverride = parsed
         lastKey = null
         runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
     }
@@ -382,30 +397,35 @@ object DesktopLyric {
         val lines = state.lyricLines
         val line = lines.getOrNull(index)
         // 指纹纳入样式状态：改单行/行数/透明度/对齐后，即便歌词与播放态未变也要重算文本与 alpha
-        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$singleLine|$maxLineNum|$textOpacity|$textGravity"
+        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$playedColorOverride|$singleLine|$maxLineNum|$textOpacity|$textGravity"
         if (key == lastKey) return
         lastKey = key
 
+        // 当前行颜色：优先用户所选色板，未设置时跟随主题主色（老用户升级零突变）
+        val currentColor = playedColorOverride ?: accentColor
         // 单行模式强制 1 行，否则按 maxLineNum 显示当前行起的连续歌词（对齐原版 maxLineNum）
         val effectiveLines = if (singleLine) 1 else maxLineNum
         val sb = StringBuilder()
         // 后续行需要着次要色的区间，构建文本时同步记录，避免事后重算与拼接结果错位
         val subRanges = mutableListOf<Pair<Int, Int>>()
+        var firstRange: Pair<Int, Int>? = null
         if (index >= 0 && lines.isNotEmpty()) {
             for (i in 0 until effectiveLines) {
                 val row = lines.getOrNull(index + i) ?: break
                 if (row.text.isBlank()) continue
                 if (sb.isNotEmpty()) sb.append('\n')
                 val start = sb.length
-                if (i == 0) sb.append("♪ ")
+                // ♪ 与当前行整体同色，与原版 playedColor 语义一致
+                if (firstRange == null) sb.append("♪ ")
                 sb.append(row.text)
-                if (i > 0) subRanges.add(start to sb.length)
+                if (firstRange == null) firstRange = start to sb.length
+                else subRanges.add(start to sb.length)
             }
         }
         if (sb.isEmpty()) {
             main.text = SpannableString("♪ 暂无歌词").apply {
                 setSpan(
-                    ForegroundColorSpan(accentColor),
+                    ForegroundColorSpan(currentColor),
                     0,
                     1,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
@@ -423,7 +443,14 @@ object DesktopLyric {
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
             }
-            text.setSpan(ForegroundColorSpan(accentColor), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            // 默认仅 ♪ 用主题色（与升级前完全一致）；显式选色后整行按 playedColor 渲染，
+            // 更贴近原版语义。后续行始终保持次要白色，层级关系不变。
+            text.setSpan(ForegroundColorSpan(currentColor), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            playedColorOverride?.let { color ->
+                firstRange?.let { (start, end) ->
+                    text.setSpan(ForegroundColorSpan(color), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
             main.text = text
             val translation = line?.translation?.takeIf { it.isNotBlank() }
             // 单行模式或没有翻译时隐藏副行（对齐原版 isSingleLine）

@@ -94,6 +94,9 @@ class SettingsRepository(private val context: Context) {
         val KEY_DESKTOP_LYRIC_MAX_LINE_NUM = androidx.datastore.preferences.core.intPreferencesKey("desktopLyric.maxLineNum")
         // 原版 desktopLyric.width：悬浮窗宽度占屏幕的百分比 10~100，默认 100
         val KEY_DESKTOP_LYRIC_WIDTH = androidx.datastore.preferences.core.intPreferencesKey("desktopLyric.width")
+        // 原版 desktopLyric.style.lyricPlayedColor：悬浮歌词当前行主题色（#RRGGBB）。
+        // 未设置时沿用移植版历史「跟随主题主色」行为，老用户升级零突变。
+        val KEY_DESKTOP_LYRIC_PLAYED_COLOR = stringPreferencesKey("desktopLyric.style.lyricPlayedColor")
         // userApi
         val KEY_ENABLE_USER_API_LOG = booleanPreferencesKey("userApi.log")
         const val LANG_SYSTEM = "system"
@@ -216,6 +219,13 @@ class SettingsRepository(private val context: Context) {
     val desktopLyricWidth: Flow<Int> = context.dataStore.data.map {
         (it[KEY_DESKTOP_LYRIC_WIDTH] ?: 100).coerceIn(10, 100)
     }
+    // 原版 desktopLyric.style.lyricPlayedColor：null 表示跟随主题主色（移植版历史行为）。
+    // 只接受合法 #RRGGBB，损坏值回退 null，避免把非法色值推给原生层。
+    val desktopLyricPlayedColor: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_DESKTOP_LYRIC_PLAYED_COLOR]?.takeIf {
+            it.length == 7 && it.startsWith("#") && it.drop(1).all { c -> c.isDigit() || c in 'a'..'f' || c in 'A'..'F' }
+        }
+    }
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
@@ -272,6 +282,11 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDesktopLyricTextPositionX(value: String) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_TEXT_POSITION_X] = value }
     suspend fun setDesktopLyricMaxLineNum(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_MAX_LINE_NUM] = value.coerceIn(1, 8) }
     suspend fun setDesktopLyricWidth(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_WIDTH] = value.coerceIn(10, 100) }
+    // 传 null 表示清除覆盖、回到「跟随主题主色」，不写入空字符串
+    suspend fun setDesktopLyricPlayedColor(value: String?) = context.dataStore.edit { prefs ->
+        if (value == null) prefs.remove(KEY_DESKTOP_LYRIC_PLAYED_COLOR)
+        else prefs[KEY_DESKTOP_LYRIC_PLAYED_COLOR] = value
+    }
 
     suspend fun currentApiSource(): String = apiSource.first()
     suspend fun currentQuality(): String = quality.first()

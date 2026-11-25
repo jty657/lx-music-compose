@@ -1,6 +1,30 @@
 # 更新日志
 
-## 第三十六轮：悬浮歌词宽度设置（v1.8.1，本次）
+## 第三十七轮：桌面歌词主题色板（v1.8.2，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **桌面歌词主题色板**（`SettingsRepository.kt` / `SettingViewModel.kt` / `DesktopLyric.kt` / `SettingScreen.kt` / `LxApp.kt`）：
+  原版 `desktopLyric.style.lyricPlayedColor` 有 9 色色板（`LyricDesktop/Theme.tsx`），移植版此前只跟随主题主色、无法单独选色。本轮补齐：
+  - 新增偏好键 `desktopLyric.style.lyricPlayedColor`（仅接受合法 `#RRGGBB`，损坏值回退 null）与 setter（null 清除覆盖）；
+  - 设置页「歌词设置 → 桌面歌词对齐 → 歌词颜色」提供原版 9 色色板 + 「跟随主题」默认项，两行排布避免窄屏挤压；
+  - `DesktopLyric` 新增 `setPlayedColor()`，当前行歌词（含 ♪）整体按所选色渲染，后续行仍用次要白色体现层级；改色只重绘文本、不重建窗口、不打断播放；
+  - `LxApp` 冷启动订阅新设置，`catch` 隔离损坏偏好。
+
+### 视觉 / 兼容性
+
+- **默认观感不变**：未选色时（null）沿用原「主题主色高亮当前行 ♪」行为，老用户升级零突变；选色后由「♪ 单字符着色」扩展为「整行着色」，更贴近原版 playedColor 语义。
+- 色值切换纳入歌词刷新指纹但不重建 View；不新增逐帧动画，符合减弱动效与低性能设备约定。
+
+### 工程
+
+- 版本 1.8.1 → 1.8.2（versionCode 38 → 39）；README 同步。
+
+## 第三十六轮：悬浮歌词宽度设置（v1.8.1，上一轮）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
 > 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、

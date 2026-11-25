@@ -2,7 +2,7 @@
 
 > **一款同时具备「在线」与「本地」功能的音乐播放器** —— 既能在联网时聚合搜索并播放各大平台的在线音乐，也能离线管理你自己的歌单、收藏与播放队列。
 
-聆序是 [洛雪音乐（lx-music-mobile）](https://github.com/lyswhut/lx-music-mobile) v1.9.1 的 Compose 多平台移植版，使用 Kotlin + Jetpack Compose 从零重写 UI 层，功能对齐原版，并带来液态玻璃（Liquid Glass）视觉风格。包名 `com.lingxu.mobile`，当前版本 `1.8.1`。
+聆序是 [洛雪音乐（lx-music-mobile）](https://github.com/lyswhut/lx-music-mobile) v1.9.1 的 Compose 多平台移植版，使用 Kotlin + Jetpack Compose 从零重写 UI 层，功能对齐原版，并带来液态玻璃（Liquid Glass）视觉风格。包名 `com.lingxu.mobile`，当前版本 `1.8.2`。
 
 ---
 
@@ -108,7 +108,9 @@ app/src/main/java/com/lingxu/music/
 
 聆序在功能对齐原版的同时，持续对源码做系统性的稳定性、性能与视觉打磨。
 
-最近一轮（**v1.8.1**，2026-11）补齐原版桌面歌词「悬浮窗宽度」设置：对齐 `desktopLyric.width`（10~100%，默认 100%），设置页「歌词设置 → 歌词宽度」滑块可调，拖动即时生效并保留当前位置，100% 沿用历史内边距观感。沿现有「DataStore → ViewModel → 原生悬浮窗」链路实现，不改播放内核与音源协议。
+最近一轮（**v1.8.2**，2026-11）补齐原版桌面歌词「主题色板」：对齐 `desktopLyric.style.lyricPlayedColor`，设置页「歌词设置 → 桌面歌词对齐 → 歌词颜色」提供原版 9 色色板，当前行歌词（含 ♪）整体按所选色显示，选中即时生效、不重建悬浮窗；默认「跟随主题」保留升级前观感。沿现有「DataStore → ViewModel → 原生悬浮窗」链路实现，零新增依赖，不改播放内核与音源协议。
+
+更早一轮（**v1.8.1**，2026-11）补齐原版桌面歌词「悬浮窗宽度」设置：对齐 `desktopLyric.width`（10~100%，默认 100%），设置页「歌词设置 → 歌词宽度」滑块可调，拖动即时生效并保留当前位置，100% 沿用历史内边距观感。沿现有「DataStore → ViewModel → 原生悬浮窗」链路实现，不改播放内核与音源协议。
 
 更早一轮（**v1.8.0**，2026-11）补齐原版桌面歌词「多行显示」能力：对齐 `desktopLyric.maxLineNum`（1~8 行，默认 5），悬浮歌词从当前行起显示连续多行，当前行主题色高亮、后续行次要色体现层级；设置页「歌词设置 → 显示行数」滑块可调，「单行显示」开启时强制单行。
 
