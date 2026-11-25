@@ -70,6 +70,10 @@ object DesktopLyric {
     private var accentColor: Int = Color.WHITE
     /** 当前行颜色覆盖（原版 desktopLyric.style.lyricPlayedColor）；null = 跟随主题主色 */
     private var playedColorOverride: Int? = null
+    /** 后续行（未播放）颜色覆盖（原版 desktopLyric.style.lyricUnplayColor）；null = 历史次要白 */
+    private var unplayColorOverride: Int? = null
+    /** 后续行默认色：70% 白，比当前行暗一档以体现视觉层级（历史行为） */
+    private val defaultUnplayColor: Int = 0xB3FFFFFF.toInt()
     private var fontSizeSp: Float = 18f
     /** 位置是否锁定（对齐原版 desktopLyric.isLock）：锁定时禁止拖动，轻点暂停/继续仍可用 */
     private var locked: Boolean = false
@@ -120,6 +124,19 @@ object DesktopLyric {
         val parsed = hex?.let { runCatching { Color.parseColor(it) }.getOrNull() }
         if (playedColorOverride == parsed) return
         playedColorOverride = parsed
+        lastKey = null
+        runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
+    }
+
+    /**
+     * 后续行（未播放）歌词颜色（原版 desktopLyric.style.lyricUnplayColor）。
+     * hex 为 #RRGGBB；传 null 回到历史「次要白」。只重绘文本，
+     * 不重建窗口、不触碰播放内核；解析失败时保持原色。
+     */
+    fun setUnplayColor(hex: String?) {
+        val parsed = hex?.let { runCatching { Color.parseColor(it) }.getOrNull() }
+        if (unplayColorOverride == parsed) return
+        unplayColorOverride = parsed
         lastKey = null
         runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
     }
@@ -397,7 +414,7 @@ object DesktopLyric {
         val lines = state.lyricLines
         val line = lines.getOrNull(index)
         // 指纹纳入样式状态：改单行/行数/透明度/对齐后，即便歌词与播放态未变也要重算文本与 alpha
-        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$playedColorOverride|$singleLine|$maxLineNum|$textOpacity|$textGravity"
+        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$playedColorOverride|$unplayColorOverride|$singleLine|$maxLineNum|$textOpacity|$textGravity"
         if (key == lastKey) return
         lastKey = key
 
@@ -434,10 +451,12 @@ object DesktopLyric {
             sub.visibility = android.view.View.GONE
         } else {
             val text = SpannableString(sb.toString())
-            // 当前行的「♪」用主题主色标记（对应原版已播放色）；后续行用次要白色体现视觉层级。
+            // 当前行的「♪」用主题主色标记（对应原版已播放色）；后续行默认用次要白色体现层级，
+            // 用户显式选色后（原版 lyricUnplayColor）整体按所选色渲染。
+            val unplayColor = unplayColorOverride ?: defaultUnplayColor
             subRanges.forEach { (start, end) ->
                 text.setSpan(
-                    ForegroundColorSpan(0xB3FFFFFF.toInt()),
+                    ForegroundColorSpan(unplayColor),
                     start,
                     end,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,

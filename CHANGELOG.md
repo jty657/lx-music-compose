@@ -1,6 +1,30 @@
 # 更新日志
 
-## 第三十七轮：桌面歌词主题色板（v1.8.2，本次）
+## 第三十八轮：未播放歌词颜色（v1.8.3，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **未播放歌词颜色**（`SettingsRepository.kt` / `SettingViewModel.kt` / `DesktopLyric.kt` / `SettingScreen.kt` / `LxApp.kt`）：
+  原版 `desktopLyric.style.lyricUnplayColor` 控制桌面歌词后续行（未播放歌词）颜色，移植版此前固定为次要白、无法单独选色。本轮补齐：
+  - 新增偏好键 `desktopLyric.style.lyricUnplayColor`（仅接受合法 `#RRGGBB`，损坏值回退 null）与 setter（null 清除覆盖）；
+  - 设置页「歌词设置 → 未播放歌词颜色」提供 10 色色板 +「默认」项，两行排布避免窄屏挤压；
+  - `DesktopLyric` 新增 `setUnplayColor()`，后续行按所选色渲染；改色只重绘 `TextView` span、不重建窗口、不打断播放；
+  - `LxApp` 冷启动订阅新设置，`catch` 隔离损坏偏好。
+
+### 视觉 / 兼容性
+
+- **默认观感不变**：未选色时（null）沿用历史「次要白」后续行，老用户升级零突变；当前行配色（`lyricPlayedColor`）不受影响，两者独立。
+- 色值切换纳入歌词刷新指纹但不重建 View；不新增逐帧动画，符合减弱动效与低性能设备约定。
+
+### 工程
+
+- 版本 1.8.2 → 1.8.3（versionCode 39 → 40）；README 同步。
+
+## 第三十七轮：桌面歌词主题色板（v1.8.2，上一轮）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
 > 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、

@@ -97,6 +97,9 @@ class SettingsRepository(private val context: Context) {
         // 原版 desktopLyric.style.lyricPlayedColor：悬浮歌词当前行主题色（#RRGGBB）。
         // 未设置时沿用移植版历史「跟随主题主色」行为，老用户升级零突变。
         val KEY_DESKTOP_LYRIC_PLAYED_COLOR = stringPreferencesKey("desktopLyric.style.lyricPlayedColor")
+        // 原版 desktopLyric.style.lyricUnplayColor：悬浮歌词后续行（未播放）颜色（#RRGGBB）。
+        // 未设置时沿用移植版历史「次要白」行为，老用户升级零突变。
+        val KEY_DESKTOP_LYRIC_UNPLAY_COLOR = stringPreferencesKey("desktopLyric.style.lyricUnplayColor")
         // userApi
         val KEY_ENABLE_USER_API_LOG = booleanPreferencesKey("userApi.log")
         const val LANG_SYSTEM = "system"
@@ -226,6 +229,13 @@ class SettingsRepository(private val context: Context) {
             it.length == 7 && it.startsWith("#") && it.drop(1).all { c -> c.isDigit() || c in 'a'..'f' || c in 'A'..'F' }
         }
     }
+    // 原版 desktopLyric.style.lyricUnplayColor：null 表示沿用历史「次要白」（老用户默认）。
+    // 与 playedColor 同样的 #RRGGBB 校验，损坏值回退 null，避免把非法色值推给原生层。
+    val desktopLyricUnplayColor: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_DESKTOP_LYRIC_UNPLAY_COLOR]?.takeIf {
+            it.length == 7 && it.startsWith("#") && it.drop(1).all { c -> c.isDigit() || c in 'a'..'f' || c in 'A'..'F' }
+        }
+    }
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
@@ -286,6 +296,11 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDesktopLyricPlayedColor(value: String?) = context.dataStore.edit { prefs ->
         if (value == null) prefs.remove(KEY_DESKTOP_LYRIC_PLAYED_COLOR)
         else prefs[KEY_DESKTOP_LYRIC_PLAYED_COLOR] = value
+    }
+    // 传 null 表示清除覆盖、回到历史「次要白」，不写入空字符串
+    suspend fun setDesktopLyricUnplayColor(value: String?) = context.dataStore.edit { prefs ->
+        if (value == null) prefs.remove(KEY_DESKTOP_LYRIC_UNPLAY_COLOR)
+        else prefs[KEY_DESKTOP_LYRIC_UNPLAY_COLOR] = value
     }
 
     suspend fun currentApiSource(): String = apiSource.first()

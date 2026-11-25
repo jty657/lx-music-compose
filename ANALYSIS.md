@@ -361,7 +361,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.7.7（第三十四轮）：记住列表滚动位置（对齐 `list.isSaveScrollLocation`），公共组件 `ScrollPositionStore`
 - v1.8.0（第三十五轮）：桌面歌词多行显示（对齐 `desktopLyric.maxLineNum`，1~8 行默认 5）——沿「DataStore → ViewModel → 原生悬浮窗」链路新增行数设置与滑块，`DesktopLyric.refresh` 按行数拼接当前行起连续歌词，当前行主题色高亮、后续行次要色；不改播放内核与音源协议
 - v1.8.1（第三十六轮）：悬浮歌词宽度设置（对齐 `desktopLyric.width`，10~100% 默认 100）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增宽度偏好键、setter 与设置页滑块，`DesktopLyric` 抽 `computeWidth()` 供启动与实时 `updateViewLayout` 共用并保留 x/y 位置；100% 沿用历史内边距观感、最小 160dp；节流写盘 + onDispose 补写；不改播放内核与音源协议
-- **v1.8.2（本轮 · 第三十七轮）**：桌面歌词主题色板（对齐 `desktopLyric.style.lyricPlayedColor`，原版 9 色）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增颜色偏好键（合法 `#RRGGBB` 校验，null = 跟随主题）、setter 与设置页两行色板；`DesktopLyric` 新增 `setPlayedColor()`，默认仅 ♪ 用主题色（与升级前一致），选色后当前行（含 ♪）整体着色、后续行保持次要色层级，改色只重绘文本不重建窗口；默认「跟随主题」零突变；不改播放内核与音源协议
+- v1.8.2（第三十七轮）：桌面歌词主题色板（对齐 `desktopLyric.style.lyricPlayedColor`，原版 9 色）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增颜色偏好键（合法 `#RRGGBB` 校验，null = 跟随主题）、setter 与设置页两行色板；`DesktopLyric` 新增 `setPlayedColor()`，默认仅 ♪ 用主题色（与升级前一致），选色后当前行（含 ♪）整体着色、后续行保持次要色层级，改色只重绘文本不重建窗口；默认「跟随主题」零突变；不改播放内核与音源协议
+- **v1.8.3（本轮 · 第三十八轮）**：未播放歌词颜色（对齐 `desktopLyric.style.lyricUnplayColor`）——同一条成熟链路新增后续行颜色偏好键（合法 `#RRGGBB` 校验，null = 历史次要白）、setter 与设置页两行色板；`DesktopLyric` 新增 `setUnplayColor()`，后续行按所选色渲染并纳入刷新指纹，当前行配色独立不受影响；默认「默认」沿用次要白零突变，改色只重绘 span 不重建窗口；不改播放内核与音源协议
 
 ---
 

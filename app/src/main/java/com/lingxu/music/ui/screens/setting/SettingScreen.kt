@@ -191,6 +191,8 @@ fun SettingScreen(
     }
     // 桌面歌词当前行颜色（原版 desktopLyric.style.lyricPlayedColor）：null = 跟随主题主色
     val desktopLyricPlayedColor by viewModel.desktopLyricPlayedColor.collectAsState(initial = null)
+    // 桌面歌词后续行颜色（原版 desktopLyric.style.lyricUnplayColor）：null = 历史默认次要白
+    val desktopLyricUnplayColor by viewModel.desktopLyricUnplayColor.collectAsState(initial = null)
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
@@ -621,6 +623,30 @@ fun SettingScreen(
                             label = label,
                             selected = desktopLyricPlayedColor == hex,
                             onClick = { if (desktopLyricPlayedColor != hex) viewModel.setDesktopLyricPlayedColor(hex) },
+                            horizontalPadding = 8,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Spacer(Modifier.size(6.dp))
+            }
+            // 原版 LyricDesktop 另提供 lyricUnplayColor（后续行/未播放歌词颜色）。
+            // null「默认」沿用历史次要白，保证老用户升级零突变；同样两行排布避免窄屏挤压。
+            SectionTitle("未播放歌词颜色")
+            Spacer(Modifier.size(4.dp))
+            listOf(
+                listOf<Pair<String?, String>>(null to "默认", "#FFFFFF" to "白", "#B3B3B3" to "浅灰", "#808080" to "灰", "#4D4D4D" to "深灰"),
+                listOf<Pair<String?, String>>("#000000" to "黑", "#08E664" to "绿", "#019CE4" to "蓝", "#FF1222" to "红", "#C851D4" to "紫"),
+            ).forEach { row ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    row.forEach { (hex, label) ->
+                        FilterChip(
+                            label = label,
+                            selected = desktopLyricUnplayColor == hex,
+                            onClick = { if (desktopLyricUnplayColor != hex) viewModel.setDesktopLyricUnplayColor(hex) },
                             horizontalPadding = 8,
                             modifier = Modifier.weight(1f),
                         )

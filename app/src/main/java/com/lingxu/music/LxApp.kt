@@ -165,6 +165,10 @@ class LxApp : Application() {
         appScope.launch {
             settings.desktopLyricPlayedColor.catch { }.collect { DesktopLyric.setPlayedColor(it) }
         }
+        // 桌面歌词未播放行颜色（原版 desktopLyric.style.lyricUnplayColor）：null = 历史次要白。
+        appScope.launch {
+            settings.desktopLyricUnplayColor.catch { }.collect { DesktopLyric.setUnplayColor(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {
