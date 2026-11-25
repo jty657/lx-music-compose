@@ -84,7 +84,15 @@ object DesktopLyric {
     /** 文字不透明度 10~100（对齐原版 desktopLyric.style.opacity） */
     private var textOpacity: Int = 100
     /** 文字水平对齐（对齐原版 desktopLyric.textPosition.x）：left / center / right */
-    private var textGravity: Int = Gravity.CENTER
+    private var textGravity: Int = Gravity.CENTER_HORIZONTAL
+    /**
+     * 文字垂直对齐（对齐原版 desktopLyric.textPosition.y）：top / center / bottom。
+     * 默认 top 与原版 defaultSetting 一致；悬浮 TextView 为 WRAP_CONTENT（高度贴合内容），
+     * 垂直 gravity 无论 top/center 都无多余空间可分配，故老用户升级后观感零突变。
+     */
+    private var textGravityY: Int = Gravity.TOP
+    /** 水平 + 垂直合成的 gravity，作用于两个 TextView */
+    private fun combinedTextGravity(): Int = textGravity or textGravityY
     /** 悬浮歌词显示行数（对齐原版 desktopLyric.maxLineNum）：1~8，默认 5。单行模式下强制为 1 */
     private var maxLineNum: Int = 5
     /** 悬浮窗宽度占屏幕的百分比（对齐原版 desktopLyric.width）：10~100，默认 100 */
@@ -198,15 +206,34 @@ object DesktopLyric {
      * 取 left/center/right 映射到 Gravity，其它值回退 center；直接改两个 TextView 的 gravity。
      */
     fun setTextPositionX(value: String) {
+        // 只改水平分量，与垂直分量合成后写回，避免覆盖 textPosition.y 的设置
         val gravity = when (value) {
             "left" -> Gravity.START
             "right" -> Gravity.END
-            else -> Gravity.CENTER
+            else -> Gravity.CENTER_HORIZONTAL
         }
         if (textGravity == gravity) return
         textGravity = gravity
-        mainText?.gravity = gravity
-        subText?.gravity = gravity
+        val combined = combinedTextGravity()
+        mainText?.gravity = combined
+        subText?.gravity = combined
+    }
+
+    /**
+     * 文字垂直对齐（对齐原版 desktopLyric.textPosition.y）。
+     * top/center/bottom 映射到 Gravity，其它值回退 center；与水平分量合成后写回两个 TextView。
+     */
+    fun setTextPositionY(value: String) {
+        val gravityY = when (value) {
+            "top" -> Gravity.TOP
+            "bottom" -> Gravity.BOTTOM
+            else -> Gravity.CENTER_VERTICAL
+        }
+        if (textGravityY == gravityY) return
+        textGravityY = gravityY
+        val combined = combinedTextGravity()
+        mainText?.gravity = combined
+        subText?.gravity = combined
     }
 
     /**
@@ -277,7 +304,7 @@ object DesktopLyric {
             // 单行模式强制 1 行，否则按 maxLineNum（原版默认 5）显示当前行起的连续歌词
             maxLines = if (singleLine) 1 else maxLineNum
             ellipsize = TextUtils.TruncateAt.END
-            gravity = textGravity
+            gravity = combinedTextGravity()
             includeFontPadding = false
             typeface = Typeface.DEFAULT_BOLD
             // 悬浮在任意背景之上：描边阴影保证浅色壁纸下仍可读
@@ -288,7 +315,7 @@ object DesktopLyric {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp * 0.72f)
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
-            gravity = textGravity
+            gravity = combinedTextGravity()
             includeFontPadding = false
             setShadowLayer(5f, 0f, 1f, 0x99000000.toInt())
             visibility = android.view.View.GONE
@@ -414,7 +441,7 @@ object DesktopLyric {
         val lines = state.lyricLines
         val line = lines.getOrNull(index)
         // 指纹纳入样式状态：改单行/行数/透明度/对齐后，即便歌词与播放态未变也要重算文本与 alpha
-        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$playedColorOverride|$unplayColorOverride|$singleLine|$maxLineNum|$textOpacity|$textGravity"
+        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$playedColorOverride|$unplayColorOverride|$singleLine|$maxLineNum|$textOpacity|$textGravity|$textGravityY"
         if (key == lastKey) return
         lastKey = key
 

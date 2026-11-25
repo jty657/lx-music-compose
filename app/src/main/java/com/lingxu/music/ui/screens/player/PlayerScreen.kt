@@ -980,10 +980,16 @@ private fun PlayerMoreSettings(
 ) {
     val rate by LxApp.app.settings.playbackRate.collectAsState(initial = 1f)
     val volume by LxApp.app.settings.volume.collectAsState(initial = 1f)
+    // 原版播放页 SettingPopup 提供歌词字号/对齐（见 SettingPopup/index.tsx）：
+    // 移植版此前只在「设置 → 歌词设置」里可调，播放中要跳出页面。这里就近提供，直读直写既有偏好。
+    val lyricFontSize by LxApp.app.settings.lyricFontSize.collectAsState(initial = 1f)
+    val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
+    val scope = rememberCoroutineScope()
     val viewModel: PlayerViewModel = viewModel()
     // 滑块用本地态：每次 onValueChange 都写 DataStore 会让显示值等回写，拖动时抖动/回弹
     var localRate by remember(rate) { mutableStateOf(rate) }
     var localVolume by remember(volume) { mutableStateOf(volume) }
+    var localLyricFontSize by remember(lyricFontSize) { mutableStateOf(lyricFontSize) }
     GlassDialog(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 4.dp)) {
             Text("播放设置", fontSize = MiuixTheme.textStyles.title1.fontSize)
@@ -1005,6 +1011,43 @@ private fun PlayerMoreSettings(
                 valueRange = 0f..1f,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.size(8.dp))
+            // 歌词字号（原版 playDetail.vertical.style.lrcFontSize）：0.8~1.8 档，松手落盘。
+            Text("歌词字号 ${(localLyricFontSize * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Slider(
+                value = localLyricFontSize,
+                onValueChange = { localLyricFontSize = it },
+                onValueChangeFinished = {
+                    val v = localLyricFontSize.coerceIn(0.8f, 1.8f)
+                    scope.launch { LxApp.app.settings.setLyricFontSize(v) }
+                },
+                valueRange = 0.8f..1.8f,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            // 歌词对齐（原版 playDetail.style.align）：左 / 居中两档，胶囊形态与播放模式一致。
+            Spacer(Modifier.size(6.dp))
+            Text("歌词对齐", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("left" to "左对齐", "center" to "居中").forEach { (id, label) ->
+                    val selected = lyricAlign == id
+                    Text(
+                        label,
+                        modifier = Modifier
+                            .clip(ChipShape)
+                            .background(
+                                if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f),
+                            )
+                            .clickable(role = Role.Tab) {
+                                scope.launch { LxApp.app.settings.setLyricAlign(id) }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = if (selected) MiuixTheme.colorScheme.primary
+                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    )
+                }
+            }
             Spacer(Modifier.size(8.dp))
             Text("定时停止播放", fontSize = MiuixTheme.textStyles.body2.fontSize)
             // 窄屏 / 大字号下四个按钮裸横排会超出屏宽被裁切，末尾「关闭」无法点到。

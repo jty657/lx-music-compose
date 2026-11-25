@@ -6,6 +6,28 @@
 
 ---
 
+## 本轮执行状态（第三十九轮 · v1.8.4）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险功能差异补齐。7 个源码文件改动全部通过
+> `scripts/selfcheck.py`；本地容器无 Java，构建按项目约定走 GitHub Actions 云端
+> （推送 `master` 自动触发），零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+**本轮改动**
+1. 桌面歌词垂直对齐 `desktopLyric.textPosition.y`（top/center/bottom，默认 top）：数据层 key/Flow/setter +
+   `LxApp` 订阅 + `DesktopLyric` 水平/垂直 gravity 合成 + 设置页三档胶囊，对齐原版缺失项。
+2. 播放页「更多设置」补歌词字号/对齐，就近可调（原版 `SettingPopup` 行为），直读直写既有偏好。
+3. 我的列表多选「批量添加」到其它歌单（复制模式，源列表保留），复用「移动到」对话框 + 新增 `addMusics()`。
+
+**假设与待确认**
+- 桌面歌词垂直对齐默认取原版 `top`；因 TextView 为 WRAP_CONTENT，单行下与 center 观感无可见差异。
+- 播放页歌词字号/对齐写入未节流（低频、滑块本地态仅松手写一次），如需严格对齐可后续补。
+- 视觉风格沿用项目现有 Miuix 语义色、`FilterChip`/播放模式胶囊既有形态，无新增主题变量。
+- 原版「切换音源 / 简繁歌词 / 歌词阴影色 / 音频 Offload / 自动清理播放列表」等差异项风险或依赖偏高，本轮未纳入（详见问题清单）。
+
+**验证**：静态自检通过；构建由 GitHub Actions 云端执行，结果见提交后 Run。
+
+---
+
 ## 一、架构总览
 
 ```

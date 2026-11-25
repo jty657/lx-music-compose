@@ -112,6 +112,9 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
     // 批量移动到其它列表
     var moveTargets by remember { mutableStateOf(false) }
+    // 目标列表对话框的模式：false=移动（加后从源移除），true=复制添加（只加不移除）。
+    // 原版多选底栏同时提供「移动」与「添加」，移植版此前只有移动；复用同一对话框，仅切换落库行为。
+    var targetModeAdd by remember { mutableStateOf(false) }
     // 列表内排序 / 去重
     var showSort by remember { mutableStateOf(false) }
     // 在线列表同步（进度弹窗）
@@ -378,7 +381,9 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         if (queue.isNotEmpty()) viewModel.play(queue, queue.first())
                     }) { Text("播放(${selected.size})") }
                     Spacer(Modifier.size(8.dp))
-                    Button(onClick = { if (selected.isNotEmpty()) moveTargets = true }) { Text("移动") }
+                    Button(onClick = { if (selected.isNotEmpty()) { targetModeAdd = true; moveTargets = true } }) { Text("添加") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = { if (selected.isNotEmpty()) { targetModeAdd = false; moveTargets = true } }) { Text("移动") }
                     Spacer(Modifier.size(8.dp))
                     Button(onClick = {
                         scope.launch {
@@ -593,7 +598,10 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
         val targetLists = lists.filter { it.id != openList }
         GlassDialog(onDismissRequest = { moveTargets = false }) {
             Column(Modifier.padding(horizontal = 4.dp)) {
-                Text("移动到", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Text(
+                    if (targetModeAdd) "添加到" else "移动到",
+                    fontSize = MiuixTheme.textStyles.title1.fontSize,
+                )
                 Spacer(Modifier.size(12.dp))
                 if (targetLists.isEmpty()) {
                     Text("没有其它列表")
@@ -610,8 +618,14 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                                 .dialogOptionClickable {
                                     val moved = musics.filter { it.id in selected }
                                     scope.launch {
-                                        viewModel.moveMusics(openList!!, target.id, moved)
-                                        musics = musics.filterNot { it.id in selected }
+                                        if (targetModeAdd) {
+                                            // 复制模式：只写入目标列表，源列表歌曲保留
+                                            viewModel.addMusics(target.id, moved)
+                                        } else {
+                                            viewModel.moveMusics(openList!!, target.id, moved)
+                                            // 仅移动模式从当前列表移除（添加模式源列表不动）
+                                            musics = musics.filterNot { it.id in selected }
+                                        }
                                         moveTargets = false
                                         exitSelect()
                                     }
@@ -803,6 +817,16 @@ class MyListsViewModel : ViewModel() {
                 repo.addMusics(toId, musics)
                 repo.removeMusics(fromId, musics.map { it.id })
             }
+        }
+    }
+
+    /**
+     * 把若干首歌复制添加到 toId（原版多选「添加」，不改动源列表）。
+     * repository.addMusics 内部已按 id 去重，无需调用方再过滤。
+     */
+    fun addMusics(toId: String, musics: List<MusicInfo>) {
+        viewModelScope.launch {
+            runCatching { LxApp.app.myListsRepository.addMusics(toId, musics) }
         }
     }
 

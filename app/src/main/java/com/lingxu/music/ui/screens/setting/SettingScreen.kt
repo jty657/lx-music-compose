@@ -170,6 +170,7 @@ fun SettingScreen(
     val desktopLyricToggleAnima by viewModel.desktopLyricToggleAnima.collectAsState(initial = true)
     val desktopLyricOpacity by viewModel.desktopLyricOpacity.collectAsState(initial = 100)
     val desktopLyricTextPositionX by viewModel.desktopLyricTextPositionX.collectAsState(initial = "center")
+    val desktopLyricTextPositionY by viewModel.desktopLyricTextPositionY.collectAsState(initial = "top")
     var localLyricOpacity by remember { mutableIntStateOf(desktopLyricOpacity) }
     var lyricOpacityTouched by remember { mutableStateOf(false) }
     LaunchedEffect(desktopLyricOpacity) {
@@ -603,6 +604,22 @@ fun SettingScreen(
                         label = label,
                         selected = desktopLyricTextPositionX == id,
                         onClick = { viewModel.setDesktopLyricTextPositionX(id) },
+                    )
+                }
+            }
+            // 垂直对齐（原版 desktopLyric.textPosition.y，top/center/bottom）：与水平对齐组合。
+            // 默认 top 与原版一致；悬浮 TextView 高度贴合内容，单行下与 center 观感无差。
+            SectionTitle("垂直位置")
+            Spacer(Modifier.size(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                listOf("top" to "顶部", "center" to "居中", "bottom" to "底部").forEach { (id, label) ->
+                    FilterChip(
+                        label = label,
+                        selected = desktopLyricTextPositionY == id,
+                        onClick = { viewModel.setDesktopLyricTextPositionY(id) },
                     )
                 }
             }

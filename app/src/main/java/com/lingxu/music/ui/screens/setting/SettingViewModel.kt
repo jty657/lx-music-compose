@@ -86,6 +86,7 @@ class SettingViewModel : ViewModel() {
     val desktopLyricToggleAnima: StateFlow<Boolean> = state(settings.desktopLyricToggleAnima, true)
     val desktopLyricOpacity: StateFlow<Int> = state(settings.desktopLyricOpacity, 100)
     val desktopLyricTextPositionX: StateFlow<String> = state(settings.desktopLyricTextPositionX, "center")
+    val desktopLyricTextPositionY: StateFlow<String> = state(settings.desktopLyricTextPositionY, "top")
     // 原版 desktopLyric.maxLineNum：悬浮歌词显示行数 1~8，默认 5
     val desktopLyricMaxLineNum: StateFlow<Int> = state(settings.desktopLyricMaxLineNum, 5)
     // 原版 desktopLyric.width：悬浮窗宽度百分比 10~100，默认 100
@@ -289,6 +290,7 @@ class SettingViewModel : ViewModel() {
     fun setDesktopLyricSingleLine(value: Boolean) = launch { settings.setDesktopLyricSingleLine(value) }
     fun setDesktopLyricToggleAnima(value: Boolean) = launch { settings.setDesktopLyricToggleAnima(value) }
     fun setDesktopLyricTextPositionX(value: String) = launch { settings.setDesktopLyricTextPositionX(value) }
+    fun setDesktopLyricTextPositionY(value: String) = launch { settings.setDesktopLyricTextPositionY(value) }
     /** 桌面歌词主题色（原版 lyricPlayedColor）：只写设置，实时生效由 LxApp 监听同步 */
     fun setDesktopLyricPlayedColor(value: String?) = launch { settings.setDesktopLyricPlayedColor(value) }
     /** 桌面歌词未播放行颜色（原版 lyricUnplayColor）：只写设置，实时生效由 LxApp 监听同步 */

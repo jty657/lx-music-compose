@@ -1,6 +1,42 @@
 # 更新日志
 
-## 第三十八轮：未播放歌词颜色（v1.8.3，本次）
+## 第三十九轮：桌面歌词垂直对齐 + 播放页歌词设置 + 批量添加（v1.8.4，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **桌面歌词垂直对齐**（`SettingsRepository.kt` / `DesktopLyric.kt` / `LxApp.kt` / `SettingViewModel.kt` / `SettingScreen.kt`）：
+  原版 `desktopLyric.textPosition.y`（top/center/bottom，默认 top）此前移植版完全缺失，只有水平 X 对齐。本轮补齐：
+  - 新增偏好键与 Flow（默认 top）、setter；`LxApp` 冷启动订阅、独立协程 + catch 同步给原生悬浮窗；
+  - `DesktopLyric` 拆分水平/垂直两个 gravity 分量并合成写回两个 TextView，`setTextPositionY()` 实时生效、不重建窗口；
+  - 设置页「桌面歌词对齐」下新增「垂直位置」三档胶囊（顶部/居中/底部）。
+  - 默认 top 与原版一致；悬浮 TextView 为 WRAP_CONTENT，垂直 gravity 无多余空间可分配，老用户升级观感零突变。
+- **播放页就近提供歌词字号/对齐**（`PlayerScreen.kt`）：原版播放页 `SettingPopup` 提供歌词字号与左/居中对齐，
+  移植版此前仅在「设置 → 歌词设置」可调。本轮在「更多设置」弹窗内补歌词字号滑块（0.8~1.8，松手落盘）
+  与对齐两档胶囊，直读直写既有偏好，不改 ViewModel。
+- **我的列表批量添加**（`MyListsScreen.kt`）：原版多选底栏同时有「移动」与「添加」，移植版此前只有「移动」。
+  本轮复用「移动到」对话框，新增复制模式：只写入目标列表、源列表保留；ViewModel 新增 `addMusics()`，
+  repository 内部已按 id 去重。
+
+### 动效 / 视觉
+
+- 本轮复用项目既有动效语言：设置页垂直位置胶囊沿用 `FilterChip`（按压缩放 0.96 + 选中态渐变 + 减弱动效静帧）；
+  播放页歌词对齐胶囊沿用播放模式同款胶囊形态；未新增逐帧动画，符合减弱动效与低性能设备约定。
+
+### 已知差异 / 待确认
+
+- 桌面歌词垂直对齐在单行（WRAP_CONTENT 贴合内容）下与 center 观感无可见差异，主要在多行 + 固定高度场景体现；
+  保留该设置以与原版配置键完全对齐。
+- 播放页歌词字号/对齐写入经协程落盘，未做节流（低频操作，滑块用本地态只在松手写一次）。
+
+### 工程
+
+- 版本 1.8.3 → 1.8.4（versionCode 40 → 41）；README / ANALYSIS 同步。
+
+## 第三十八轮：未播放歌词颜色（v1.8.3，上一轮）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
 > 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
