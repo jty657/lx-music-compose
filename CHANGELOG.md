@@ -1,5 +1,33 @@
 # 更新日志
 
+## 第三十二轮：搜索音源持久化 + 音源 chip 自动滚到选中项（v1.7.6，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **搜索音源冷启动恢复与切源落盘**（`SettingsRepository.kt` / `SearchViewModel.kt` / `SearchScreen.kt`）：
+  原版 `utils/data.ts` 的 `getSearchSetting/saveSearchSetting` 除 `search.type` 外还持久化 `search.source`
+  （`Search/index.tsx:70` 切源即 `saveSearchSetting({ source })`，冷启动用持久化 source 初始化来源列表）。
+  移植版上一轮已补齐 `search.type`，但 `selectedSource` 仍仅 `rememberSaveable` —— 进程被杀后冷启动回到
+  「全部」，用户上次选的搜索音源丢失。本轮新增 `search.source` key（默认 `all`），切源即时落盘、冷启动读取
+  恢复；恢复值做白名单校验（`all` + 内置源），非法/旧版本自定义源一律回落 `all`，避免选中态落空。搜索链路
+  与切源重搜逻辑不变。
+
+### UI / 动效
+
+- **音源 chip 自动滚到选中项**（`SearchScreen.kt`）：恢复的音源（如 wy/mg）在横向 chip 行较靠后，
+  此前选中态可能停在可视区外，用户看不到当前音源。给音源 `LazyRow` 绑定 `rememberLazyListState`，
+  选中音源变化时 `animateScrollToItem` 平滑滚到该项；走 Motion 语义（Compose 默认 spring），减弱动效
+  系统下由平台动画时长缩放统一降级为静帧。无新增依赖、无布局抖动（只滚动容器，不改列表结构）。
+
+### 工程
+
+- 版本 1.7.5 → 1.7.6（versionCode 34 → 35）；README、ANALYSIS、CHANGELOG 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过（exit 0）；云端构建由 GitHub Actions 验证。
+
 ## 第三十一轮：搜索类型持久化 + 导入上限前置 + 首页副标题省略（v1.7.5，本次）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
