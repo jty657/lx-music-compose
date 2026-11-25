@@ -150,6 +150,11 @@ class SearchViewModel : ViewModel() {
         loading = true
         errorMessage = null
         viewModelScope.launch {
+            // 对齐原版 handleSearch（Search/index.tsx:90）：确认搜索即记录历史，与请求成败无关。
+            // 此前 recordHistory 只在两处 onSuccess 内调用，断网/音源报错时词条丢失；
+            // 现在移到请求发出前无条件记录（recordHistory 内部按设置开关门控 + 去重 + 上限），
+            // 不改变搜索链路、队列与播放逻辑。
+            recordHistory(text)
             when (searchType) {
                 SearchType.MUSIC -> runCatching {
                     LxApp.app.musicRepository.search(text, page, source)
@@ -158,7 +163,6 @@ class SearchViewModel : ViewModel() {
                     results = list.distinctBy { it.id }
                     songLists = emptyList()
                     hasMore = list.isNotEmpty()
-                    recordHistory(text)
                 }.onFailure { e ->
                     if (seq != requestSeq) return@onFailure
                     errorMessage = e.message
@@ -172,7 +176,6 @@ class SearchViewModel : ViewModel() {
                     songLists = pageResult.list.distinctBy { "${it.source}_${it.id}" }
                     results = emptyList()
                     hasMore = pageResult.list.isNotEmpty()
-                    recordHistory(text)
                 }.onFailure { e ->
                     if (seq != requestSeq) return@onFailure
                     errorMessage = e.message

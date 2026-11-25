@@ -457,6 +457,11 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                         RetryHint(text = err, onClick = { viewModel.loadMore() }, modifier = Modifier.fillMaxWidth())
                     }
                 }
+                // 对齐原版 OnlineList 的 list_end（「到底啦~」）：已加载到最后一页时给一句收尾反馈，
+                // 避免用户误以为加载中断。仅在有结果、无更多、非加载中且无错误时展示，纯静态文本。
+                if (!viewModel.hasMore && !viewModel.loading && viewModel.errorMessage == null && songLists.isNotEmpty()) {
+                    item(key = "__list_end__") { ListEndHint() }
+                }
             }
             return@Column
         } else if (viewModel.searchType == SearchType.SONGLIST &&
@@ -539,6 +544,10 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
                 item(key = "__load_error__") {
                     RetryHint(text = err, onClick = { viewModel.loadMore() }, modifier = Modifier.fillMaxWidth())
                 }
+            }
+            // 同上：音乐结果加载到底的「到底啦~」收尾提示（对齐原版 list_end）。
+            if (!viewModel.hasMore && !viewModel.loading && viewModel.errorMessage == null && results.isNotEmpty()) {
+                item(key = "__list_end__") { ListEndHint() }
             }
         }
         }
@@ -697,6 +706,24 @@ private fun Modifier.historyRowClickable(
             onLongClick = onLongClick,
         )
         .semantics { contentDescription = description }
+}
+
+/**
+ * 列表加载到底的收尾提示（对齐原版 OnlineList 的 list_end「到底啦~」）。
+ * 纯静态次要色文案，承担「已到最后一页」的反馈；不启动任何动画，避免在长列表底部
+ * 制造无意义逐帧调度。音乐结果与歌单结果两个列表共用，保持全站一致的收尾语言。
+ */
+@Composable
+private fun ListEndHint() {
+    Text(
+        "到底啦~",
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    )
 }
 
 /** 滚到接近底部（留 4 项余量）时自动触发加载下一页 */

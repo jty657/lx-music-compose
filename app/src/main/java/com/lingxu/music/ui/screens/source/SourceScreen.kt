@@ -68,6 +68,9 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     var managingId by remember { mutableStateOf<String?>(null) }
     // 待导出的音源 id：点击「导出脚本」时先记下，SAF 选好保存位置后再写文件
     var exportingId by remember { mutableStateOf<String?>(null) }
+    // 待删除音源 id：对齐原版 user_api_remove_tip 的二次确认，删除不可撤销，误触代价高。
+    // 点「删除」只记下 id 并弹出确认框，确认后才真正调用 delete（删除逻辑本身不变）。
+    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -400,8 +403,37 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                     }) { Text("导出脚本") }
                     Spacer(Modifier.size(8.dp))
                     Button(onClick = {
-                        viewModel.delete(id)
+                        // 对齐原版 handleRemove：删除前先确认（带音源名），确认后才真正移除。
+                        pendingDeleteId = id
                         managingId = null
+                    }) { Text("删除") }
+                }
+            }
+        }
+    }
+
+    // 删除二次确认（对齐原版 UserApiEditModal/List.tsx 的 confirmDialog + user_api_remove_tip）。
+    // 文案带音源名，用户在多个脚本中能看清针对的是哪一个，避免误删；取消保持原状。
+    pendingDeleteId?.let { id ->
+        val deleteName = userApis.find { it.id == id }?.name
+        GlassDialog(onDismissRequest = { pendingDeleteId = null }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("删除音源", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    if (deleteName.isNullOrBlank()) "你真的要移除这个音源吗？"
+                    else "你真的要移除「$deleteName」吗？",
+                )
+                Spacer(Modifier.size(16.dp))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Button(onClick = { pendingDeleteId = null }) { Text("取消") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        viewModel.delete(id)
+                        pendingDeleteId = null
                     }) { Text("删除") }
                 }
             }
