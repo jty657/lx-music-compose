@@ -175,6 +175,13 @@ fun SettingScreen(
     LaunchedEffect(desktopLyricOpacity) {
         if (!lyricOpacityTouched) localLyricOpacity = desktopLyricOpacity
     }
+    // 悬浮歌词显示行数（原版 desktopLyric.maxLineNum）：本地值用于滑块即时反馈
+    val desktopLyricMaxLineNum by viewModel.desktopLyricMaxLineNum.collectAsState(initial = 5)
+    var localLyricMaxLineNum by remember { mutableIntStateOf(desktopLyricMaxLineNum) }
+    var lyricMaxLineTouched by remember { mutableStateOf(false) }
+    LaunchedEffect(desktopLyricMaxLineNum) {
+        if (!lyricMaxLineTouched) localLyricMaxLineNum = desktopLyricMaxLineNum
+    }
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
@@ -199,6 +206,7 @@ fun SettingScreen(
             viewModel.commitVolume()
             viewModel.commitDesktopLyricFontSize()
             viewModel.commitDesktopLyricOpacity()
+            viewModel.commitDesktopLyricMaxLineNum()
         }
     }
 
@@ -523,6 +531,20 @@ fun SettingScreen(
                 summary = if (desktopLyricSingleLine) "只显示当前歌词，不显示翻译副行" else "显示歌词与翻译副行",
                 checked = desktopLyricSingleLine,
                 onCheckedChange = { viewModel.setDesktopLyricSingleLine(it) },
+            )
+            // 悬浮歌词显示行数（原版 desktopLyric.maxLineNum，1~8，默认 5）：
+            // 「单行显示」开启时此值不生效（强制只显示当前行），关闭时按此值显示当前行起的连续歌词。
+            SliderPreference(
+                title = "显示行数",
+                summary = "${localLyricMaxLineNum} 行${if (desktopLyricSingleLine) "（单行显示已开启，暂不生效）" else ""}",
+                value = localLyricMaxLineNum.toFloat(),
+                valueRange = 1f..8f,
+                onValueChange = {
+                    lyricMaxLineTouched = true
+                    val v = it.toInt().coerceIn(1, 8)
+                    localLyricMaxLineNum = v
+                    viewModel.setDesktopLyricMaxLineNum(v)
+                },
             )
             SwitchPreference(
                 title = "切换动画",

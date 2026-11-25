@@ -79,6 +79,8 @@ object DesktopLyric {
     private var textOpacity: Int = 100
     /** 文字水平对齐（对齐原版 desktopLyric.textPosition.x）：left / center / right */
     private var textGravity: Int = Gravity.CENTER
+    /** 悬浮歌词显示行数（对齐原版 desktopLyric.maxLineNum）：1~8，默认 5。单行模式下强制为 1 */
+    private var maxLineNum: Int = 5
     /** 上一次刷新用的内容指纹：只有歌词行/播放状态变化才改 TextView，避免每 500ms 白改一次 */
     private var lastKey: String? = null
 
@@ -130,6 +132,7 @@ object DesktopLyric {
     fun setSingleLine(value: Boolean) {
         if (singleLine == value) return
         singleLine = value
+        mainText?.maxLines = if (value) 1 else maxLineNum
         if (value) subText?.visibility = android.view.View.GONE
         lastKey = null
         runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
@@ -173,6 +176,20 @@ object DesktopLyric {
     }
 
     /**
+     * 悬浮歌词显示行数（对齐原版 desktopLyric.maxLineNum，1~8，默认 5）。
+     * 只改内存值与主 TextView 的 maxLines，不重建窗口；重置指纹让下次同内容刷新也按新行数重排。
+     * 单行模式（[singleLine]）开启时主文本强制 1 行，行数设置暂不生效。
+     */
+    fun setMaxLineNum(value: Int) {
+        val clamped = value.coerceIn(1, 8)
+        if (maxLineNum == clamped) return
+        maxLineNum = clamped
+        mainText?.maxLines = if (singleLine) 1 else clamped
+        lastKey = null
+        runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
+    }
+
+    /**
      * 显示悬浮歌词。调用前应确保 [canShow] 为 true；
      * 已显示时重复调用是安全的空操作。
      */
@@ -189,7 +206,8 @@ object DesktopLyric {
         val main = TextView(context).apply {
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp)
-            maxLines = 1
+            // 单行模式强制 1 行，否则按 maxLineNum（原版默认 5）显示当前行起的连续歌词
+            maxLines = if (singleLine) 1 else maxLineNum
             ellipsize = TextUtils.TruncateAt.END
             gravity = textGravity
             includeFontPadding = false
@@ -325,13 +343,30 @@ object DesktopLyric {
         val main = mainText ?: return
         val sub = subText ?: return
         val index = state.currentLyricIndex
-        val line = state.lyricLines.getOrNull(index)
-        // 指纹纳入样式状态：改单行/透明度/对齐后，即便歌词与播放态未变也要重算可见性与 alpha
-        val key = "${state.current?.id.orEmpty()}|$index|${state.lyricLines.size}|${state.isPlaying}|$accentColor|$singleLine|$textOpacity|$textGravity"
+        val lines = state.lyricLines
+        val line = lines.getOrNull(index)
+        // 指纹纳入样式状态：改单行/行数/透明度/对齐后，即便歌词与播放态未变也要重算文本与 alpha
+        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$singleLine|$maxLineNum|$textOpacity|$textGravity"
         if (key == lastKey) return
         lastKey = key
 
-        if (line == null || line.text.isBlank()) {
+        // 单行模式强制 1 行，否则按 maxLineNum 显示当前行起的连续歌词（对齐原版 maxLineNum）
+        val effectiveLines = if (singleLine) 1 else maxLineNum
+        val sb = StringBuilder()
+        // 后续行需要着次要色的区间，构建文本时同步记录，避免事后重算与拼接结果错位
+        val subRanges = mutableListOf<Pair<Int, Int>>()
+        if (index >= 0 && lines.isNotEmpty()) {
+            for (i in 0 until effectiveLines) {
+                val row = lines.getOrNull(index + i) ?: break
+                if (row.text.isBlank()) continue
+                if (sb.isNotEmpty()) sb.append('\n')
+                val start = sb.length
+                if (i == 0) sb.append("♪ ")
+                sb.append(row.text)
+                if (i > 0) subRanges.add(start to sb.length)
+            }
+        }
+        if (sb.isEmpty()) {
             main.text = SpannableString("♪ 暂无歌词").apply {
                 setSpan(
                     ForegroundColorSpan(accentColor),
@@ -342,11 +377,19 @@ object DesktopLyric {
             }
             sub.visibility = android.view.View.GONE
         } else {
-            // 「♪」用主题主色标记当前正在唱的行，其余文字保持白色（对应原版已播放色/未播放色）
-            val text = SpannableString("♪ ${line.text}")
+            val text = SpannableString(sb.toString())
+            // 当前行的「♪」用主题主色标记（对应原版已播放色）；后续行用次要白色体现视觉层级。
+            subRanges.forEach { (start, end) ->
+                text.setSpan(
+                    ForegroundColorSpan(0xB3FFFFFF.toInt()),
+                    start,
+                    end,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
             text.setSpan(ForegroundColorSpan(accentColor), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             main.text = text
-            val translation = line.translation?.takeIf { it.isNotBlank() }
+            val translation = line?.translation?.takeIf { it.isNotBlank() }
             // 单行模式或没有翻译时隐藏副行（对齐原版 isSingleLine）
             if (singleLine || translation == null) {
                 sub.visibility = android.view.View.GONE

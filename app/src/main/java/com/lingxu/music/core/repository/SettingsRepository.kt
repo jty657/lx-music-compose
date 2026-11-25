@@ -90,6 +90,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_DESKTOP_LYRIC_OPACITY = androidx.datastore.preferences.core.intPreferencesKey("desktopLyric.style.opacity")
         // 原版 desktopLyric.textPosition.x：文字水平对齐 left/center/right
         val KEY_DESKTOP_LYRIC_TEXT_POSITION_X = stringPreferencesKey("desktopLyric.textPosition.x")
+        // 原版 desktopLyric.maxLineNum：悬浮歌词最多显示行数 1~8，默认 5
+        val KEY_DESKTOP_LYRIC_MAX_LINE_NUM = androidx.datastore.preferences.core.intPreferencesKey("desktopLyric.maxLineNum")
         // userApi
         val KEY_ENABLE_USER_API_LOG = booleanPreferencesKey("userApi.log")
         const val LANG_SYSTEM = "system"
@@ -204,6 +206,10 @@ class SettingsRepository(private val context: Context) {
         (it[KEY_DESKTOP_LYRIC_OPACITY] ?: 100).coerceIn(10, 100)
     }
     val desktopLyricTextPositionX: Flow<String> = context.dataStore.data.map { it[KEY_DESKTOP_LYRIC_TEXT_POSITION_X] ?: "center" }
+    // 原版 desktopLyric.maxLineNum：默认 5 行，容错钳制读到的异常值
+    val desktopLyricMaxLineNum: Flow<Int> = context.dataStore.data.map {
+        (it[KEY_DESKTOP_LYRIC_MAX_LINE_NUM] ?: 5).coerceIn(1, 8)
+    }
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
@@ -258,6 +264,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDesktopLyricToggleAnima(value: Boolean) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_TOGGLE_ANIMA] = value }
     suspend fun setDesktopLyricOpacity(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_OPACITY] = value.coerceIn(10, 100) }
     suspend fun setDesktopLyricTextPositionX(value: String) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_TEXT_POSITION_X] = value }
+    suspend fun setDesktopLyricMaxLineNum(value: Int) = context.dataStore.edit { it[KEY_DESKTOP_LYRIC_MAX_LINE_NUM] = value.coerceIn(1, 8) }
 
     suspend fun currentApiSource(): String = apiSource.first()
     suspend fun currentQuality(): String = quality.first()

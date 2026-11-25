@@ -86,6 +86,8 @@ class SettingViewModel : ViewModel() {
     val desktopLyricToggleAnima: StateFlow<Boolean> = state(settings.desktopLyricToggleAnima, true)
     val desktopLyricOpacity: StateFlow<Int> = state(settings.desktopLyricOpacity, 100)
     val desktopLyricTextPositionX: StateFlow<String> = state(settings.desktopLyricTextPositionX, "center")
+    // 原版 desktopLyric.maxLineNum：悬浮歌词显示行数 1~8，默认 5
+    val desktopLyricMaxLineNum: StateFlow<Int> = state(settings.desktopLyricMaxLineNum, 5)
 
     // ============ 搜索 ============
     val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, false)
@@ -281,6 +283,26 @@ class SettingViewModel : ViewModel() {
     fun setDesktopLyricSingleLine(value: Boolean) = launch { settings.setDesktopLyricSingleLine(value) }
     fun setDesktopLyricToggleAnima(value: Boolean) = launch { settings.setDesktopLyricToggleAnima(value) }
     fun setDesktopLyricTextPositionX(value: String) = launch { settings.setDesktopLyricTextPositionX(value) }
+
+    /** 桌面歌词显示行数（原版 maxLineNum）：滑块回调即时生效，节流写盘，离开页面补写 */
+    private var pendingDesktopLyricMaxLineNum: Int? = null
+
+    fun setDesktopLyricMaxLineNum(value: Int) {
+        val v = value.coerceIn(1, 8)
+        pendingDesktopLyricMaxLineNum = v
+        com.lingxu.music.core.system.DesktopLyric.setMaxLineNum(v)
+        if (throttle("desktopLyricMaxLineNum", 150)) {
+            pendingDesktopLyricMaxLineNum = null
+            launch { settings.setDesktopLyricMaxLineNum(v) }
+        }
+    }
+
+    fun commitDesktopLyricMaxLineNum() {
+        val value = pendingDesktopLyricMaxLineNum ?: return
+        pendingDesktopLyricMaxLineNum = null
+        clearThrottle("desktopLyricMaxLineNum")
+        launch { settings.setDesktopLyricMaxLineNum(value) }
+    }
 
     /** 桌面歌词不透明度：滑块高频回调，立即生效 + 节流写盘（同字号），离开页面补写 */
     private var pendingDesktopLyricOpacity: Int? = null

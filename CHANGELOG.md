@@ -1,5 +1,29 @@
 # 更新日志
 
+## 第三十五轮：桌面歌词多行显示（v1.8.0）
+
+> 对照原版 lx-music-mobile v1.9.2 的 `desktopLyric.maxLineNum` 补齐移植版缺失的一项能力。
+> 本轮改动全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议；沿现有设置链路实现，可单独回滚。
+
+### 功能对齐
+
+- **桌面歌词多行显示**（原版 `desktopLyric.maxLineNum`，1~8 行，默认 5）：此前移植版悬浮窗固定只显示
+  当前行 + 翻译副行，长歌词一次只能看一句；原版按该设置显示从当前行起的连续多行。本轮在
+  `SettingsRepository` 新增 `desktopLyric.maxLineNum`（DataStore int key，读取钳制 1~8，默认 5），
+  `SettingViewModel` 暴露状态与节流 setter，`SettingScreen` 在「歌词设置 → 单行显示」下方新增
+  「显示行数」滑块（即时生效、离开页面补写），`LxApp` 冷启动订阅同步给原生悬浮窗。
+- **原生渲染**（`DesktopLyric.kt`）：`refresh` 从当前行起按 `maxLineNum` 拼接连续歌词（跳过空行、
+  不足则提前结束），当前行「♪」用主题主色、后续行用次要白 `0xB3FFFFFF` 体现视觉层级；内容指纹
+  纳入 `maxLineNum`，保证只改行数也会重排。`mainText.maxLines` 随笔数/单行开关即时更新，「单行显示」
+  开启时强制 1 行、此设置暂不生效（summary 有提示）。多行全程只改文本与换行，不重建窗口、
+  不触碰播放状态机。
+
+### 工程
+
+- 版本 1.7.7 → 1.8.0（versionCode 36 → 37）；README、ANALYSIS、CHANGELOG 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过（exit 0）；云端构建由 GitHub Actions 验证。
+
 ## 第三十四轮：记住列表滚动位置（v1.7.7）
 
 > 对照原版 lx-music-mobile v1.9.x 的 `list.isSaveScrollLocation` 补齐移植版完全缺失的一项能力。
