@@ -182,6 +182,7 @@ fun SettingScreen(
     val isShowSource by viewModel.isShowSource.collectAsState(initial = true)
     val isShowAlbumName by viewModel.isShowAlbumName.collectAsState(initial = false)
     val isShowInterval by viewModel.isShowInterval.collectAsState(initial = true)
+    val saveScrollLocation by viewModel.saveScrollLocation.collectAsState(initial = true)
     val addMusicLocation by viewModel.addMusicLocation.collectAsState(initial = "top")
 
     val blurEnabled by viewModel.blurEnabled.collectAsState(initial = true)
@@ -594,6 +595,13 @@ fun SettingScreen(
             title = "显示时长",
             checked = isShowInterval,
             onCheckedChange = { viewModel.setIsShowInterval(it) },
+        )
+        // 对齐原版 list.isSaveScrollLocation：从二级页返回时保留列表滚动位置（默认开启）
+        SwitchPreference(
+            title = "记住列表位置",
+            summary = "从歌单、榜单等详情页返回时，停在离开前的滚动位置",
+            checked = saveScrollLocation,
+            onCheckedChange = { viewModel.setSaveScrollLocation(it) },
         )
         ArrowPreference(
             title = "添加歌曲位置",

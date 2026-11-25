@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -41,7 +40,9 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.PlayingIndicator
 import com.lingxu.music.ui.components.TrackCover
+import com.lingxu.music.ui.components.rememberSavedLazyListState
 import com.lingxu.music.ui.navigation.LocalNavigator
+import com.lingxu.music.ui.navigation.LocalSaveScrollLocation
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
@@ -113,7 +114,9 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
         }
 
         // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
-        val listState = rememberLazyListState()
+        // 滚动位置记忆（原版 list.isSaveScrollLocation）：播放队列用固定 key
+        val saveScroll = LocalSaveScrollLocation.current
+        val listState = rememberSavedLazyListState(if (saveScroll) "playQueue" else null)
         com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             // key 只用稳定的歌曲 id：带上 index 会在排序/移除后导致整表重组与封面重载

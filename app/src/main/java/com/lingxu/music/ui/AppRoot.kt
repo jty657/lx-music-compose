@@ -81,6 +81,7 @@ import com.lingxu.music.ui.navigation.LocalBottomBarHeight
 import com.lingxu.music.ui.navigation.LocalMiniBarHeight
 import com.lingxu.music.ui.navigation.LocalMiniBarScroll
 import com.lingxu.music.ui.navigation.LocalNavigator
+import com.lingxu.music.ui.navigation.LocalSaveScrollLocation
 import com.lingxu.music.ui.navigation.Navigator
 import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.navigation.rememberNavigator
@@ -125,6 +126,8 @@ fun AppRoot() {
     val themeColor by LxApp.app.settings.themeColor.collectAsState(initial = "default")
     val blurSettingEnabled by LxApp.app.settings.blurEnabled.collectAsState(initial = true)
     val blurRadius by LxApp.app.settings.blurRadius.collectAsState(initial = 24f)
+    // 列表滚动位置记忆开关（原版 list.isSaveScrollLocation）：收集一次下发给各列表页
+    val saveScrollLocation by LxApp.app.settings.saveScrollLocation.collectAsState(initial = true)
     // RenderEffect 需 API 31+；低版本上 backdrop 的 blur 是静默 no-op，只会得到半透明色块，
     // 因此这里直接降级为普通底栏，观感与「关闭模糊」一致
     val renderEffectSupported = android.os.Build.VERSION.SDK_INT >= 31
@@ -187,6 +190,7 @@ fun AppRoot() {
             LocalReduceMotion provides reduceMotion,
             LocalBottomBarHeight provides bottomBarHeight.value,
             LocalMiniBarHeight provides miniBarHeight.value,
+            LocalSaveScrollLocation provides saveScrollLocation,
         ) {
             GlassHost(
                 dark = dark,

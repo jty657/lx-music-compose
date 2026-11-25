@@ -71,6 +71,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_IS_SHOW_ALBUM_NAME = booleanPreferencesKey("list.isShowAlbumName")
         val KEY_IS_SHOW_INTERVAL = booleanPreferencesKey("list.isShowInterval")
         val KEY_ADD_MUSIC_LOCATION = stringPreferencesKey("list.addMusicLocationType")
+        // 原版 list.isSaveScrollLocation：返回列表时是否记住离开前的滚动位置，默认 true
+        val KEY_SAVE_SCROLL_LOCATION = booleanPreferencesKey("list.isSaveScrollLocation")
         // glass（本项目自有）
         val KEY_BLUR_ENABLED = booleanPreferencesKey("glass.blurEnabled")
         val KEY_BLUR_RADIUS = floatPreferencesKey("glass.blurRadius")
@@ -166,6 +168,8 @@ class SettingsRepository(private val context: Context) {
     val isShowInterval: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SHOW_INTERVAL] ?: true }
     // 原版 'list.addMusicLocationType' 默认 'top'（添加到列表顶部）
     val addMusicLocation: Flow<String> = context.dataStore.data.map { it[KEY_ADD_MUSIC_LOCATION] ?: ADD_LOCATION_TOP }
+    // 默认 true 与原版 defaultSetting 的 'list.isSaveScrollLocation': true 一致
+    val saveScrollLocation: Flow<Boolean> = context.dataStore.data.map { it[KEY_SAVE_SCROLL_LOCATION] ?: true }
 
     // ================= glass =================
 
@@ -241,6 +245,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setIsShowAlbumName(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_ALBUM_NAME] = value }
     suspend fun setIsShowInterval(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_INTERVAL] = value }
     suspend fun setAddMusicLocation(value: String) = context.dataStore.edit { it[KEY_ADD_MUSIC_LOCATION] = value }
+    suspend fun setSaveScrollLocation(value: Boolean) = context.dataStore.edit { it[KEY_SAVE_SCROLL_LOCATION] = value }
 
     suspend fun setBlurEnabled(value: Boolean) = context.dataStore.edit { it[KEY_BLUR_ENABLED] = value }
     suspend fun setBlurRadius(value: Float) = context.dataStore.edit { it[KEY_BLUR_RADIUS] = value }

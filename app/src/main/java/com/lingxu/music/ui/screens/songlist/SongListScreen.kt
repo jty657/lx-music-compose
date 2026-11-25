@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -41,7 +40,9 @@ import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.LoadMoreButton
 import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TopBarTitle
+import com.lingxu.music.ui.components.rememberSavedLazyListState
 import com.lingxu.music.ui.navigation.LocalNavigator
+import com.lingxu.music.ui.navigation.LocalSaveScrollLocation
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.animateListItem
@@ -181,7 +182,9 @@ fun SongListScreen(
             return@Column
         }
         // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
-        val listState = rememberLazyListState()
+        // 滚动位置记忆（原版 list.isSaveScrollLocation）：按音源隔离
+        val saveScroll = LocalSaveScrollLocation.current
+        val listState = rememberSavedLazyListState(if (saveScroll) "songListSquare:$source" else null)
         com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
 
         LazyColumn(

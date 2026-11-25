@@ -112,3 +112,10 @@ fun rememberNavigator(): Navigator {
  */
 val LocalBottomBarHeight = androidx.compose.runtime.compositionLocalOf { 0.dp }
 val LocalMiniBarHeight = androidx.compose.runtime.compositionLocalOf { 0.dp }
+
+/**
+ * 是否记住列表滚动位置（原版 list.isSaveScrollLocation，默认 true）。
+ * 在 AppRoot 收集一次设置后下发，各列表页据此决定给 rememberSavedLazyListState
+ * 传真实 key（记忆）还是 null（不记忆），避免每个页面各自订阅设置流。
+ */
+val LocalSaveScrollLocation = androidx.compose.runtime.compositionLocalOf { true }
