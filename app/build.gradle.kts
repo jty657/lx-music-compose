@@ -16,8 +16,8 @@ android {
         applicationId = "com.lingxu.mobile"
         minSdk = 24
         targetSdk = 37
-        versionCode = 35
-        versionName = "1.7.6"
+        versionCode = 36
+        versionName = "1.7.7"
     }
 
     buildTypes {

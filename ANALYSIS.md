@@ -356,7 +356,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.7.3（第二十九轮）：音源列表展示脚本 @description + 版本号补 v 前缀 + 搜索页初始欢迎语 + 联想词单行截断
 - v1.7.4（第三十轮）：播放缓冲状态提示（对齐原版 Status.tsx）+ 翻译首帧默认值对齐 + 罗马音/翻译副行字号随主歌词联动
 - v1.7.5（第三十一轮）：搜索类型冷启动恢复（对齐原版 search.type 落盘）+ 音源导入上限前置拦截 + 首页入口卡副标题单行省略
-- **v1.7.6（本轮 · 第三十二轮）**：搜索音源冷启动恢复与切源落盘（对齐原版 search.source，与 search.type 同属 getSearchSetting/saveSearchSetting）+ 音源 chip 恢复后自动滚动到选中项
+- v1.7.6（第三十二轮）：搜索音源冷启动恢复与切源落盘（对齐原版 search.source，与 search.type 同属 getSearchSetting/saveSearchSetting）+ 音源 chip 恢复后自动滚动到选中项
+- **v1.7.7（本轮 · 第三十三轮）**：确认搜索即记历史（对齐原版 handleSearch，失败/断网也留存）+ 搜索结果到底提示（对齐 list_end）+ 音源删除二次确认（对齐 user_api_remove_tip）
 
 ---
 

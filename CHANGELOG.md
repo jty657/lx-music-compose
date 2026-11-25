@@ -1,6 +1,36 @@
 # 更新日志
 
-## 第三十二轮：搜索音源持久化 + 音源 chip 自动滚到选中项（v1.7.6，本次）
+## 第三十三轮：搜索历史时机 + 到底提示 + 音源删除二次确认（v1.7.7，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI」的低风险补齐。本轮改动
+> 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **确认搜索即记历史，与请求成败无关**（`SearchViewModel.kt:search`）：原版 `Search/index.tsx:90`
+  在 `handleSearch` 中无条件 `addHistoryWord(text)`，无论请求成功、失败或断网都会留存词条。
+  移植版此前 `recordHistory(text)` 只写在音乐/歌单两处 `onSuccess` 内，网络异常或音源报错时
+  搜索词被丢弃。本轮把记录移到请求发出前无条件执行（内部仍按「显示搜索历史」开关门控，
+  并保留去重与 15 条上限），搜索链路、切源重搜与播放逻辑均不变。
+
+### UI / 交互
+
+- **搜索结果到底提示**（`SearchScreen.kt`）：对齐原版 `OnlineList` 的 `list_end`（「到底啦~」）。
+  此前 `hasMore=false` 时列表末尾只是静默隐藏加载按钮，用户难以分辨「已加载完」与「加载中断」。
+  新增共用组件 `ListEndHint`（次要色 footnote、纯静态、无动画），仅在有结果、无更多、
+  非加载中且无错误时展示；音乐与歌单两个结果列表一致，不触发布局抖动或逐帧调度。
+- **音源删除二次确认**（`SourceScreen.kt`）：对齐原版 `UserApiEditModal/List.tsx` 的
+  `confirmDialog` + `user_api_remove_tip`。此前管理弹窗点「删除」立即移除、误触不可撤销；
+  现在先弹确认框并显示音源名（`你真的要移除「xxx」吗？`），确认后才调用原 `delete(id)`，
+  删除逻辑本身不变。
+
+### 工程
+
+- 版本 1.7.6 → 1.7.7（versionCode 35 → 36）；README、ANALYSIS、CHANGELOG 同步。
+- 验证：`python3 scripts/selfcheck.py` 通过（exit 0）；云端构建由 GitHub Actions 验证。
+
+## 第三十二轮：搜索音源持久化 + 音源 chip 自动滚到选中项（v1.7.6）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
 > 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
