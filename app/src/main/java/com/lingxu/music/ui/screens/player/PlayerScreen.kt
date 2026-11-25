@@ -984,6 +984,9 @@ private fun PlayerMoreSettings(
     // 移植版此前只在「设置 → 歌词设置」里可调，播放中要跳出页面。这里就近提供，直读直写既有偏好。
     val lyricFontSize by LxApp.app.settings.lyricFontSize.collectAsState(initial = 1f)
     val lyricAlign by LxApp.app.settings.lyricAlign.collectAsState(initial = "left")
+    // 原版播放页 MoreBtn 提供桌面歌词快捷开关（DesktopLyricBtn），移植版此前只能去设置页。
+    // 这里就近提供开/关：读既有偏好，开启时复用 ViewModel 的 start（含权限兜底），零新增偏好。
+    val desktopLyricEnabled by LxApp.app.settings.desktopLyricEnabled.collectAsState(initial = false)
     val scope = rememberCoroutineScope()
     val viewModel: PlayerViewModel = viewModel()
     // 滑块用本地态：每次 onValueChange 都写 DataStore 会让显示值等回写，拖动时抖动/回弹
@@ -1040,6 +1043,46 @@ private fun PlayerMoreSettings(
                             )
                             .clickable(role = Role.Tab) {
                                 scope.launch { LxApp.app.settings.setLyricAlign(id) }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = if (selected) MiuixTheme.colorScheme.primary
+                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    )
+                }
+            }
+            // 桌面歌词快捷开关（原版播放页 MoreBtn/DesktopLyricBtn）：开/关两档胶囊，
+            // 形态与「歌词对齐」一致，无新增主题变量/动画。开启前检查悬浮窗权限，
+            // 未授权时拉起系统授权页（与设置页同源），避免写入 true 却看不到悬浮窗。
+            Spacer(Modifier.size(6.dp))
+            Text("桌面歌词", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            val overlayCtx = LocalContext.current
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(false to "关闭", true to "开启").forEach { (on, label) ->
+                    val selected = desktopLyricEnabled == on
+                    Text(
+                        label,
+                        modifier = Modifier
+                            .clip(ChipShape)
+                            .background(
+                                if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f),
+                            )
+                            .clickable(role = Role.Tab) {
+                                if (!on) {
+                                    viewModel.setDesktopLyricEnabled(false)
+                                } else if (com.lingxu.music.core.system.DesktopLyric.canShow(overlayCtx)) {
+                                    viewModel.setDesktopLyricEnabled(true)
+                                } else {
+                                    runCatching {
+                                        overlayCtx.startActivity(
+                                            android.content.Intent(
+                                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                android.net.Uri.parse("package:${overlayCtx.packageName}"),
+                                            ),
+                                        )
+                                    }
+                                }
                             }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         color = if (selected) MiuixTheme.colorScheme.primary

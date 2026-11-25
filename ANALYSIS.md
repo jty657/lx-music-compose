@@ -6,17 +6,22 @@
 
 ---
 
-## 本轮执行状态（第三十九轮 · v1.8.4）
+## 本轮执行状态（第四十轮 · v1.8.5）
 
-> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险功能差异补齐。7 个源码文件改动全部通过
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险功能差异补齐。本轮 2 个源码文件改动全部通过
 > `scripts/selfcheck.py`；本地容器无 Java，构建按项目约定走 GitHub Actions 云端
 > （推送 `master` 自动触发），零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
 
 **本轮改动**
-1. 桌面歌词垂直对齐 `desktopLyric.textPosition.y`（top/center/bottom，默认 top）：数据层 key/Flow/setter +
-   `LxApp` 订阅 + `DesktopLyric` 水平/垂直 gravity 合成 + 设置页三档胶囊，对齐原版缺失项。
-2. 播放页「更多设置」补歌词字号/对齐，就近可调（原版 `SettingPopup` 行为），直读直写既有偏好。
-3. 我的列表多选「批量添加」到其它歌单（复制模式，源列表保留），复用「移动到」对话框 + 新增 `addMusics()`。
+1. 播放页桌面歌词快捷开关（`PlayerViewModel.kt` / `PlayerScreen.kt`）：对齐原版播放页 `MoreBtn` 的
+   `DesktopLyricBtn`，在播放「更多设置」弹窗内补「桌面歌词 开/关」两档胶囊；`PlayerViewModel` 新增
+   `setDesktopLyricEnabled()` 复用既有 `DesktopLyric.canShow/start/stop`，零新增偏好键；未授权时拉起系统
+   授权页。原版「长按锁定」与「授权返回自动开」按低风险策略略过（见 CHANGELOG 待确认项）。
+
+**上一轮改动（第三十九轮 · v1.8.4）**
+1. 桌面歌词垂直对齐 `desktopLyric.textPosition.y`（top/center/bottom，默认 top）。
+2. 播放页「更多设置」补歌词字号/对齐，就近可调。
+3. 我的列表多选「批量添加」到其它歌单（复制模式，源列表保留）。
 
 **假设与待确认**
 - 桌面歌词垂直对齐默认取原版 `top`；因 TextView 为 WRAP_CONTENT，单行下与 center 观感无可见差异。

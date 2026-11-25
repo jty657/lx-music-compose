@@ -24,6 +24,24 @@ class PlayerViewModel : ViewModel() {
         viewModelScope.launch { LxApp.app.settings.setVolume(volume) }
     }
 
+    /**
+     * 桌面歌词快捷开关（对齐原版播放页 MoreBtn 的 DesktopLyricBtn）。
+     * 与 SettingViewModel.setDesktopLyricEnabled 同一语义：写偏好 + 有权限时立即建/拆悬浮窗。
+     * 权限不足时由 UI 负责引导授权，这里只做「有权限才真正显示」的兜底，
+     * 避免用户在系统设置撤销权限后再次打开开关时抛异常。
+     */
+    fun setDesktopLyricEnabled(value: Boolean) = viewModelScope.launch {
+        LxApp.app.settings.setDesktopLyricEnabled(value)
+        if (value) {
+            val context = LxApp.app
+            if (com.lingxu.music.core.system.DesktopLyric.canShow(context)) {
+                com.lingxu.music.core.system.DesktopLyric.start(context)
+            }
+        } else {
+            com.lingxu.music.core.system.DesktopLyric.stop()
+        }
+    }
+
     fun setTimeoutExit(minutes: Int) {
         viewModelScope.launch {
             LxApp.app.settings.setTimeoutExitMinutes(minutes)

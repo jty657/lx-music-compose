@@ -1,6 +1,38 @@
 # 更新日志
 
-## 第三十九轮：桌面歌词垂直对齐 + 播放页歌词设置 + 批量添加（v1.8.4，本次）
+## 第四十轮：播放页桌面歌词快捷开关（v1.8.5，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异」的低风险补齐。本轮改动全部通过
+> `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **播放页桌面歌词快捷开关**（`PlayerViewModel.kt` / `PlayerScreen.kt`）：原版播放页 `MoreBtn` 提供
+  `DesktopLyricBtn`（短按切换桌面歌词开关），移植版此前只能跳到「设置 → 桌面歌词」操作。本轮在播放
+  「更多设置」弹窗内就近补「桌面歌词 开/关」两档胶囊：
+  - `PlayerViewModel` 新增 `setDesktopLyricEnabled()`，与 `SettingViewModel` 同一语义（写偏好 + 有权限时
+    立即建/拆悬浮窗），复用既有 `DesktopLyric.canShow/start/stop`，零新增偏好键。
+  - 弹窗开关读既有 `settings.desktopLyricEnabled` Flow；关闭直接停悬浮窗，开启前检查悬浮窗权限，
+    未授权则拉起系统授权页（与设置页同源），避免写入 true 却看不到歌词。
+
+### 动效 / 视觉
+
+- 复用项目既有语言：开/关胶囊与同弹窗「歌词对齐」胶囊同形态（`ChipShape` + 语义色选中态 + `Role.Tab`），
+  无新增主题变量、无新增逐帧动画，符合减弱动效与低性能设备约定。
+
+### 已知差异 / 待确认
+
+- 原版 `DesktopLyricBtn` 为「短按切换开关 + 长按切换锁定」，本轮只补核心的短按开关；位置锁定仍可在
+  「设置 → 桌面歌词 → 位置锁定」操作（长按入口未做，避免引入 `combinedClickable` 与长按判定复杂度）。
+- 授权返回后本弹窗不自动打开开关（设置页有窗口焦点复检会自动开）；用户授权后需再点一次「开启」。
+  原因是弹窗内做焦点复检需引入 `DisposableEffect`/`LocalView`，收益低、风险相对高，故按低风险策略略过。
+
+### 工程
+
+- 版本 1.8.4 → 1.8.5（versionCode 41 → 42）；README / ANALYSIS 同步。
+
+## 第三十九轮：桌面歌词垂直对齐 + 播放页歌词设置 + 批量添加（v1.8.4，上一轮）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮改动
 > 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
