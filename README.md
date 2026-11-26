@@ -2,7 +2,7 @@
 
 > **一款同时具备「在线」与「本地」功能的音乐播放器** —— 既能在联网时聚合搜索并播放各大平台的在线音乐，也能离线管理你自己的歌单、收藏与播放队列。
 
-聆序是 [洛雪音乐（lx-music-mobile）](https://github.com/lyswhut/lx-music-mobile) v1.9.1 的 Compose 多平台移植版，使用 Kotlin + Jetpack Compose 从零重写 UI 层，功能对齐原版，并带来液态玻璃（Liquid Glass）视觉风格。包名 `com.lingxu.mobile`，当前版本 `1.9.1`。
+聆序是 [洛雪音乐（lx-music-mobile）](https://github.com/lyswhut/lx-music-mobile) v1.9.1 的 Compose 多平台移植版，使用 Kotlin + Jetpack Compose 从零重写 UI 层，功能对齐原版，并带来液态玻璃（Liquid Glass）视觉风格。包名 `com.lingxu.mobile`，当前版本 `1.9.2`。
 
 ---
 
@@ -22,6 +22,7 @@
 - **收藏与喜欢**：本地持久化「我喜欢」及自定义列表，无需联网即可浏览。
 - **播放队列**：手动排序、移除、指定播放，支持顺序 / 列表循环 / 单曲 / 随机多种播放模式。
 - **记住列表位置**：从歌单、榜单等详情页返回时停在离开前的滚动位置（对齐原版 `list.isSaveScrollLocation`，可在设置中关闭）。
+- **点歌切换列表**：点击歌单、榜单里的歌曲时默认用整个列表作为播放队列；可在设置中关闭，关闭后只播放单曲（对齐原版 `list.isClickPlayList`）。
 - **数据备份与恢复**：收藏与歌单可导出为 JSON 文件、从备份恢复，换机或重装不丢数据。
 - **本地音乐源**：通过用户音源的 `local` 分支解析本地歌曲播放地址（对齐原版 local 协议）。
 - **离线设置**：主题（明暗模式 + 6 档主色）、字体大小、模糊效果、音质、歌词样式等全部本地保存。

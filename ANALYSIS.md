@@ -6,7 +6,28 @@
 
 ---
 
-## 本轮执行状态（第四十六轮 · v1.9.1）
+## 本轮执行状态（第四十七轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮对齐原版一个设置项
+> `list.isClickPlayList`，修改 5 个源码文件（`SettingsRepository.kt` / `SettingViewModel.kt` /
+> `SettingScreen.kt` / `SongListDetailScreen.kt` / `BoardDetailScreen.kt`），通过 `scripts/selfcheck.py`
+> 与本地 `assembleDebug`；构建按项目约定走 GitHub Actions 云端（推送 `master` 自动触发），零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+**本轮改动**
+1. **点歌切换列表开关**（对齐原版 `list.isClickPlayList`，原版 `settings/List/IsClickPlayList.tsx`）：
+   原版设置「点击列表里的歌曲时自动切换到当前列表播放（仅对歌单和排行榜有效）」，此前移植版缺失该项
+   且点击行为固定为「切到当前列表队列」。本轮新增偏好键与设置页开关，默认 `true` 以保持移植版既有行为、
+   老用户升级零突变（**与原版默认 `false` 不同，见待确认项**）；关闭后歌单/榜单点歌走 `playSingle`
+   只播放单曲，不改动队列。按原版语义，「我的列表」收藏不在该开关作用域，保持原样。
+2. **播放全部不受影响**（`BoardDetailScreen.kt`）：榜单 `playAll` 此前复用 `play(queue, first())`，
+   若开关关闭会退化为单曲；本轮改为直接 `playQueue(queue, 0)`，确保「播放全部」始终用整队列。
+
+**待确认项**
+- 默认值 `true`（保持移植版既有体验）与原版默认 `false` 不一致；若需 1:1 对齐原版默认，改为 `false`
+  即可（`SettingsRepository.isClickPlayList` 与 `SettingViewModel`/`SettingScreen` 的 initial 三处）。
+
+**上一轮改动（第四十六轮 · v1.9.1）**
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮新增 1 个源码文件
 > （`core/system/AppLog.kt`）+ 修改 3 个源码文件（`ScriptEngineManager.kt` / `BuiltinSdkBridge.kt` /
