@@ -1,6 +1,41 @@
 # 更新日志
 
-## 第四十四轮：定时停止支持任意分钟（v1.8.9，本次）
+## 第四十五轮：搜索页热搜与历史并列显示（v1.9.0，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮仅
+> `SearchScreen.kt` 一个源码文件改动，通过 `scripts/selfcheck.py` 静态自检，构建按约定走 GitHub
+> Actions 云端。零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **热搜 + 历史并列显示**（`SearchScreen.kt` / 空态引导区）：原版搜索页 `BlankView` 在「显示热搜」
+  `search.isShowHotSearch` 或「显示历史」`search.isShowHistorySearch` 任一开启、且输入为空/未搜索/
+  无结果时，热搜在上、历史在下并列展示。移植版此前热搜块与历史块是两个各自 `return@Column` 的
+  独立分支，历史优先命中后热搜永远不渲染，两开关同开时热搜被吞掉。本轮把两块收拢为一次
+  `showHotBlock || showHistoryBlock` 判断、并列渲染：热搜在前（对齐原版 `HotSearch` 位于
+  `HistorySearch` 之前），历史在后继续用 `.weight(1f).verticalScroll()` 承载最多 30 条记录。
+  两块的原始触发条件逐字保留（`blankNoResults` 仅抽出公共部分），空白结果/空态语义零变化。
+
+### 动效 / 视觉 / 可访问性
+
+- **进场动效统一**：热搜与历史共用一个 `animateFloatAsState`（`MotionBaseMs`，仅动 alpha，不触发
+  布局抖动），`LocalReduceMotion` 时 0ms 静帧到位；此前仅热搜有淡入、历史为硬切。
+- **并列层级间距**：仅当两块同时显示时，在热搜与历史之间插入 12dp 间距；仅一块显示时不产生多余
+  空白，避免单独历史/单独热搜场景出现空档。历史词条的 `historyRowClickable`（按压缩放 + 读屏语义）、
+  热搜词条的 `FilterChip`、`TextActionButton`「清空」按钮全部保持不变。
+
+### 已知差异 / 待确认
+
+- 原版历史与热搜同处一个 `ScrollView`，两块均可整体滚动；移植版历史用 `.weight(1f)` 占满剩余空间
+  单独滚动、热搜固定在上（横向 `LazyRow`）。两开关同开时的可见性与顺序已对齐，滚动容器结构差异
+  为移植版既有布局，本轮未改（避免触碰外层 `Column` 布局与滚动上报逻辑）。
+- 未引入长按手势、未改历史 30 条上限与清空逻辑。
+
+### 工程
+
+- 版本 1.8.9 → 1.9.0（versionCode 46 → 47）；README / ANALYSIS 同步。
+
+## 第四十四轮：定时停止支持任意分钟（v1.8.9，上一轮）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮仅
 > `SettingScreen.kt` 一个源码文件改动，通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub
