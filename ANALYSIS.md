@@ -6,7 +6,40 @@
 
 ---
 
-## 本轮执行状态（第四十九轮 · v1.9.2）
+## 本轮执行状态（第五十轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮对齐原版
+> `theme.hideBgDark`（深色模式下隐藏背景）——原版 `defaultSetting` 已列出、移植版此前缺失的
+> 最后一个主题背景视觉键。修改 4 个源码文件（`SettingsRepository.kt` / `SettingViewModel.kt` /
+> `SettingScreen.kt` / `PlayerScreen.kt`），通过 `scripts/selfcheck.py`；构建按项目约定走 GitHub
+> Actions 云端（推送 `master` 自动触发），零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+**本轮改动**
+1. **深色模式隐藏背景**（对齐原版 `theme.hideBgDark`，原版 `themes/index.ts` 在
+   `isDark && hideBgDark` 时不绘制主题背景大图）：新增偏好键 + Flow + setter（默认 false，与原版
+   `defaultSetting` 一致），ViewModel 增 StateFlow/setter，设置页「基本设置」在「播放页动态背景」
+   开启后追加「深色模式隐藏背景」开关（条件渲染，与本项目已验证的「模糊强度」同一模式），播放页在
+   `dynamicBg && !(hideBgDark && darkTheme)` 时取封面主色，否则 `coverTint` 为 null。移植版背景是
+   封面主色渐变（原版是主题背景大图），语义等价映射：深色 + 开启时隐藏这层渐变。
+
+**视觉 / 交互 / 可访问性**
+- 淡入淡出复用上一轮 `dynamicBg` 的 `animateColorAsState` 320ms 通道：`coverTint` 变 null 时
+  `bgColor` 平滑过渡到透明，渐变整层淡出（而非开关切换处硬切）；`LocalReduceMotion` 时 0ms 静帧。
+  渐变层仅在 `dynamicBg` 开启时常驻承载动画，透明渐变无可见绘制，低性能设备无额外负担。
+  开关沿用全站 `SwitchPreference` + Miuix 语义色，无新增主题变量、无逐帧动画、无布局抖动。
+
+**假设与待确认**
+- 原版 `hideBgDark` 隐藏的是主题皮肤的背景大图（`BG_IMAGES`），移植版无背景图概念，映射为隐藏
+  播放页封面主色渐变；若后续移植版引入真正的主题背景图，需把该开关同时接到背景图上。
+- 该开关仅在 `dynamicBg=true` 时显示并生效（无背景时开关无意义，条件渲染隐藏）。原版开关始终可见，
+  交互形态略有差异，语义等价；如需始终显示后续单独评估。
+- 默认值 `false`（深色下仍显示背景）与原版 `defaultSetting` 一致，老用户升级零突变。
+
+**验证**：静态自检通过（`scripts/selfcheck.py` 退出码 0）；构建由 GitHub Actions 云端执行，结果见提交后 Run。
+
+---
+
+**上一轮执行状态（第四十九轮 · v1.9.2）**
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮对齐原版桌面歌词
 > 的显式阴影色设置 `desktopLyric.style.lyricShadowColor`（原版 `LyricDesktop/Theme.tsx` 色板联动项），
@@ -518,6 +551,7 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.8.1（第三十六轮）：悬浮歌词宽度设置（对齐 `desktopLyric.width`，10~100% 默认 100）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增宽度偏好键、setter 与设置页滑块，`DesktopLyric` 抽 `computeWidth()` 供启动与实时 `updateViewLayout` 共用并保留 x/y 位置；100% 沿用历史内边距观感、最小 160dp；节流写盘 + onDispose 补写；不改播放内核与音源协议
 - v1.8.2（第三十七轮）：桌面歌词主题色板（对齐 `desktopLyric.style.lyricPlayedColor`，原版 9 色）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增颜色偏好键（合法 `#RRGGBB` 校验，null = 跟随主题）、setter 与设置页两行色板；`DesktopLyric` 新增 `setPlayedColor()`，默认仅 ♪ 用主题色（与升级前一致），选色后当前行（含 ♪）整体着色、后续行保持次要色层级，改色只重绘文本不重建窗口；默认「跟随主题」零突变；不改播放内核与音源协议
 - v1.8.3（第三十八轮）：未播放歌词颜色（对齐 `desktopLyric.style.lyricUnplayColor`）——同一条成熟链路新增后续行颜色偏好键（合法 `#RRGGBB` 校验，null = 历史次要白）、setter 与设置页两行色板；`DesktopLyric` 新增 `setUnplayColor()`，后续行按所选色渲染并纳入刷新指纹，当前行配色独立不受影响；默认「默认」沿用次要白零突变，改色只重绘 span 不重建窗口；不改播放内核与音源协议
+- v1.9.2（第五十轮）：深色模式隐藏背景（对齐原版 `theme.hideBgDark`）——新增偏好键/Flow/setter + ViewModel StateFlow + 设置页开关（仅动态背景开启时显示）+ 播放页在 `dynamicBg && !(hideBgDark && darkTheme)` 时取色；深色 + 开启时 `coverTint` 为 null，复用 `animateColorAsState` 320ms 平滑淡出、减弱动效静帧；默认 false 与原版一致、零突变；仅改 4 个源码文件，零新增依赖、不改播放内核与音源协议
 - v1.9.2（第四十九轮）：桌面歌词阴影颜色（对齐原版 `desktopLyric.style.lyricShadowColor`）——新增偏好键/#RRGGBB 校验 Flow/setter + ViewModel StateFlow + LxApp Flow 下发 + `DesktopLyric.setShadowColor()`；刷新优先用显式阴影色、未设置沿用按亮度推导（与原版 9 档色板 8:1 一致）；设置页「阴影颜色」色板复用 FilterChip，默认「自动」零突变；仅改 5 个源码文件，零新增依赖、不改播放内核与音源协议
 - **v1.9.0（第四十五轮）**：搜索页热搜与历史并列显示（对齐原版 `BlankView`）——原版在 `search.isShowHotSearch` 或 `search.isShowHistorySearch` 任一开启且未搜索/无结果时热搜在上、历史在下并列；移植版此前两块各自 `return@Column` 互斥、历史优先吞掉热搜。本轮收拢为一次 `showHotBlock || showHistoryBlock` 判断并列渲染，触发条件逐字保留；热搜与历史共用一条 `animateFloatAsState` 淡入（仅 alpha、`LocalReduceMotion` 静帧），并列时插 12dp 间距、单块时无空白；仅改 `SearchScreen.kt` 一处，零新增依赖、零新增偏好键、不改播放内核与音源协议
 - v1.8.9（第四十四轮）：定时停止支持任意分钟（对齐原版 `TimeoutExitEditModal`）——「定时停止播放」弹窗在 15/30/45/60/90/120 六档之外新增「自定义分钟（1-1440）」输入框（数字键盘、单行、`OutlinedTextField` 内联错误校验），非法输入时「开始定时」不响应；合法值走既有 `viewModel.setTimeoutExit(min)`（底层已支持任意分钟并做溢出钳制）。「开始定时」复用全站 `TextActionButton`（按压缩放、48dp 热区、读屏语义、减弱动效静帧降级）；仅改 `SettingScreen.kt` 一处，零新增依赖、零新增偏好键、不改播放内核与音源协议

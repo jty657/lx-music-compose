@@ -1,6 +1,34 @@
 # 更新日志
 
-## 第四十八轮：关于页开源项目入口（v1.9.2，本次）
+## 第五十轮：深色模式隐藏背景（v1.9.2，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」低风险补齐。本轮对齐原版
+> `theme.hideBgDark`，修改 4 个源码文件，通过 `scripts/selfcheck.py`；构建按约定走 GitHub Actions
+> 云端。零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能（对齐原版设置项）
+
+- **深色模式隐藏背景**（`theme.hideBgDark`，原版 `themes/index.ts` 在 `isDark && hideBgDark` 时不绘制
+  主题背景大图）：移植版此前缺失该键。本轮新增偏好键、Flow、setter（默认 false，与原版一致）、
+  ViewModel StateFlow/setter。设置页「基本设置」在「播放页动态背景」开启后追加「深色模式隐藏背景」
+  开关；播放页在 `dynamicBg && !(hideBgDark && darkTheme)` 时取封面主色，深色 + 开启时隐藏这层渐变。
+  移植版背景是封面主色渐变（原版是主题背景大图），语义等价映射。
+
+### 视觉 / 动效 / 可访问性
+
+- 淡入淡出复用 `dynamicBg` 的 `animateColorAsState` 320ms 通道：`coverTint` 变 null 时 `bgColor`
+  平滑过渡到透明，渐变整层淡出，而非在开关切换处硬切；`LocalReduceMotion` 时 0ms 静帧。
+- 渐变层仅在 `dynamicBg` 开启时常驻承载动画，透明渐变无可见绘制；开关沿用全站 `SwitchPreference`
+  与 Miuix 语义色，无新增主题变量、无逐帧动画、无布局抖动。
+
+### 假设与待确认
+
+- 原版隐藏的是主题皮肤背景大图，移植版无背景图概念，映射为隐藏播放页封面主色渐变；若后续引入
+  真正的主题背景图，需把该开关同时接到背景图上。
+- 该开关仅在 `dynamicBg=true` 时显示并生效（无背景时开关无意义），原版开关始终可见，交互形态
+  略有差异、语义等价；默认值 false 与原版一致，老用户升级零突变。
+
+## 第四十八轮：关于页开源项目入口（v1.9.2）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」低风险补齐。本轮对齐原版
 > `About.tsx` 缺失的开源地址 / 最新版下载 / 常见问题入口，仅修改 `SettingScreen.kt` 一个源码文件，

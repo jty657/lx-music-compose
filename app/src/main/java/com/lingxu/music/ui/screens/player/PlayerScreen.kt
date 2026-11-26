@@ -87,6 +87,7 @@ import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.ChipShape
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
+import com.lingxu.music.ui.theme.isInDarkTheme
 import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.MotionFastMs
 import kotlinx.coroutines.flow.first
@@ -129,9 +130,14 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val lyricFontShadow by LxApp.app.settings.lyricFontShadow.collectAsState(initial = false)
     // 原版 theme.dynamicBg：播放页背景跟随封面主色。默认 false，老用户升级观感零突变。
     val dynamicBg by LxApp.app.settings.dynamicBg.collectAsState(initial = false)
+    // 原版 theme.hideBgDark：深色模式下隐藏背景。移植版背景为封面主色渐变，
+    // 深色 + 开启时把取色开关关掉，bgColor 随之平滑过渡到透明（下方渐变整层淡出）。
+    val hideBgDark by LxApp.app.settings.hideBgDark.collectAsState(initial = false)
+    val darkTheme = isInDarkTheme()
+    val bgEnabled = dynamicBg && !(hideBgDark && darkTheme)
     val coverTint = rememberCoverTint(
         url = state.coverUrl ?: state.current?.meta?.picUrl,
-        enabled = dynamicBg,
+        enabled = bgEnabled,
     )
     val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
     val reduceMotion = LocalReduceMotion.current
@@ -167,8 +173,10 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // 原版 theme.dynamicBg：封面主色化作顶部柔和光晕，随切歌平滑过渡。
         // 用低透明度的垂直渐变铺底，前景内容 padding 之上不受影响；
-        // 关闭开关 / 取色失败时 bgColor 为透明，整层退化为无操作（零开销）。
-        if (dynamicBg && coverTint != null) {
+        // 取色失败 / 深色隐藏背景（hideBgDark）时 coverTint 变 null，bgColor 平滑过渡到
+        // 透明，渐变整层淡出。只要动态背景开关开启就保留这层以承载淡出动画；
+        // 透明渐变不产生可见绘制，低性能设备无额外负担。
+        if (dynamicBg) {
             Box(
                 Modifier
                     .fillMaxSize()

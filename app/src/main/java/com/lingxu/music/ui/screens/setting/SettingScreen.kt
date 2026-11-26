@@ -102,6 +102,7 @@ fun SettingScreen(
     val themeMode by viewModel.themeMode.collectAsState(initial = "system")
     val themeColor by viewModel.themeColor.collectAsState(initial = "default")
     val dynamicBg by viewModel.dynamicBg.collectAsState(initial = false)
+    val hideBgDark by viewModel.hideBgDark.collectAsState(initial = false)
     val lang by viewModel.lang.collectAsState(initial = "system")
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
     val shareType by viewModel.shareType.collectAsState(initial = "system")
@@ -310,6 +311,16 @@ fun SettingScreen(
             checked = dynamicBg,
             onCheckedChange = { viewModel.setDynamicBg(it) },
         )
+        // 原版 theme.hideBgDark：深色模式下隐藏背景。移植版背景是封面主色渐变，
+        // 与动态背景开关配套——仅在开启动态背景后才有意义，故同样用条件渲染。
+        if (dynamicBg) {
+            SwitchPreference(
+                title = "深色模式隐藏背景",
+                summary = "深色模式下不显示播放页渐变背景（对齐原版 theme.hideBgDark）",
+                checked = hideBgDark,
+                onCheckedChange = { viewModel.setHideBgDark(it) },
+            )
+        }
         ArrowPreference(
             title = "语言",
             summary = when (lang) {
