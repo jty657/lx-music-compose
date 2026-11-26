@@ -76,6 +76,7 @@ import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.LyricLine
 import com.lingxu.music.core.player.PlayMode
 import com.lingxu.music.ui.components.EmptyHint
+import com.lingxu.music.ui.components.FilterChip
 import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.TextActionButton
@@ -987,6 +988,9 @@ private fun PlayerMoreSettings(
     // 原版播放页 MoreBtn 提供桌面歌词快捷开关（DesktopLyricBtn），移植版此前只能去设置页。
     // 这里就近提供开/关：读既有偏好，开启时复用 ViewModel 的 start（含权限兜底），零新增偏好。
     val desktopLyricEnabled by LxApp.app.settings.desktopLyricEnabled.collectAsState(initial = false)
+    // 原版 DesktopLyricBtn 长按切换位置锁定（desktopLyric.isLock），移植版此前只能去设置页。
+    // 这里就近提供开/关：读既有偏好，写入由 LxApp 的 Flow 监听实时同步给悬浮窗，零新增偏好键。
+    val desktopLyricLocked by LxApp.app.settings.desktopLyricLocked.collectAsState(initial = false)
     val scope = rememberCoroutineScope()
     val viewModel: PlayerViewModel = viewModel()
     // 滑块用本地态：每次 onValueChange 都写 DataStore 会让显示值等回写，拖动时抖动/回弹
@@ -1027,67 +1031,62 @@ private fun PlayerMoreSettings(
                 valueRange = 0.8f..1.8f,
                 modifier = Modifier.fillMaxWidth(),
             )
-            // 歌词对齐（原版 playDetail.style.align）：左 / 居中两档，胶囊形态与播放模式一致。
+            // 歌词对齐（原版 playDetail.style.align）：左 / 居中两档。
+            // 改用全站公共 FilterChip：自带按压缩放、选中态渐变、48dp 热区与读屏「已选中」语义，
+            // 与搜索页 / 设置页同一交互语言；此前这里是裸 Text 胶囊，按下无反馈、无减弱动效门控。
             Spacer(Modifier.size(6.dp))
             Text("歌词对齐", fontSize = MiuixTheme.textStyles.body2.fontSize)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("left" to "左对齐", "center" to "居中").forEach { (id, label) ->
-                    val selected = lyricAlign == id
-                    Text(
-                        label,
-                        modifier = Modifier
-                            .clip(ChipShape)
-                            .background(
-                                if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f)
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f),
-                            )
-                            .clickable(role = Role.Tab) {
-                                scope.launch { LxApp.app.settings.setLyricAlign(id) }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = if (selected) MiuixTheme.colorScheme.primary
-                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    FilterChip(
+                        label = label,
+                        selected = lyricAlign == id,
+                        onClick = { scope.launch { LxApp.app.settings.setLyricAlign(id) } },
                     )
                 }
             }
-            // 桌面歌词快捷开关（原版播放页 MoreBtn/DesktopLyricBtn）：开/关两档胶囊，
-            // 形态与「歌词对齐」一致，无新增主题变量/动画。开启前检查悬浮窗权限，
-            // 未授权时拉起系统授权页（与设置页同源），避免写入 true 却看不到悬浮窗。
+            // 桌面歌词快捷开关（原版播放页 MoreBtn/DesktopLyricBtn）：开/关两档。
+            // 开启前检查悬浮窗权限，未授权时拉起系统授权页（与设置页同源），避免写入 true 却看不到悬浮窗。
             Spacer(Modifier.size(6.dp))
             Text("桌面歌词", fontSize = MiuixTheme.textStyles.body2.fontSize)
             val overlayCtx = LocalContext.current
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(false to "关闭", true to "开启").forEach { (on, label) ->
-                    val selected = desktopLyricEnabled == on
-                    Text(
-                        label,
-                        modifier = Modifier
-                            .clip(ChipShape)
-                            .background(
-                                if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f)
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.08f),
-                            )
-                            .clickable(role = Role.Tab) {
-                                if (!on) {
-                                    viewModel.setDesktopLyricEnabled(false)
-                                } else if (com.lingxu.music.core.system.DesktopLyric.canShow(overlayCtx)) {
-                                    viewModel.setDesktopLyricEnabled(true)
-                                } else {
-                                    runCatching {
-                                        overlayCtx.startActivity(
-                                            android.content.Intent(
-                                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                                android.net.Uri.parse("package:${overlayCtx.packageName}"),
-                                            ),
-                                        )
-                                    }
+                    FilterChip(
+                        label = label,
+                        selected = desktopLyricEnabled == on,
+                        onClick = {
+                            if (!on) {
+                                viewModel.setDesktopLyricEnabled(false)
+                            } else if (com.lingxu.music.core.system.DesktopLyric.canShow(overlayCtx)) {
+                                viewModel.setDesktopLyricEnabled(true)
+                            } else {
+                                runCatching {
+                                    overlayCtx.startActivity(
+                                        android.content.Intent(
+                                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            android.net.Uri.parse("package:${overlayCtx.packageName}"),
+                                        ),
+                                    )
                                 }
                             }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = if (selected) MiuixTheme.colorScheme.primary
-                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        },
+                    )
+                }
+            }
+            // 歌词位置锁定（原版播放页 MoreBtn/DesktopLyricBtn 长按切换 desktopLyric.isLock）：
+            // 移植版此前只能去「设置 → 桌面歌词 → 锁定歌词位置」。这里就近补解锁/锁定两档，
+            // 读既有偏好、写入由 LxApp 的 Flow 监听实时同步给悬浮窗。锁定时禁止拖动，轻点暂停/继续仍可用。
+            Spacer(Modifier.size(6.dp))
+            Text("锁定歌词位置", fontSize = MiuixTheme.textStyles.body2.fontSize)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(false to "未锁定", true to "已锁定").forEach { (locked, label) ->
+                    FilterChip(
+                        label = label,
+                        selected = desktopLyricLocked == locked,
+                        onClick = {
+                            scope.launch { LxApp.app.settings.setDesktopLyricLocked(locked) }
+                        },
                     )
                 }
             }
