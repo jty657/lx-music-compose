@@ -173,6 +173,10 @@ class LxApp : Application() {
         appScope.launch {
             settings.desktopLyricUnplayColor.catch { }.collect { DesktopLyric.setUnplayColor(it) }
         }
+        // 桌面歌词阴影颜色（原版 desktopLyric.style.lyricShadowColor）：null = 按文字亮度自动推导。
+        appScope.launch {
+            settings.desktopLyricShadowColor.catch { }.collect { DesktopLyric.setShadowColor(it) }
+        }
 
         // 初始化内置 SDK
         appScope.launch {

@@ -106,6 +106,10 @@ class SettingsRepository(private val context: Context) {
         // 原版 desktopLyric.style.lyricUnplayColor：悬浮歌词后续行（未播放）颜色（#RRGGBB）。
         // 未设置时沿用移植版历史「次要白」行为，老用户升级零突变。
         val KEY_DESKTOP_LYRIC_UNPLAY_COLOR = stringPreferencesKey("desktopLyric.style.lyricUnplayColor")
+        // 原版 desktopLyric.style.lyricShadowColor：悬浮歌词阴影颜色（#RRGGBB）。
+        // 原版色板中 8 档为黑阴影、1 档（黑字）为白阴影；移植版此前按文字亮度自动推导，
+        // 未设置时继续沿用自动推导，老用户升级零突变；显式选色则覆盖（对齐原版显式阴影色）。
+        val KEY_DESKTOP_LYRIC_SHADOW_COLOR = stringPreferencesKey("desktopLyric.style.lyricShadowColor")
         // userApi
         val KEY_ENABLE_USER_API_LOG = booleanPreferencesKey("userApi.log")
         const val LANG_SYSTEM = "system"
@@ -248,6 +252,13 @@ class SettingsRepository(private val context: Context) {
             it.length == 7 && it.startsWith("#") && it.drop(1).all { c -> c.isDigit() || c in 'a'..'f' || c in 'A'..'F' }
         }
     }
+    // 原版 desktopLyric.style.lyricShadowColor：null 表示沿用「按文字亮度自动推导」的历史行为。
+    // 与另外两个颜色键同样的 #RRGGBB 校验，损坏值回退 null，避免把非法色值推给原生层。
+    val desktopLyricShadowColor: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_DESKTOP_LYRIC_SHADOW_COLOR]?.takeIf {
+            it.length == 7 && it.startsWith("#") && it.drop(1).all { c -> c.isDigit() || c in 'a'..'f' || c in 'A'..'F' }
+        }
+    }
 
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
@@ -316,6 +327,11 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDesktopLyricUnplayColor(value: String?) = context.dataStore.edit { prefs ->
         if (value == null) prefs.remove(KEY_DESKTOP_LYRIC_UNPLAY_COLOR)
         else prefs[KEY_DESKTOP_LYRIC_UNPLAY_COLOR] = value
+    }
+    // 传 null 表示清除覆盖、回到「按文字亮度自动推导」，不写入空字符串
+    suspend fun setDesktopLyricShadowColor(value: String?) = context.dataStore.edit { prefs ->
+        if (value == null) prefs.remove(KEY_DESKTOP_LYRIC_SHADOW_COLOR)
+        else prefs[KEY_DESKTOP_LYRIC_SHADOW_COLOR] = value
     }
 
     suspend fun currentApiSource(): String = apiSource.first()

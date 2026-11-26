@@ -203,6 +203,8 @@ fun SettingScreen(
     val desktopLyricPlayedColor by viewModel.desktopLyricPlayedColor.collectAsState(initial = null)
     // 桌面歌词后续行颜色（原版 desktopLyric.style.lyricUnplayColor）：null = 历史默认次要白
     val desktopLyricUnplayColor by viewModel.desktopLyricUnplayColor.collectAsState(initial = null)
+    // 桌面歌词阴影颜色（原版 desktopLyric.style.lyricShadowColor）：null = 按文字亮度自动推导
+    val desktopLyricShadowColor by viewModel.desktopLyricShadowColor.collectAsState(initial = null)
 
     val isShowHotSearch by viewModel.isShowHotSearch.collectAsState(initial = false)
     val isShowHistorySearch by viewModel.isShowHistorySearch.collectAsState(initial = false)
@@ -692,6 +694,30 @@ fun SettingScreen(
                     }
                 }
                 Spacer(Modifier.size(6.dp))
+            }
+            // 桌面歌词阴影颜色（原版 desktopLyric.style.lyricShadowColor）：原版色板阴影仅两种
+            // （黑字配白阴影、其余配 rgba(0,0,0,0.6) 黑阴影）。默认「自动」沿用按文字亮度推导的
+            // 历史行为（老用户升级零突变）；显式选黑/白则覆盖，复用 FilterChip 的按压缩放、48dp
+            // 命中区、读屏语义与 LocalReduceMotion 静帧降级，与上方两组颜色色板同一手感。
+            SectionTitle("阴影颜色")
+            Spacer(Modifier.size(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                listOf<Pair<String?, String>>(
+                    null to "自动",
+                    "#000000" to "黑",
+                    "#FFFFFF" to "白",
+                ).forEach { (hex, label) ->
+                    FilterChip(
+                        label = label,
+                        selected = desktopLyricShadowColor == hex,
+                        onClick = { if (desktopLyricShadowColor != hex) viewModel.setDesktopLyricShadowColor(hex) },
+                        horizontalPadding = 8,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
 

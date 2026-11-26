@@ -72,6 +72,8 @@ object DesktopLyric {
     private var playedColorOverride: Int? = null
     /** 后续行（未播放）颜色覆盖（原版 desktopLyric.style.lyricUnplayColor）；null = 历史次要白 */
     private var unplayColorOverride: Int? = null
+    /** 阴影色覆盖（原版 desktopLyric.style.lyricShadowColor）；null = 按文字亮度自动推导 */
+    private var shadowColorOverride: Int? = null
     /** 后续行默认色：70% 白，比当前行暗一档以体现视觉层级（历史行为） */
     private val defaultUnplayColor: Int = 0xB3FFFFFF.toInt()
     /**
@@ -172,6 +174,19 @@ object DesktopLyric {
         val parsed = hex?.let { runCatching { Color.parseColor(it) }.getOrNull() }
         if (unplayColorOverride == parsed) return
         unplayColorOverride = parsed
+        lastKey = null
+        runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
+    }
+
+    /**
+     * 阴影颜色（原版 desktopLyric.style.lyricShadowColor）。
+     * hex 为 #RRGGBB；传 null 回到「按文字亮度自动推导」。只改 setShadowLayer，
+     * 不重建窗口、不触碰播放内核；解析失败时保持原行为（不把非法值推给原生层）。
+     */
+    fun setShadowColor(hex: String?) {
+        val parsed = hex?.let { runCatching { Color.parseColor(it) }.getOrNull() }
+        if (shadowColorOverride == parsed) return
+        shadowColorOverride = parsed
         lastKey = null
         runCatching { LxApp.app.playerRepository.state.value }.getOrNull()?.let { refresh(it) }
     }
@@ -468,7 +483,7 @@ object DesktopLyric {
         val lines = state.lyricLines
         val line = lines.getOrNull(index)
         // 指纹纳入样式状态：改单行/行数/透明度/对齐后，即便歌词与播放态未变也要重算文本与 alpha
-        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$playedColorOverride|$unplayColorOverride|$singleLine|$maxLineNum|$textOpacity|$textGravity|$textGravityY"
+        val key = "${state.current?.id.orEmpty()}|$index|${lines.size}|${state.isPlaying}|$accentColor|$playedColorOverride|$unplayColorOverride|$shadowColorOverride|$singleLine|$maxLineNum|$textOpacity|$textGravity|$textGravityY"
         if (key == lastKey) return
         lastKey = key
 
@@ -535,11 +550,11 @@ object DesktopLyric {
             }
         }
 
-        // 阴影色随当前行颜色联动（对齐原版色板「黑字配白阴影、其余黑阴影」）：
-        // 深色字改白阴影以保证深色透明悬浮窗上的可辨识度；仅改 setShadowLayer，
-        // 不重建窗口、不触碰播放内核。key 已含 playedColorOverride/accentColor，
-        // 故颜色变化时本段必然随 refresh 重算。
-        val shadow = shadowColorFor(currentColor)
+        // 阴影色：优先用户显式所选（原版 lyricShadowColor 显式色）；未设置时随当前行颜色联动
+        // （对齐原版色板「黑字配白阴影、其余黑阴影」），深色字改白阴影保证深色透明悬浮窗上的可辨识度。
+        // 仅改 setShadowLayer，不重建窗口、不触碰播放内核。key 已含 shadowColorOverride /
+        // playedColorOverride / accentColor，故颜色变化时本段必然随 refresh 重算。
+        val shadow = shadowColorOverride ?: shadowColorFor(currentColor)
         main.setShadowLayer(6f, 0f, 1f, shadow)
         sub.setShadowLayer(5f, 0f, 1f, shadow)
 

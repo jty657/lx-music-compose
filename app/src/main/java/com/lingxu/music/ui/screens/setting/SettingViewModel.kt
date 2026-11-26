@@ -97,6 +97,8 @@ class SettingViewModel : ViewModel() {
     val desktopLyricPlayedColor: StateFlow<String?> = state(settings.desktopLyricPlayedColor, null)
     // 原版 desktopLyric.style.lyricUnplayColor：null = 沿用历史次要白（老用户默认）
     val desktopLyricUnplayColor: StateFlow<String?> = state(settings.desktopLyricUnplayColor, null)
+    // 原版 desktopLyric.style.lyricShadowColor：null = 按文字亮度自动推导（老用户默认）
+    val desktopLyricShadowColor: StateFlow<String?> = state(settings.desktopLyricShadowColor, null)
 
     // ============ 搜索 ============
     val isShowHotSearch: StateFlow<Boolean> = state(settings.isShowHotSearch, false)
@@ -301,6 +303,8 @@ class SettingViewModel : ViewModel() {
     fun setDesktopLyricPlayedColor(value: String?) = launch { settings.setDesktopLyricPlayedColor(value) }
     /** 桌面歌词未播放行颜色（原版 lyricUnplayColor）：只写设置，实时生效由 LxApp 监听同步 */
     fun setDesktopLyricUnplayColor(value: String?) = launch { settings.setDesktopLyricUnplayColor(value) }
+    /** 桌面歌词阴影颜色（原版 lyricShadowColor）：只写设置，实时生效由 LxApp 监听同步 */
+    fun setDesktopLyricShadowColor(value: String?) = launch { settings.setDesktopLyricShadowColor(value) }
 
     /** 桌面歌词显示行数（原版 maxLineNum）：滑块回调即时生效，节流写盘，离开页面补写 */
     private var pendingDesktopLyricMaxLineNum: Int? = null
