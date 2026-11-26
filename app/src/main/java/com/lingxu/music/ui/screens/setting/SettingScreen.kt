@@ -943,16 +943,21 @@ fun SettingScreen(
                 )
                 Spacer(Modifier.size(12.dp))
                 aboutLinks.forEach { (label, url) ->
-                    TextActionButton(text = label) {
-                        runCatching {
-                            aboutCtx.startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(url),
-                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
-                    }
+                    // 必须显式用 onClick= 命名参数：TextActionButton 的 onClick 不是末位参数
+                    // （末位是 maxLines:Int），尾随 lambda 会被错误绑定到 maxLines 导致编译失败。
+                    TextActionButton(
+                        text = label,
+                        onClick = {
+                            runCatching {
+                                aboutCtx.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(url),
+                                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            }
+                        },
+                    )
                     Spacer(Modifier.size(4.dp))
                 }
                 Spacer(Modifier.size(12.dp))
