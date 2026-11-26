@@ -3,6 +3,7 @@ package com.lingxu.music.core.engine
 import android.content.Context
 import android.util.Log
 import com.lingxu.music.core.crypto.CryptoUtils
+import com.lingxu.music.core.system.AppLog
 import com.lingxu.music.core.model.Board
 import com.lingxu.music.core.model.BoardDetail
 import com.lingxu.music.core.model.LyricInfo
@@ -213,6 +214,11 @@ class BuiltinSdkBridge(context: Context) {
     @Volatile
     var currentApiSource: String = ""
 
+    /** 把内置 SDK 的 console 输出镜像到应用内运行日志（旁路、可失败） */
+    private fun mirror(level: String, info: String) {
+        runCatching { AppLog.append("sdk/$level", info) }
+    }
+
     /** 初始化 SDK 上下文 */
     fun init(apiSource: String) {
         currentApiSource = apiSource
@@ -229,11 +235,13 @@ class BuiltinSdkBridge(context: Context) {
                 // 必须接上 console：wrapper 内置的 console.js 未指定 stdout 时，任何 console.log 都会抛
                 // "When invoke console stuff, you should be set a stdout of platform to console.stdout."；
                 // SDK bundle 的 fetchData 会 console.log，导致所有搜索失败。
+                // console 回调同时写入应用内运行日志缓冲（对齐原版 getLogs），方便在设置页
+                // 查看搜索/取词/取链的实际输出；旁路 runCatching，失败不影响 SDK 初始化。
                 context.setConsole(object : QuickJSContext.Console {
-                    override fun log(info: String) { Log.i(TAG, "[sdk] $info") }
-                    override fun info(info: String) { Log.i(TAG, "[sdk] $info") }
-                    override fun warn(info: String) { Log.w(TAG, "[sdk] $info") }
-                    override fun error(info: String) { Log.e(TAG, "[sdk] $info") }
+                    override fun log(info: String) { mirror("log", info); Log.i(TAG, "[sdk] $info") }
+                    override fun info(info: String) { mirror("info", info); Log.i(TAG, "[sdk] $info") }
+                    override fun warn(info: String) { mirror("warn", info); Log.w(TAG, "[sdk] $info") }
+                    override fun error(info: String) { mirror("error", info); Log.e(TAG, "[sdk] $info") }
                 })
                 val global = context.getGlobalObject()
 

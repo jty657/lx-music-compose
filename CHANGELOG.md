@@ -1,6 +1,42 @@
 # 更新日志
 
-## 第四十五轮：搜索页热搜与历史并列显示（v1.9.0，本次）
+## 第四十六轮：运行日志查看/清空（v1.9.1，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮新增 1 个源码文件、
+> 修改 3 个源码文件，通过 `scripts/selfcheck.py` 静态自检，构建按约定走 GitHub Actions 云端。
+> 零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能（原版缺失项）
+
+- **应用内运行日志**（新增 `core/system/AppLog.kt`，对齐原版 `utils/log.ts` 的 getLogs / clearLogs 与
+  `settings/Other/Log.tsx` 查看弹窗）：原版把音源脚本 console 与错误日志写入文件，设置页可查看/清空；
+  移植版此前只有「记录自定义源日志」开关，日志仅打到 logcat，普通用户无法在机内查看，音源导入/
+  搜索失败难以自查。本轮提供纯内存、有上限（最近 300 行）、线程安全（ConcurrentLinkedDeque +
+  `@Synchronized` 时间戳格式化的环形缓冲，单行截断 500 字符），零依赖、零落盘、不扩大备份/隐私面。
+
+### 接线（旁路、不碰核心）
+
+- **音源脚本 console**（`ScriptEngineManager.kt`）：`ScriptAction.Log` 分支在原有 `scriptLogEnabled`
+  的 logcat 输出之外，把同一条 `runCatching { AppLog.append(...) }` 镜像到缓冲；日志设施异常绝不影响引擎。
+- **内置 SDK console**（`BuiltinSdkBridge.kt`）：`setConsole` 的 log/info/warn/error 四个回调经私有
+  `mirror()` 旁路写入缓冲，便于查看搜索/取词/取链实际输出；logcat 行为与 SDK 初始化流程零变化。
+- **设置页**（`SettingScreen.kt`）：「其他」分区新增「运行日志」入口（副标题带当前条数），点击取一次
+  快照打开查看弹窗；弹窗限高 360dp 可滚动、空态有提示，底部「清空」（红色 `TextActionButton`）与
+  「完成」。快照式展示避免日志持续写入导致文本跳动；弹窗进场沿用 `GlassDialog` 的 alpha 淡入。
+
+### 视觉 / 动效 / 可访问性
+
+- 复用全站设计语言：`ArrowPreference` 入口、`TextActionButton` 按压反馈（48dp 热区、`Role.Button`
+  读屏语义、`LocalReduceMotion` 静帧降级）、`GlassDialog` 统一进出场；未新增主题变量或逐帧动画。
+- 限高滚动只影响自身弹窗，不触发布局抖动；长日志在弹窗内滚动，不撑破屏幕。
+
+### 已知差异 / 待确认
+
+- 原版日志落盘并可跨重启保留、含「同步错误日志」开关与网络上报；本轮为内存缓冲、仅本次运行可见、
+  重启清空（对应副标题文案已注明）。落盘需新增文件读写与损坏隔离，风险偏高，留待后续单独立项。
+- 原版 `getLogs` 按 `----lx log----` 分段并倒序展示；本轮为简单的时间戳单行列表，语义等价但格式不同。
+
+## 第四十五轮：搜索页热搜与历史并列显示（v1.9.0）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮仅
 > `SearchScreen.kt` 一个源码文件改动，通过 `scripts/selfcheck.py` 静态自检，构建按约定走 GitHub

@@ -6,13 +6,28 @@
 
 ---
 
-## 本轮执行状态（第四十五轮 · v1.9.0）
+## 本轮执行状态（第四十六轮 · v1.9.1）
 
-> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮 1 个源码文件改动
-> （`SearchScreen.kt`），通过 `scripts/selfcheck.py`；构建按项目约定走 GitHub Actions 云端
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮新增 1 个源码文件
+> （`core/system/AppLog.kt`）+ 修改 3 个源码文件（`ScriptEngineManager.kt` / `BuiltinSdkBridge.kt` /
+> `SettingScreen.kt`），通过 `scripts/selfcheck.py`；构建按项目约定走 GitHub Actions 云端
 > （推送 `master` 自动触发），零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
 
 **本轮改动**
+1. **应用内运行日志查看/清空**（新增 `core/system/AppLog.kt`，对齐原版 `utils/log.ts` 的 getLogs /
+   clearLogs 与 `settings/Other/Log.tsx`）：原版设置页「其他 → 日志」可查看/清空运行日志；移植版此前
+   只有「记录自定义源日志」开关（`enableUserApiLog`），console 仅打进 logcat，用户在机内无法查看，
+   音源导入/搜索失败难以自查。新增纯内存、有上限（最近 300 行）、单行截断 500 字符、线程安全的
+   环形缓冲，零依赖、零落盘、不扩大备份/隐私面。
+2. **旁路接线（不碰核心）**：`ScriptEngineManager.kt` 的 `ScriptAction.Log` 分支在既有 logcat 之外，
+   把同一条 `runCatching { AppLog.append(...) }` 镜像到缓冲；`BuiltinSdkBridge.kt` 的 `setConsole`
+   四个回调经私有 `mirror()` 旁路写入，便于查看搜索/取词/取链输出。两者均不改变原 logcat 行为与
+   引擎初始化流程，日志设施异常绝不影响音源/播放。
+3. **设置页入口与弹窗**（`SettingScreen.kt`）：「其他」分区新增「运行日志」入口（副标题带条数），
+   点击取一次快照打开查看弹窗；限高 360dp 滚动、空态提示、底部「清空」（红色 `TextActionButton`）
+   与「完成」。快照式展示避免日志持续写入导致文本跳动；交互复用全站 `GlassDialog`/`TextActionButton`。
+
+**上一轮改动（第四十五轮 · v1.9.0）**
 1. **热搜 + 历史并列显示**（`SearchScreen.kt` / 空态引导区）：原版搜索页 `BlankView` 在
    `search.isShowHotSearch` 或 `search.isShowHistorySearch` 任一开启、且输入为空/未搜索/无结果时，
    热搜在上、历史在下并列展示。移植版此前为两个各自 `return@Column` 的独立分支，历史优先命中后
@@ -24,7 +39,7 @@
    `LocalReduceMotion` 时 0ms 静帧；此前仅热搜有淡入、历史硬切。并列时两块间插 12dp 层级间距，
    仅一块显示时无多余空白。历史 `historyRowClickable`、热搜 `FilterChip`、「清空」按钮保持不变。
 
-**上一轮改动（第四十四轮 · v1.8.9）**
+**上上轮改动（第四十四轮 · v1.8.9）**
 1. 定时停止支持任意分钟（`SettingScreen.kt`）：原版 `TimeoutExitEditModal` 允许输入任意分钟数，
    移植版此前「定时停止播放」弹窗仅提供 15/30/45/60/90/120 六档固定值。本轮在六档下方新增
    「自定义分钟（1-1440）」输入框（数字键盘、单行、`OutlinedTextField` 内联错误提示），非法输入
@@ -50,15 +65,16 @@
    `LocalReduceMotion` 静帧降级与读屏语义）。
 
 **假设与待确认**
-- 原版历史与热搜同处一个 `ScrollView`、可整体滚动；移植版历史用 `.weight(1f)` 占满剩余空间单独滚动、
-  热搜固定在上（横向 `LazyRow`）。两开关同开时的可见性与顺序已对齐，滚动容器结构差异为移植版既有布局，
-  本轮未改（避免触碰外层 `Column` 布局与滚动上报逻辑）。如需严格 1:1，后续单独评估。
-- 沿用移植版既有的两块触发条件，未引入「有历史则隐藏热搜」等新门控；仅把互斥 `return` 收拢为统一出口，
-  空态（无历史/无热搜/已搜索/有结果）行为与改动前逐字等价。
-- 视觉风格沿用项目现有设计语言（复用公共 `FilterChip` + `TextActionButton` + `historyRowClickable` +
+- 运行日志采用**内存环形缓冲**（最近 300 行、重启清空），而非原版的落盘文件：落盘需新增文件读写与
+  损坏隔离、会扩大备份/隐私面，风险偏高，留待后续单独立项。副标题已明确注明「重启应用后清空」。
+- 原版 `getLogs` 按 `----lx log----` 分段倒序展示、且有「同步错误日志」开关与网络上报；本轮为简单的
+  时间戳单行列表、无同步上报，语义等价但格式不同。若需 1:1，后续单独评估。
+- 日志缓冲无条件收集（不依赖 `enableUserApiLog` 开关）：开关继续只控制是否额外打到 logcat，保持既有
+  语义零变化；缓冲仅存内存且有上限，隐私/内存开销恒定。所有写入经 `runCatching` 旁路，异常不影响引擎。
+- 视觉风格沿用项目现有设计语言（复用公共 `ArrowPreference` + `TextActionButton` + `GlassDialog` +
   Miuix 语义色 + `LocalReduceMotion`），无新增主题变量、无新增逐帧动画，符合减弱动效与低性能设备约定。
-- 原版「切换音源 / 简繁歌词 / 音频 Offload / 自动清理播放列表 / 同步 / 评论 / 逐字歌词 / 运行日志
-  查看清空」等差异项风险或依赖偏高，本轮未纳入（详见问题清单）。
+- 原版「切换音源 / 简繁歌词 / 音频 Offload / 自动清理播放列表 / 同步 / 评论 / 逐字歌词 / 元数据缓存
+  落盘」等差异项风险或依赖偏高，本轮未纳入（详见问题清单）。
 
 **验证**：静态自检通过（`scripts/selfcheck.py` 退出码 0）；构建由 GitHub Actions 云端执行，结果见
 提交后 Run。

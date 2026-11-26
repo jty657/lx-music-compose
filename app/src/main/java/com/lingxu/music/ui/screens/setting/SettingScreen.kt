@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -213,6 +214,10 @@ fun SettingScreen(
     // 同倍速/音量：不用 LaunchedEffect 回灌持久化值，避免拖动过程中滑块回弹
     var localBlur by remember { mutableFloatStateOf(blurRadius) }
     val userApiLog by viewModel.userApiLog.collectAsState(initial = false)
+    // 应用内运行日志（对齐原版设置 → 其他 → 日志）：开关控制是否记录到 logcat，
+    // 查看弹窗展示进程内的有界缓冲，音源与搜索出错时可在机内自查，无需连电脑看 logcat。
+    var showRuntimeLog by remember { mutableStateOf(false) }
+    var runtimeLogText by remember { mutableStateOf("") }
 
     // 离开设置页时提交倍速/音量节流跳过的最终值，避免拖完立刻返回导致调整丢失
     DisposableEffect(Unit) {
@@ -812,6 +817,16 @@ fun SettingScreen(
             summary = "歌词 ${metaLyricCount} 条 · 播放链接 ${metaUrlCount} 条",
             onClick = { showMetaCache = true },
         )
+        // 对齐原版 setting_other_log：查看/清空运行日志（音源脚本与内置 SDK 的 console）。
+        // 副标题带当前条数，用户不看点进去就知道有没有内容；缓冲有上限、仅存内存。
+        ArrowPreference(
+            title = "运行日志",
+            summary = "查看音源与搜索输出（最近 ${com.lingxu.music.core.system.AppLog.size()} 条，重启应用后清空）",
+            onClick = {
+                runtimeLogText = com.lingxu.music.core.system.AppLog.snapshot()
+                showRuntimeLog = true
+            },
+        )
 
         // ============ 系统能力（对齐原版 utils / 版本更新源） ============
         SectionTitle("系统")
@@ -1189,6 +1204,58 @@ fun SettingScreen(
                 Spacer(Modifier.size(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Button(onClick = { showMetaCache = false }) { Text("完成") }
+                }
+            }
+        }
+    }
+
+    // 运行日志查看/清空（对齐原版 ConfirmAlert：展示文本 + 清空 + 关闭）。
+    // 打开时取一次快照：避免展示期间新日志持续写入导致文本跳动、难以阅读；
+    // 清空后重新取快照并就地刷新副标题计数。仅动 alpha 的弹窗进场由 GlassDialog 统一负责。
+    if (showRuntimeLog) {
+        GlassDialog(onDismissRequest = { showRuntimeLog = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("运行日志", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    "音源脚本与内置 SDK 的最近输出，用于排查导入/搜索失败。仅存于本次运行，重启后清空。",
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                Spacer(Modifier.size(12.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        // 限定高度：长日志在弹窗内滚动，不撑破屏幕（斟酌过高度不触发布局抖动）
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (runtimeLogText.isBlank()) {
+                        Text(
+                            "暂无日志。使用音源或搜索后可在此查看输出。",
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    } else {
+                        Text(
+                            runtimeLogText,
+                            fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                        )
+                    }
+                }
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextActionButton(
+                        text = "清空",
+                        color = MiuixTheme.colorScheme.error,
+                        onClick = {
+                            com.lingxu.music.core.system.AppLog.clear()
+                            runtimeLogText = com.lingxu.music.core.system.AppLog.snapshot()
+                            toast = "已清空运行日志"
+                        },
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = { showRuntimeLog = false }) { Text("完成") }
                 }
             }
         }

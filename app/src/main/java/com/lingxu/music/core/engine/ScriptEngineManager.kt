@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.lingxu.music.core.engine.QuickJSEngine.EngineState
 import com.lingxu.music.core.model.ApiSourceInfo
+import com.lingxu.music.core.system.AppLog
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -121,6 +122,10 @@ class ScriptEngineManager(private val context: Context) {
                         is ScriptAction.Log -> {
                             // 设置项「记录自定义源日志」：之前该开关没有任何消费方，永远不生效
                             if (scriptLogEnabled) Log.d(TAG, "[${action.level}] ${action.message}")
+                            // 应用内运行日志（对齐原版 getLogs）：在原有 logcat 之外，把同一条
+                            // 顺带留一份到有界内存缓冲，供设置页查看/清空，方便排查音源与搜索问题。
+                            // 旁路且可失败：runCatching 保证日志设施异常绝不影响音源引擎。
+                            runCatching { AppLog.append(action.level, action.message) }
                         }
                         is ScriptAction.ShowUpdateAlert -> {
                             Log.i(TAG, "script update alert: ${action.log}")
