@@ -74,6 +74,20 @@ object DesktopLyric {
     private var unplayColorOverride: Int? = null
     /** 后续行默认色：70% 白，比当前行暗一档以体现视觉层级（历史行为） */
     private val defaultUnplayColor: Int = 0xB3FFFFFF.toInt()
+    /**
+     * 深色字判定阈值（原版色板联动语义）：原版 9 档主题色中，仅「黑」字档（#000000）
+     * 配白色阴影，其余 8 档配 rgba(0,0,0,0.6) 黑阴影，以保证深色透明悬浮窗上黑字仍可辨认。
+     * 移植版此前阴影写死为黑，选黑字时会「黑字 + 黑阴影」难以看清。这里按当前行颜色亮度
+     * 自动切换：低于阈值视为深色字 → 白阴影，否则沿用历史黑阴影。
+     * 相对亮度用 Rec.709 权重估算（0~1）。阈值取 0.15：纯黑(0)命中白阴影；原版色板其余 8 档
+     * （最暗的红 #ff1222 亮度约 0.27）均高于阈值、保持历史黑阴影，与原版 8:1 表现精确一致，
+     * 老用户升级观感零突变。
+     */
+    private const val DARK_TEXT_LUMINANCE = 0.15f
+    /** 深色字时用的白色阴影（约 70% 白，与历史黑阴影 0xB3000000 同一透明度量级） */
+    private val lightShadowColor: Int = 0xB3FFFFFF.toInt()
+    /** 历史默认黑阴影（约 70% 黑），与原版 rgba(0,0,0,0.6) 接近 */
+    private val darkShadowColor: Int = 0xB3000000.toInt()
     private var fontSizeSp: Float = 18f
     /** 位置是否锁定（对齐原版 desktopLyric.isLock）：锁定时禁止拖动，轻点暂停/继续仍可用 */
     private var locked: Boolean = false
@@ -93,6 +107,19 @@ object DesktopLyric {
     private var textGravityY: Int = Gravity.TOP
     /** 水平 + 垂直合成的 gravity，作用于两个 TextView */
     private fun combinedTextGravity(): Int = textGravity or textGravityY
+
+    /**
+     * 按当前行颜色推导阴影色（对齐原版色板「黑字配白阴影」联动语义）。
+     * 用 Rec.709 相对亮度估算：深色字返回白阴影，其余返回历史黑阴影。
+     * 只影响 TextView 的 setShadowLayer，不重建窗口、不触碰播放内核。
+     */
+    private fun shadowColorFor(textColor: Int): Int {
+        val r = Color.red(textColor) / 255f
+        val g = Color.green(textColor) / 255f
+        val b = Color.blue(textColor) / 255f
+        val luminance = 0.2126f * r + 0.7152f * g + 0.0722f * b
+        return if (luminance < DARK_TEXT_LUMINANCE) lightShadowColor else darkShadowColor
+    }
     /** 悬浮歌词显示行数（对齐原版 desktopLyric.maxLineNum）：1~8，默认 5。单行模式下强制为 1 */
     private var maxLineNum: Int = 5
     /** 悬浮窗宽度占屏幕的百分比（对齐原版 desktopLyric.width）：10~100，默认 100 */
@@ -507,6 +534,14 @@ object DesktopLyric {
                 sub.visibility = android.view.View.VISIBLE
             }
         }
+
+        // 阴影色随当前行颜色联动（对齐原版色板「黑字配白阴影、其余黑阴影」）：
+        // 深色字改白阴影以保证深色透明悬浮窗上的可辨识度；仅改 setShadowLayer，
+        // 不重建窗口、不触碰播放内核。key 已含 playedColorOverride/accentColor，
+        // 故颜色变化时本段必然随 refresh 重算。
+        val shadow = shadowColorFor(currentColor)
+        main.setShadowLayer(6f, 0f, 1f, shadow)
+        sub.setShadowLayer(5f, 0f, 1f, shadow)
 
         // 目标不透明度 = 文字不透明度 × 播放态系数（播放 1.0 / 暂停 0.55）。
         // 暂停降透明度不额外加图标，避免遮挡下层内容。
