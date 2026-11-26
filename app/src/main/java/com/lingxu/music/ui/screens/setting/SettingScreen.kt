@@ -125,6 +125,8 @@ fun SettingScreen(
         LxApp.app.playerRepository.state.map { it.timeoutExitRemaining }
     }.collectAsState(initial = -1)
     var showTimeoutExit by remember { mutableStateOf(false) }
+    // 定时停止「自定义分钟」输入：对齐原版 TimeoutExitEditModal 的任意分钟数（移植版此前仅固定档位）。
+    var customTimeoutMinutes by remember { mutableStateOf("") }
 
     // ============ 播放缓存（原版 player.cacheSize） ============
     // 当前缓存占用随播放增长，进入设置页与清理后各读一次即可（每次读都要遍历缓存索引，
@@ -429,7 +431,10 @@ fun SettingScreen(
             } else {
                 "未开启"
             },
-            onClick = { showTimeoutExit = true },
+            onClick = {
+                customTimeoutMinutes = "" // 每次打开都从空输入开始，不残留上次值
+                showTimeoutExit = true
+            },
         )
         ArrowPreference(
             title = "播放缓存",
@@ -1013,6 +1018,40 @@ fun SettingScreen(
                             }
                             // 纯文字选项热区补到约 48dp（与搜索页/不喜欢列表同类项一致），字号不变
                             .padding(vertical = 14.dp),
+                    )
+                }
+                // 对齐原版 TimeoutExitEditModal：允许输入任意分钟数，不再局限于固定档位。
+                // 底层 setTimeoutExit(Int) 已支持任意分钟并做溢出钳制，这里只做输入解析与范围校验。
+                Spacer(Modifier.size(8.dp))
+                // 上限 1440 分钟（24 小时），下限 1；错误在输入框内联提示，不额外弹窗、不改动播放状态。
+                val customMin = customTimeoutMinutes.trim().toIntOrNull()
+                val customMinInvalid = customTimeoutMinutes.isNotEmpty() && (customMin == null || customMin !in 1..1440)
+                androidx.compose.material3.OutlinedTextField(
+                    value = customTimeoutMinutes,
+                    onValueChange = { customTimeoutMinutes = it },
+                    label = { Text("自定义分钟（1-1440）") },
+                    singleLine = true,
+                    isError = customMinInvalid,
+                    supportingText = {
+                        if (customMinInvalid) Text("请输入 1-1440 之间的分钟数")
+                    },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.size(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextActionButton(
+                        text = "开始定时",
+                        // 非法输入时按钮不响应，错误已由输入框内联提示；合法则落盘并关闭弹窗。
+                        onClick = {
+                            val min = customTimeoutMinutes.trim().toIntOrNull()
+                            if (min != null && min in 1..1440) {
+                                viewModel.setTimeoutExit(min)
+                                showTimeoutExit = false
+                            }
+                        },
                     )
                 }
                 if (timeoutRemaining > 0) {

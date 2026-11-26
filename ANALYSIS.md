@@ -6,49 +6,49 @@
 
 ---
 
-## 本轮执行状态（第四十三轮 · v1.8.8）
+## 本轮执行状态（第四十四轮 · v1.8.9）
 
-> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮 5 个源码文件改动
-> 全部通过 `scripts/selfcheck.py`；构建按项目约定走 GitHub Actions 云端（推送 `master` 自动触发），
-> 零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮 1 个源码文件改动
+> （`SettingScreen.kt`），通过 `scripts/selfcheck.py`；构建按项目约定走 GitHub Actions 云端
+> （推送 `master` 自动触发），零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
 
 **本轮改动**
-1. 播放页动态背景 `theme.dynamicBg`（原版缺失项）：原版设置默认 false，开启后播放页背景跟随封面
-   主色；移植版此前该偏好完全缺失。本轮新增偏好键与 Flow（`SettingsRepository.kt`）、ViewModel
-   `StateFlow` 与 setter（`SettingViewModel.kt`）、设置页开关（`SettingScreen.kt`），播放页最底层绘制
-   封面主色垂直渐变（`PlayerScreen.kt`）。取色复用 `TrackCover.kt` 的 `rememberCoverBitmap`（96px 小图
-   + 4bit 直方图 + 向中灰降饱和提亮），与播放页大图共享缓存、零额外网络请求、零新依赖。
+1. 定时停止支持任意分钟（`SettingScreen.kt`）：原版 `TimeoutExitEditModal` 允许输入任意分钟数，
+   移植版此前「定时停止播放」弹窗仅提供 15/30/45/60/90/120 六档固定值。本轮在六档下方新增
+   「自定义分钟（1-1440）」输入框（数字键盘、单行、`OutlinedTextField` 内联错误提示），非法输入
+   时「开始定时」不响应；合法值走既有 `viewModel.setTimeoutExit(min)`。底层 `PlayerRepository.
+   startTimeoutExit(Int)` 本就支持任意分钟并做 `Long` 运算溢出钳制，本轮只补 UI 入口、零新增偏好键、
+   零新增 ViewModel 方法。
+2. 交互/动效一致性：「开始定时」复用全站公共 `TextActionButton`——按压缩放（`Motion.press`）、
+   48dp 命中区、`Role.Button` 读屏语义、`LocalReduceMotion` 静帧降级，与设置页「删除」规则、
+   搜索页「清空」历史同一手感；输入框 `isError` + `supportingText` 就地校验，不额外弹窗、不改播放状态。
+
+**上一轮改动（第四十三轮 · v1.8.8）**
+1. 播放页动态背景 `theme.dynamicBg`（原版缺失项）：新增偏好键与 Flow（`SettingsRepository.kt`）、
+   ViewModel `StateFlow` 与 setter（`SettingViewModel.kt`）、设置页开关（`SettingScreen.kt`），播放页
+   最底层绘制封面主色垂直渐变（`PlayerScreen.kt`）。取色复用 `TrackCover.rememberCoverBitmap`（96px
+   小图 + 4bit 直方图 + 向中灰降饱和提亮），与播放页大图共享缓存、零额外网络请求、零新依赖。
 2. 动效：背景主色经 `animateColorAsState` 320ms 平滑过渡，切歌换色不硬切；`LocalReduceMotion`
    时时长为 0。渐变透明度 0.18f、取色向中灰靠拢，深浅主题下前景文字对比度不受影响。
 
 **上一轮改动（第四十二轮 · v1.8.7）**
-1. 播放页歌词位置锁定快捷入口（`PlayerScreen.kt` / `PlayerMoreSettings`）：原版播放页
-   `MoreBtn/DesktopLyricBtn` 短按切换桌面歌词、长按切换位置锁定（`desktopLyric.isLock`），移植版此前
-   弹窗内只有开/关、锁定须跳设置页。本轮在开/关胶囊下方就近补「锁定歌词位置 未锁定/已锁定」两档，
-   读 `settings.desktopLyricLocked` Flow、写 `setDesktopLyricLocked()`，由 LxApp 的 Flow 监听实时同步
-   给悬浮窗（`DesktopLyric.setLocked`）；零新增偏好键与 ViewModel 方法。
-2. 胶囊交互统一（同函数）：把「歌词对齐」「桌面歌词」「锁定歌词位置」三组裸 `Text` 胶囊改用全站公共
-   `FilterChip`——自带按压缩放（0.96）、选中态底色渐变（160ms）、48dp 热区、`LocalReduceMotion`
-   静帧降级与读屏「已选中」语义，与搜索页/设置页同一交互语言；无新增主题变量与逐帧动画。
-
-**上一轮改动（第四十一轮 · v1.8.6）**
-1. 桌面歌词阴影色联动（`DesktopLyric.kt`）：原版 9 档主题色板仅「黑」字档配白阴影、其余配黑阴影；
-   移植版此前阴影写死为黑，选黑字会「黑字 + 黑阴影」难以辨认。本轮在 `refresh()` 中按当前行颜色
-   （`playedColorOverride ?: accentColor`）的 Rec.709 相对亮度推导阴影色：深色字（< 0.15）用白阴影，
-   其余沿用历史黑阴影。刷新指纹已含颜色状态，改色即时生效；仅调 `setShadowLayer`，不重建窗口、
-   不触碰 span 文本与播放内核。阈值保守（纯黑命中、色板其余 8 档保持黑阴影），亮色主题字观感零突变。
+1. 播放页歌词位置锁定快捷入口（`PlayerScreen.kt` / `PlayerMoreSettings`）：弹窗内就近补「锁定歌词
+   位置」两档，读写既有 `desktopLyric.isLock` 偏好，由 LxApp 的 Flow 监听实时同步给悬浮窗。
+2. 胶囊交互统一：三组裸 `Text` 胶囊改用全站 `FilterChip`（按压缩放、选中态渐变、48dp 热区、
+   `LocalReduceMotion` 静帧降级与读屏语义）。
 
 **假设与待确认**
-- 原版 `DesktopLyricBtn` 为「短按开关 + 长按锁定」复用同一图标，本轮沿用移植版既有的「弹窗内显式
-  两档胶囊」形态（可读性更好、易发现），未做长按手势（避免 `combinedClickable` 判定复杂度）；
-  功能语义与操作入口均已对齐。如需严格复刻长按手势，可在后续单独立项。
-- 锁定胶囊与开关同处弹窗，锁定时若桌面歌词未开启不会有可见效果（与原版独立偏好语义一致）。
-- 视觉风格沿用项目现有设计语言（复用 `FilterChip` + Miuix 语义色），无新增主题变量、无新增逐帧
-  动画，符合减弱动效与低性能设备约定。
-- 原版「切换音源 / 简繁歌词 / 音频 Offload / 自动清理播放列表 / 同步 / 评论 / 逐字歌词」等差异项
-  风险或依赖偏高，本轮未纳入（详见问题清单）。
+- 本轮自定义分钟上限取 1440（24 小时）为保守约束；原版输入理论上可更大，但超大值在移动端无实际
+  意义且受 `setTimeoutExit` 钳制，故未放开。如需与原版完全一致（无上限），后续单独评估。
+- 原版时间编辑弹窗含「播完再退」选项，移植版该开关已在弹窗外独立提供（「播完当前歌曲再停」），
+  语义等价，未重复放入本弹窗。
+- 视觉风格沿用项目现有设计语言（复用 `TextActionButton` + Miuix 语义色 + `OutlinedTextField`），
+  无新增主题变量、无新增逐帧动画，符合减弱动效与低性能设备约定。
+- 原版「切换音源 / 简繁歌词 / 音频 Offload / 自动清理播放列表 / 同步 / 评论 / 逐字歌词 / 运行日志
+  查看清空」等差异项风险或依赖偏高，本轮未纳入（详见问题清单）。
 
-**验证**：静态自检通过；构建由 GitHub Actions 云端执行，结果见提交后 Run。
+**验证**：静态自检通过（`scripts/selfcheck.py` 退出码 0）；构建由 GitHub Actions 云端执行，结果见
+提交后 Run。
 
 ---
 
@@ -409,7 +409,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.8.1（第三十六轮）：悬浮歌词宽度设置（对齐 `desktopLyric.width`，10~100% 默认 100）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增宽度偏好键、setter 与设置页滑块，`DesktopLyric` 抽 `computeWidth()` 供启动与实时 `updateViewLayout` 共用并保留 x/y 位置；100% 沿用历史内边距观感、最小 160dp；节流写盘 + onDispose 补写；不改播放内核与音源协议
 - v1.8.2（第三十七轮）：桌面歌词主题色板（对齐 `desktopLyric.style.lyricPlayedColor`，原版 9 色）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增颜色偏好键（合法 `#RRGGBB` 校验，null = 跟随主题）、setter 与设置页两行色板；`DesktopLyric` 新增 `setPlayedColor()`，默认仅 ♪ 用主题色（与升级前一致），选色后当前行（含 ♪）整体着色、后续行保持次要色层级，改色只重绘文本不重建窗口；默认「跟随主题」零突变；不改播放内核与音源协议
 - v1.8.3（第三十八轮）：未播放歌词颜色（对齐 `desktopLyric.style.lyricUnplayColor`）——同一条成熟链路新增后续行颜色偏好键（合法 `#RRGGBB` 校验，null = 历史次要白）、setter 与设置页两行色板；`DesktopLyric` 新增 `setUnplayColor()`，后续行按所选色渲染并纳入刷新指纹，当前行配色独立不受影响；默认「默认」沿用次要白零突变，改色只重绘 span 不重建窗口；不改播放内核与音源协议
-- **v1.8.8（本轮 · 第四十三轮）**：播放页动态背景（对齐原版缺失项 `theme.dynamicBg`，默认 false）——新增偏好键/Flow、ViewModel StateFlow 与 setter、设置页开关；播放页最底层绘制封面主色垂直渐变，经 `animateColorAsState` 320ms 平滑换色、`LocalReduceMotion` 静帧降级；取色复用 `TrackCover.rememberCoverBitmap`（96px 小图 + 4bit 直方图 + 向中灰降饱和提亮），零新依赖、零额外网络请求，关闭时整层无操作；不改路由/状态管理/播放内核与音源协议
+- **v1.8.9（本轮 · 第四十四轮）**：定时停止支持任意分钟（对齐原版 `TimeoutExitEditModal`）——「定时停止播放」弹窗在 15/30/45/60/90/120 六档之外新增「自定义分钟（1-1440）」输入框（数字键盘、单行、`OutlinedTextField` 内联错误校验），非法输入时「开始定时」不响应；合法值走既有 `viewModel.setTimeoutExit(min)`（底层已支持任意分钟并做溢出钳制）。「开始定时」复用全站 `TextActionButton`（按压缩放、48dp 热区、读屏语义、减弱动效静帧降级）；仅改 `SettingScreen.kt` 一处，零新增依赖、零新增偏好键、不改播放内核与音源协议
+- v1.8.8（第四十三轮）：播放页动态背景（对齐原版缺失项 `theme.dynamicBg`，默认 false）——新增偏好键/Flow、ViewModel StateFlow 与 setter、设置页开关；播放页最底层绘制封面主色垂直渐变，经 `animateColorAsState` 320ms 平滑换色、`LocalReduceMotion` 静帧降级；取色复用 `TrackCover.rememberCoverBitmap`（96px 小图 + 4bit 直方图 + 向中灰降饱和提亮），零新依赖、零额外网络请求，关闭时整层无操作；不改路由/状态管理/播放内核与音源协议
 
 ---
 
