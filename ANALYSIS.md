@@ -6,7 +6,35 @@
 
 ---
 
-## 本轮执行状态（第四十七轮 · v1.9.2）
+## 本轮执行状态（第四十八轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮对齐原版「关于」页
+> 缺失的开源地址 / 最新版下载 / 常见问题入口，仅修改 1 个源码文件（`SettingScreen.kt`），通过
+> `scripts/selfcheck.py`；构建按项目约定走 GitHub Actions 云端（推送 `master` 自动触发），零新增依赖、
+> 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+**本轮改动**
+1. **关于页开源项目入口**（对齐原版 `settings/About.tsx`）：原版「关于」页给出开源地址、最新版下载、
+   常见问题等外链，移植版此前只有版本号与设备信息。本轮在「关于」分区新增「开源项目」入口，弹窗
+   汇总四条链接（移植版仓库 / 原版仓库 / 最新版下载 / 常见问题），点击经系统浏览器打开
+   （复用检查更新的 `ACTION_VIEW` 模式）。新增 1 个状态 `showAboutProject` + 一段 `GlassDialog`，
+   纯 UI 层、不读写偏好键、不改任何业务逻辑。
+
+**视觉 / 交互 / 可访问性**
+- 复用全站 `ArrowPreference` + `GlassDialog` + `TextActionButton`：链接按钮自带按压缩放
+  （`Motion.press`）、48dp 命中区、`Role.Button` 读屏语义、`LocalReduceMotion` 静帧降级；
+  每条链接独立 `runCatching`，单个无浏览器时不崩溃、不影响其它项。无新增主题变量、无逐帧动画。
+
+**假设与待确认**
+- 外链按当前仓库实际地址填写（`jty657/lx-music-compose` 与 `lyswhut/lx-music-mobile`），仓库迁移需同步 `aboutLinks`。
+- 原版「关于」页的付费免责声明与「许可协议」长文未逐字移植（无现成文案资源、篇幅大），以短说明 + 外链替代，语义等价；如需 1:1 后续单独评估。
+- 副标题「洛雪音乐 v1.9.1 的 Compose 移植版」中的 v1.9.1 表示移植基线版本，非应用版本，本轮不改以避免歧义。
+
+**验证**：静态自检通过（`scripts/selfcheck.py` 退出码 0）；构建由 GitHub Actions 云端执行，结果见提交后 Run。
+
+---
+
+**上一轮改动（第四十七轮 · v1.9.2）**
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮对齐原版一个设置项
 > `list.isClickPlayList`，修改 5 个源码文件（`SettingsRepository.kt` / `SettingViewModel.kt` /
@@ -14,7 +42,6 @@
 > 与本地 `assembleDebug`；构建按项目约定走 GitHub Actions 云端（推送 `master` 自动触发），零新增依赖、
 > 不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
 
-**本轮改动**
 1. **点歌切换列表开关**（对齐原版 `list.isClickPlayList`，原版 `settings/List/IsClickPlayList.tsx`）：
    原版设置「点击列表里的歌曲时自动切换到当前列表播放（仅对歌单和排行榜有效）」，此前移植版缺失该项
    且点击行为固定为「切到当前列表队列」。本轮新增偏好键与设置页开关，默认 `true` 以保持移植版既有行为、

@@ -66,6 +66,10 @@ fun SettingScreen(
     var updateUrl by remember { mutableStateOf("") }
     var updateChecking by remember { mutableStateOf(false) }
 
+    // 开源项目信息弹窗（对齐原版「关于」页的开源地址 / 最新版下载 / 常见问题入口）。
+    // 纯展示 + 复用全站 GlassDialog / TextActionButton，不引入新依赖、不触碰播放与音源逻辑。
+    var showAboutProject by remember { mutableStateOf(false) }
+
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
@@ -907,7 +911,56 @@ fun SettingScreen(
             )
         }
 
+        // 开源项目信息（对齐原版 About.tsx：开源地址 / 最新版下载 / 常见问题）。
+        // 原版「关于」页给出四个外链，移植版此前只有版本号与设备信息，用户无从查看项目出处。
+        // 这里用一个入口汇总，弹窗内逐条给出，点击经系统浏览器打开（复用检查更新的 ACTION_VIEW 模式）。
+        Spacer(Modifier.size(8.dp))
+        ArrowPreference(
+            title = "开源项目",
+            summary = "项目地址、最新版下载与常见问题",
+            onClick = { showAboutProject = true },
+        )
+
         Spacer(Modifier.size(24.dp))
+    }
+    if (showAboutProject) {
+        // 用一份 Link 列表驱动 UI，避免重复代码；每条独立 runCatching，单个链接失败不影响其它项。
+        val aboutLinks = listOf(
+            "开源地址" to "https://github.com/jty657/lx-music-compose",
+            "原版项目" to "https://github.com/lyswhut/lx-music-mobile",
+            "最新版下载" to "https://github.com/jty657/lx-music-compose/releases",
+            "常见问题" to "https://github.com/lyswhut/lx-music-mobile/wiki",
+        )
+        val aboutCtx = androidx.compose.ui.platform.LocalContext.current
+        GlassDialog(onDismissRequest = { showAboutProject = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("开源项目", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    "聆序是洛雪音乐移动版的 Compose 移植项目，完全免费、开源。使用问题可查阅常见问题或到项目 Issue 反馈。",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                Spacer(Modifier.size(12.dp))
+                aboutLinks.forEach { (label, url) ->
+                    TextActionButton(text = label) {
+                        runCatching {
+                            aboutCtx.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(url),
+                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.size(4.dp))
+                }
+                Spacer(Modifier.size(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { showAboutProject = false }) { Text("关闭") }
+                }
+            }
+        }
     }
     if (toast != null) {
         GlassDialog(onDismissRequest = { toast = null }) {
