@@ -1,6 +1,41 @@
 # 更新日志
 
-## 第四十一轮：桌面歌词阴影色联动（v1.8.6，本次）
+## 第四十二轮：播放页歌词位置锁定 + 胶囊交互统一（v1.8.7，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」的低风险补齐。本轮仅
+> `PlayerScreen.kt` 一个源码文件改动，通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub
+> Actions 云端。零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐
+
+- **播放页歌词位置锁定快捷入口**（`PlayerScreen.kt` / `PlayerMoreSettings`）：原版播放页
+  `MoreBtn/DesktopLyricBtn` 短按切换桌面歌词开关、长按切换位置锁定（`desktopLyric.isLock`），
+  移植版此前在播放「更多设置」弹窗只提供开/关，锁定须跳到「设置 → 桌面歌词 → 锁定歌词位置」。
+  本轮在开/关胶囊下方就近补「锁定歌词位置 未锁定/已锁定」两档：读既有
+  `settings.desktopLyricLocked` Flow，写入走既有 `setDesktopLyricLocked()`，由 LxApp 的 Flow
+  监听实时同步给悬浮窗（`DesktopLyric.setLocked`，锁定时禁止拖动、轻点暂停/继续照常）。
+  零新增偏好键、零新增 ViewModel 方法。
+
+### 动效 / 视觉 / 可访问性
+
+- **胶囊交互统一**（`PlayerMoreSettings`）：该弹窗的「歌词对齐」「桌面歌词」「锁定歌词位置」
+  三组选择项此前是手写裸 `Text` 胶囊（选中态硬切底色、无按压反馈、无减弱动效门控），现统一改用
+  全站公共 `FilterChip`——自带按压缩放（0.96，`Motion.press`）、选中态底色渐变（160ms）、
+  48dp 命中区、`LocalReduceMotion` 静帧降级与读屏「已选中/未选中」语义，与搜索页 / 设置页
+  同一交互语言。无新增主题变量、无逐帧动画，亮/暗主题观感一致。
+
+### 已知差异 / 待确认
+
+- 原版 `DesktopLyricBtn` 为「短按开关 + 长按锁定」复用同一图标，本轮沿用移植版既有的「弹窗内
+  显式两档胶囊」形态（可读性更好、易发现），未做长按手势（避免引入 `combinedClickable` 与长按
+  判定复杂度）；功能语义与操作入口均已对齐。
+- 锁定胶囊与开关同处弹窗，锁定时若桌面歌词未开启不会有可见效果（与原版独立偏好语义一致）。
+
+### 工程
+
+- 版本 1.8.6 → 1.8.7（versionCode 43 → 44）；README / ANALYSIS 同步。
+
+## 第四十一轮：桌面歌词阴影色联动（v1.8.6，上一轮）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异」的低风险补齐。本轮 1 个源码文件改动
 > 全部通过 `scripts/selfcheck.py` 静态自检，构建走 GitHub Actions 云端。零新增依赖、
