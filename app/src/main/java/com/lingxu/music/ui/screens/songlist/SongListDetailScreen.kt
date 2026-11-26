@@ -46,6 +46,7 @@ import com.lingxu.music.ui.navigation.LocalSaveScrollLocation
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.animateListItem
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -301,6 +302,11 @@ class SongListDetailViewModel : ViewModel() {
     fun play(queue: List<MusicInfo>, music: MusicInfo) {
         viewModelScope.launch {
             runCatching {
+                // 原版 list.isClickPlayList：关闭时点歌只播放单曲，开启（默认）才切到当前列表队列
+                if (!LxApp.app.settings.isClickPlayList.first()) {
+                    LxApp.app.playerRepository.playSingle(music)
+                    return@runCatching
+                }
                 val index = queue.indexOfFirst { it.id == music.id }.coerceAtLeast(0)
                 // URL 由 playQueue 按需解析（只解析当前这首再开播），不要在这里解析整列表
                 LxApp.app.playerRepository.playQueue(queue, index)

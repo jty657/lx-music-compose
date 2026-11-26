@@ -75,6 +75,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_ADD_MUSIC_LOCATION = stringPreferencesKey("list.addMusicLocationType")
         // 原版 list.isSaveScrollLocation：返回列表时是否记住离开前的滚动位置，默认 true
         val KEY_SAVE_SCROLL_LOCATION = booleanPreferencesKey("list.isSaveScrollLocation")
+        // 原版 list.isClickPlayList：点击列表里的歌曲时切到当前列表播放（仅歌单/榜单），默认开启
+        val KEY_IS_CLICK_PLAY_LIST = booleanPreferencesKey("list.isClickPlayList")
         // glass（本项目自有）
         val KEY_BLUR_ENABLED = booleanPreferencesKey("glass.blurEnabled")
         val KEY_BLUR_RADIUS = floatPreferencesKey("glass.blurRadius")
@@ -186,6 +188,8 @@ class SettingsRepository(private val context: Context) {
     val addMusicLocation: Flow<String> = context.dataStore.data.map { it[KEY_ADD_MUSIC_LOCATION] ?: ADD_LOCATION_TOP }
     // 默认 true 与原版 defaultSetting 的 'list.isSaveScrollLocation': true 一致
     val saveScrollLocation: Flow<Boolean> = context.dataStore.data.map { it[KEY_SAVE_SCROLL_LOCATION] ?: true }
+    // 原版 list.isClickPlayList：默认 true 保持移植版既有「点歌即切当前列表」行为，老用户零突变
+    val isClickPlayList: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_CLICK_PLAY_LIST] ?: true }
 
     // ================= glass =================
 
@@ -287,6 +291,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setIsShowInterval(value: Boolean) = context.dataStore.edit { it[KEY_IS_SHOW_INTERVAL] = value }
     suspend fun setAddMusicLocation(value: String) = context.dataStore.edit { it[KEY_ADD_MUSIC_LOCATION] = value }
     suspend fun setSaveScrollLocation(value: Boolean) = context.dataStore.edit { it[KEY_SAVE_SCROLL_LOCATION] = value }
+    suspend fun setIsClickPlayList(value: Boolean) = context.dataStore.edit { it[KEY_IS_CLICK_PLAY_LIST] = value }
 
     suspend fun setBlurEnabled(value: Boolean) = context.dataStore.edit { it[KEY_BLUR_ENABLED] = value }
     suspend fun setBlurRadius(value: Float) = context.dataStore.edit { it[KEY_BLUR_RADIUS] = value }

@@ -112,6 +112,7 @@ fun SettingScreen(
     val isSavePlayTime by viewModel.isSavePlayTime.collectAsState(initial = false)
     val isHandleAudioFocus by viewModel.isHandleAudioFocus.collectAsState(initial = true)
     val isShowNotificationImage by viewModel.isShowNotificationImage.collectAsState(initial = true)
+    val isClickPlayList by viewModel.isClickPlayList.collectAsState(initial = true)
     val playbackRate by viewModel.playbackRate.collectAsState(initial = 1f)
     val volume by viewModel.volume.collectAsState(initial = 1f)
     // 滑块拖动中的本地值：落盘已节流，拖动时用它驱动显示。
@@ -732,6 +733,13 @@ fun SettingScreen(
             summary = "从歌单、榜单等详情页返回时，停在离开前的滚动位置",
             checked = saveScrollLocation,
             onCheckedChange = { viewModel.setSaveScrollLocation(it) },
+        )
+        // 对齐原版 list.isClickPlayList：点击列表里的歌曲时切到当前列表播放（仅歌单/榜单）
+        SwitchPreference(
+            title = "点歌切换到当前列表",
+            summary = "点击歌单、榜单里的歌曲时，用整个列表作为播放队列；关闭则只播放单曲",
+            checked = isClickPlayList,
+            onCheckedChange = { viewModel.setIsClickPlayList(it) },
         )
         ArrowPreference(
             title = "添加歌曲位置",

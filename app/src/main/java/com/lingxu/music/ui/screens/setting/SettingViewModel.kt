@@ -109,6 +109,8 @@ class SettingViewModel : ViewModel() {
     val addMusicLocation: StateFlow<String> = state(settings.addMusicLocation, "top")
     // 原版 list.isSaveScrollLocation：返回列表时记住滚动位置
     val saveScrollLocation: StateFlow<Boolean> = state(settings.saveScrollLocation, true)
+    // 原版 list.isClickPlayList：点击列表歌曲切到当前列表播放，默认 true（保持移植版既有行为）
+    val isClickPlayList: StateFlow<Boolean> = state(settings.isClickPlayList, true)
 
     // ============ 液态玻璃 ============
     val blurEnabled: StateFlow<Boolean> = state(settings.blurEnabled, true)
@@ -389,6 +391,7 @@ class SettingViewModel : ViewModel() {
     fun setIsShowInterval(value: Boolean) = launch { settings.setIsShowInterval(value) }
     fun cycleAddMusicLocation() = launch { settings.setAddMusicLocation(next(addMusicLocation.value, listOf("bottom", "top"))) }
     fun setSaveScrollLocation(value: Boolean) = launch { settings.setSaveScrollLocation(value) }
+    fun setIsClickPlayList(value: Boolean) = launch { settings.setIsClickPlayList(value) }
 
     fun setBlurEnabled(value: Boolean) = launch { settings.setBlurEnabled(value) }
     private var pendingBlurRadius: Float? = null
