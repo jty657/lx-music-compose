@@ -81,6 +81,7 @@ import com.lingxu.music.ui.components.GlassDialog
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.TextActionButton
 import com.lingxu.music.ui.components.TrackCover
+import com.lingxu.music.ui.components.rememberCoverTint
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.Screen
 import com.lingxu.music.ui.theme.ChipShape
@@ -126,8 +127,21 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val showLyricProgress by LxApp.app.settings.showLyricProgress.collectAsState(initial = false)
     // 原版 theme.fontShadow：歌词文字投影
     val lyricFontShadow by LxApp.app.settings.lyricFontShadow.collectAsState(initial = false)
+    // 原版 theme.dynamicBg：播放页背景跟随封面主色。默认 false，老用户升级观感零突变。
+    val dynamicBg by LxApp.app.settings.dynamicBg.collectAsState(initial = false)
+    val coverTint = rememberCoverTint(
+        url = state.coverUrl ?: state.current?.meta?.picUrl,
+        enabled = dynamicBg,
+    )
     val favoriteIds by LxApp.app.favoritesRepository.favoriteIds.collectAsState(initial = emptySet())
     val reduceMotion = LocalReduceMotion.current
+    // 封面主色到背景的过渡：切歌时平滑换色，减弱动效时一帧到位。
+    // 仅驱动背景渐变，不触碰任何播放/移植逻辑。
+    val bgColor by animateColorAsState(
+        targetValue = coverTint ?: androidx.compose.ui.graphics.Color.Transparent,
+        animationSpec = tween(durationMillis = if (reduceMotion) 0 else 320),
+        label = "dynamicBgColor",
+    )
     var showMore by remember { mutableStateOf(false) }
     // 手动切到下一首且发生回绕时的轻提示（对齐原版 toast「已回到列表开头」的语义）。
     // 仅在用户主动点「下一首」时出现，自动切歌不打扰。
@@ -151,6 +165,23 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
     val shownPosition = dragValue ?: state.positionMs.toFloat()
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        // 原版 theme.dynamicBg：封面主色化作顶部柔和光晕，随切歌平滑过渡。
+        // 用低透明度的垂直渐变铺底，前景内容 padding 之上不受影响；
+        // 关闭开关 / 取色失败时 bgColor 为透明，整层退化为无操作（零开销）。
+        if (dynamicBg && coverTint != null) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                bgColor.copy(alpha = 0.18f),
+                                androidx.compose.ui.graphics.Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+        }
         // 封面：约屏宽 72%，短屏时按高度收一点，避免把歌词挤没
         val coverSize = (maxWidth * 0.72f).coerceAtMost(maxHeight * 0.42f)
 

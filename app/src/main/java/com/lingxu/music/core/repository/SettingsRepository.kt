@@ -24,6 +24,8 @@ class SettingsRepository(private val context: Context) {
         val KEY_THEME = stringPreferencesKey("common.theme")
         // 主题主色（原版 theme.id 的简化对齐）：default/green/blue/purple/orange/pink
         val KEY_THEME_COLOR = stringPreferencesKey("common.themeColor")
+        // 原版 theme.dynamicBg：播放页背景跟随封面主色，默认 false（与原版 defaultSetting 一致）
+        val KEY_DYNAMIC_BG = booleanPreferencesKey("theme.dynamicBg")
         val KEY_LANG = stringPreferencesKey("common.langId")
         val KEY_FONT_SCALE = floatPreferencesKey("common.fontScale")
         val KEY_SHARE_TYPE = stringPreferencesKey("common.shareType")
@@ -121,6 +123,8 @@ class SettingsRepository(private val context: Context) {
     val theme: Flow<String> = context.dataStore.data.map { it[KEY_THEME] ?: "system" }
     // 默认 default：保持 Miuix 自带配色，升级后观感不变（原版默认为 green，见报告待确认项）
     val themeColor: Flow<String> = context.dataStore.data.map { it[KEY_THEME_COLOR] ?: "default" }
+    // 原版 theme.dynamicBg：默认 false，老用户升级后播放页观感零突变
+    val dynamicBg: Flow<Boolean> = context.dataStore.data.map { it[KEY_DYNAMIC_BG] ?: false }
     val lang: Flow<String> = context.dataStore.data.map { it[KEY_LANG] ?: LANG_SYSTEM }
     val fontScale: Flow<Float> = context.dataStore.data.map { it[KEY_FONT_SCALE] ?: 1f }
     val shareType: Flow<String> = context.dataStore.data.map { it[KEY_SHARE_TYPE] ?: SHARE_SYSTEM }
@@ -244,6 +248,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setApiSource(value: String) = context.dataStore.edit { it[KEY_API_SOURCE] = value }
     suspend fun setTheme(value: String) = context.dataStore.edit { it[KEY_THEME] = value }
     suspend fun setThemeColor(value: String) = context.dataStore.edit { it[KEY_THEME_COLOR] = value }
+    suspend fun setDynamicBg(value: Boolean) = context.dataStore.edit { it[KEY_DYNAMIC_BG] = value }
     suspend fun setLang(value: String) = context.dataStore.edit { it[KEY_LANG] = value }
     suspend fun setFontScale(value: Float) = context.dataStore.edit { it[KEY_FONT_SCALE] = value }
     suspend fun setShareType(value: String) = context.dataStore.edit { it[KEY_SHARE_TYPE] = value }

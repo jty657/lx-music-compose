@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -87,6 +88,74 @@ private fun decodeDownsampled(bytes: ByteArray, maxPx: Int): Bitmap? {
     while (bounds.outWidth / sample > maxPx || bounds.outHeight / sample > maxPx) sample *= 2
     val options = BitmapFactory.Options().apply { inSampleSize = sample }
     return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+}
+
+/**
+ * 原版 theme.dynamicBg 的取色入口：播放页背景跟随封面主色。
+ *
+ * 复用封面缓存链路（[rememberCoverBitmap]）取一张 96px 小图做直方图取色，
+ * 与播放页大图共享内存缓存与并发治理：同一 URL 只解码一次、不产生额外网络请求、
+ * 不引入任何新依赖。取色结果向中灰靠拢并提亮，避免深色封面把背景压得过暗影响前景可读性。
+ *
+ * enabled=false 或封面未就绪 / 取色失败时返回 null，调用方回退到默认主题背景，
+ * 老用户（该开关默认关闭）升级后观感零突变。
+ */
+@Composable
+fun rememberCoverTint(url: String?, enabled: Boolean): Color? {
+    val bitmap = rememberCoverBitmap(if (enabled) url else null, 96)
+    return remember(bitmap, enabled) {
+        if (!enabled || bitmap == null) null else dominantColor(bitmap)
+    }
+}
+
+/** 简易 4bit 直方图取色：取频次最高的颜色桶，跳过近黑/近白像素，再降饱和提亮 */
+private fun dominantColor(bitmap: Bitmap): Color? = try {
+    val w = bitmap.width
+    val h = bitmap.height
+    if (w <= 0 || h <= 0) null
+    else {
+        val step = maxOf(1, minOf(w, h) / 16)
+        val buckets = IntArray(4096) // 16^3
+        var best = 0
+        var bestIdx = 0
+        var y = 0
+        while (y < h) {
+            var x = 0
+            while (x < w) {
+                val c = bitmap.getPixel(x, y)
+                if (((c ushr 24) and 0xFF) > 200) {
+                    val r = (c shr 16) and 0xFF
+                    val g = (c shr 8) and 0xFF
+                    val b = c and 0xFF
+                    // 跳过近黑/近白，避免取到封面边缘阴影或纯色背景
+                    if (maxOf(r, g, b) > 32 && minOf(r, g, b) < 224) {
+                        val idx = ((r shr 4) shl 8) or ((g shr 4) shl 4) or (b shr 4)
+                        val n = ++buckets[idx]
+                        if (n > best) {
+                            best = n
+                            bestIdx = idx
+                        }
+                    }
+                }
+                x += step
+            }
+            y += step
+        }
+        if (best == 0) null
+        else {
+            val r = ((bestIdx shr 8) and 0xF) * 17
+            val g = ((bestIdx shr 4) and 0xF) * 17
+            val b = (bestIdx and 0xF) * 17
+            // 向中灰靠拢（55% 原色 + 45% 灰）并保留通道，保证深浅主题下前景文字对比度
+            Color(
+                (r * 0.55f + 128f * 0.45f).toInt().coerceIn(0, 255),
+                (g * 0.55f + 128f * 0.45f).toInt().coerceIn(0, 255),
+                (b * 0.55f + 128f * 0.45f).toInt().coerceIn(0, 255),
+            )
+        }
+    }
+} catch (e: Exception) {
+    null
 }
 
 /**

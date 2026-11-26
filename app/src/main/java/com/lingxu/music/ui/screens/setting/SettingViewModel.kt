@@ -39,6 +39,8 @@ class SettingViewModel : ViewModel() {
     // ============ 基本 ============
     val themeMode: StateFlow<String> = state(settings.theme, "system")
     val themeColor: StateFlow<String> = state(settings.themeColor, "default")
+    // 原版 theme.dynamicBg：播放页背景跟随封面主色，默认 false
+    val dynamicBg: StateFlow<Boolean> = state(settings.dynamicBg, false)
     val lang: StateFlow<String> = state(settings.lang, "system")
     val fontScale: StateFlow<Float> = state(settings.fontScale, 1f)
     val shareType: StateFlow<String> = state(settings.shareType, "system")
@@ -170,6 +172,8 @@ class SettingViewModel : ViewModel() {
     }
 
     fun cycleTheme() = launch { settings.setTheme(next(themeMode.value, listOf("system", "light", "dark", "monet"))) }
+
+    fun setDynamicBg(value: Boolean) = launch { settings.setDynamicBg(value) }
 
     fun cycleThemeColor() = launch {
         settings.setThemeColor(next(themeColor.value, com.lingxu.music.ui.theme.ThemeColors.keys.toList()))

@@ -96,6 +96,7 @@ fun SettingScreen(
 
     val themeMode by viewModel.themeMode.collectAsState(initial = "system")
     val themeColor by viewModel.themeColor.collectAsState(initial = "default")
+    val dynamicBg by viewModel.dynamicBg.collectAsState(initial = false)
     val lang by viewModel.lang.collectAsState(initial = "system")
     val fontScale by viewModel.fontScale.collectAsState(initial = 1f)
     val shareType by viewModel.shareType.collectAsState(initial = "system")
@@ -288,6 +289,12 @@ fun SettingScreen(
             summary = com.lingxu.music.ui.theme.themeColorLabel(themeColor) +
                 if (themeMode == "monet") "（取色模式下不生效）" else "",
             onClick = { viewModel.cycleThemeColor() },
+        )
+        SwitchPreference(
+            title = "播放页动态背景",
+            summary = "播放页背景跟随当前封面主色，柔和渐变（对齐原版 theme.dynamicBg）",
+            checked = dynamicBg,
+            onCheckedChange = { viewModel.setDynamicBg(it) },
         )
         ArrowPreference(
             title = "语言",

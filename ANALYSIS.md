@@ -6,13 +6,22 @@
 
 ---
 
-## 本轮执行状态（第四十二轮 · v1.8.7）
+## 本轮执行状态（第四十三轮 · v1.8.8）
 
-> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮 1 个源码文件改动
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮 5 个源码文件改动
 > 全部通过 `scripts/selfcheck.py`；构建按项目约定走 GitHub Actions 云端（推送 `master` 自动触发），
 > 零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
 
 **本轮改动**
+1. 播放页动态背景 `theme.dynamicBg`（原版缺失项）：原版设置默认 false，开启后播放页背景跟随封面
+   主色；移植版此前该偏好完全缺失。本轮新增偏好键与 Flow（`SettingsRepository.kt`）、ViewModel
+   `StateFlow` 与 setter（`SettingViewModel.kt`）、设置页开关（`SettingScreen.kt`），播放页最底层绘制
+   封面主色垂直渐变（`PlayerScreen.kt`）。取色复用 `TrackCover.kt` 的 `rememberCoverBitmap`（96px 小图
+   + 4bit 直方图 + 向中灰降饱和提亮），与播放页大图共享缓存、零额外网络请求、零新依赖。
+2. 动效：背景主色经 `animateColorAsState` 320ms 平滑过渡，切歌换色不硬切；`LocalReduceMotion`
+   时时长为 0。渐变透明度 0.18f、取色向中灰靠拢，深浅主题下前景文字对比度不受影响。
+
+**上一轮改动（第四十二轮 · v1.8.7）**
 1. 播放页歌词位置锁定快捷入口（`PlayerScreen.kt` / `PlayerMoreSettings`）：原版播放页
    `MoreBtn/DesktopLyricBtn` 短按切换桌面歌词、长按切换位置锁定（`desktopLyric.isLock`），移植版此前
    弹窗内只有开/关、锁定须跳设置页。本轮在开/关胶囊下方就近补「锁定歌词位置 未锁定/已锁定」两档，
@@ -399,7 +408,8 @@ LxApp.kt                依赖注入根（单例 + 加载器回调注入）
 - v1.8.0（第三十五轮）：桌面歌词多行显示（对齐 `desktopLyric.maxLineNum`，1~8 行默认 5）——沿「DataStore → ViewModel → 原生悬浮窗」链路新增行数设置与滑块，`DesktopLyric.refresh` 按行数拼接当前行起连续歌词，当前行主题色高亮、后续行次要色；不改播放内核与音源协议
 - v1.8.1（第三十六轮）：悬浮歌词宽度设置（对齐 `desktopLyric.width`，10~100% 默认 100）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增宽度偏好键、setter 与设置页滑块，`DesktopLyric` 抽 `computeWidth()` 供启动与实时 `updateViewLayout` 共用并保留 x/y 位置；100% 沿用历史内边距观感、最小 160dp；节流写盘 + onDispose 补写；不改播放内核与音源协议
 - v1.8.2（第三十七轮）：桌面歌词主题色板（对齐 `desktopLyric.style.lyricPlayedColor`，原版 9 色）——同一条「DataStore → ViewModel → 原生悬浮窗」链路新增颜色偏好键（合法 `#RRGGBB` 校验，null = 跟随主题）、setter 与设置页两行色板；`DesktopLyric` 新增 `setPlayedColor()`，默认仅 ♪ 用主题色（与升级前一致），选色后当前行（含 ♪）整体着色、后续行保持次要色层级，改色只重绘文本不重建窗口；默认「跟随主题」零突变；不改播放内核与音源协议
-- **v1.8.3（本轮 · 第三十八轮）**：未播放歌词颜色（对齐 `desktopLyric.style.lyricUnplayColor`）——同一条成熟链路新增后续行颜色偏好键（合法 `#RRGGBB` 校验，null = 历史次要白）、setter 与设置页两行色板；`DesktopLyric` 新增 `setUnplayColor()`，后续行按所选色渲染并纳入刷新指纹，当前行配色独立不受影响；默认「默认」沿用次要白零突变，改色只重绘 span 不重建窗口；不改播放内核与音源协议
+- v1.8.3（第三十八轮）：未播放歌词颜色（对齐 `desktopLyric.style.lyricUnplayColor`）——同一条成熟链路新增后续行颜色偏好键（合法 `#RRGGBB` 校验，null = 历史次要白）、setter 与设置页两行色板；`DesktopLyric` 新增 `setUnplayColor()`，后续行按所选色渲染并纳入刷新指纹，当前行配色独立不受影响；默认「默认」沿用次要白零突变，改色只重绘 span 不重建窗口；不改播放内核与音源协议
+- **v1.8.8（本轮 · 第四十三轮）**：播放页动态背景（对齐原版缺失项 `theme.dynamicBg`，默认 false）——新增偏好键/Flow、ViewModel StateFlow 与 setter、设置页开关；播放页最底层绘制封面主色垂直渐变，经 `animateColorAsState` 320ms 平滑换色、`LocalReduceMotion` 静帧降级；取色复用 `TrackCover.rememberCoverBitmap`（96px 小图 + 4bit 直方图 + 向中灰降饱和提亮），零新依赖、零额外网络请求，关闭时整层无操作；不改路由/状态管理/播放内核与音源协议
 
 ---
 
