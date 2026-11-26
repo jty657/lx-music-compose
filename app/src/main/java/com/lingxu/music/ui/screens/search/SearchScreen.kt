@@ -274,96 +274,108 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         // 错误提示统一放在结果列表底部的可点「重试项」展示（见下方两个分支），
         // 这里不再单独渲染红字，避免加载失败时同一句错误文案出现两遍。
 
-        // 搜索历史（无结果且输入为空时展示；可在设置里关闭）
-        // initial 与落盘默认（SettingsRepository: false）一致，避免首帧先闪出历史再消失。
+        // ===== 空态引导区（对齐原版 BlankView）=====
+        // 原版在「热搜」「历史」两个开关任一开启、且未搜索/无结果时显示引导页，
+        // 热搜在上、历史在下，两者并列。移植版此前因两块各自 return 导致互斥
+        // （历史优先），两开关同开时热搜被吞掉。本轮统一为一次判断、并列渲染，
+        // 两块各自的触发条件逐字保留，仅把互斥 return 收拢到统一出口。
+        // initial 与落盘默认（SettingsRepository: false）一致，避免首帧先闪出再消失。
         val showHistory by LxApp.app.settings.isShowHistorySearch.collectAsState(initial = false)
         // 热搜同样受设置开关门控（对齐原版 BlankView 的 isShowHotSearch）：
-        // 此前搜索页遗漏该开关，用户关掉「显示热搜」后热搜依旧出现。
+        // 关掉「显示热搜」后热搜不再展示。
         val showHot by LxApp.app.settings.isShowHotSearch.collectAsState(initial = false)
         // 必须加「输入框为空」判断：搜索后输入框仍保留关键词，若只判结果为空，
-        // 任意无结果的搜索都会命中历史分支并 return，导致「没有找到相关音乐」空态永远不显示。
+        // 任意无结果的搜索都会命中引导分支并 return，导致「没有找到相关音乐」空态永远不显示。
         val inputIsBlank = textFieldState.text.toString().isBlank()
-        if (showHistory && inputIsBlank && viewModel.results.isEmpty() && viewModel.songLists.isEmpty() && viewModel.history.isNotEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("搜索历史", fontSize = MiuixTheme.textStyles.body2.fontSize)
-                Spacer(Modifier.weight(1f))
-                Text(
-                    "长按删除单条",
-                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-                Spacer(Modifier.size(8.dp))
-                // 统一走 TextActionButton：48dp 命中区 + 按压缩放 + Role.Button + 静帧降级，
-                // 取代此前裸 clickable 的方角涟漪（字号/颜色/视觉位置保持原样）
-                TextActionButton(
-                    text = "清空",
-                    onClick = { viewModel.clearHistory() },
-                    color = MiuixTheme.colorScheme.primary,
-                )
-            }
-            Spacer(Modifier.height(4.dp))
-            // 历史最多 30 条，小屏上平铺会超出屏幕且下方条目不可见；用 weight + 滚动承载
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                viewModel.history.forEach { word ->
-                    Text(
-                        word,
-                        fontSize = MiuixTheme.textStyles.body1.fontSize,
-                        // 历史搜索词单行省略，避免超长词换行改变行高、挤掉下方条目。
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            // 与全站 unified 交互语言一致：indication=null 去掉方角涟漪 +
-                            // 轻微按压缩放 + Role.Button + 读屏描述（含长按删除提示）+ 静帧降级。
-                            // 此前是全站唯一一处裸 combinedClickable 的历史词条，与
-                            // BackIconButton / TextActionButton / 各列表操作键手感不一致。
-                            .historyRowClickable(
-                                description = "搜索历史：$word，长按删除",
+        val blankNoResults = inputIsBlank && viewModel.results.isEmpty() && viewModel.songLists.isEmpty()
+        // 历史条目最多 30 条，非空才有内容可展示；热搜同理。条件与改动前逐字等价。
+        val showHistoryBlock = showHistory && blankNoResults && viewModel.history.isNotEmpty()
+        val showHotBlock = showHot && blankNoResults && !viewModel.hasSearched && viewModel.hotWords.isNotEmpty()
+
+        if (showHotBlock || showHistoryBlock) {
+            // 进场淡入：只动 alpha（不触发布局），减弱动效时 0ms 到位，与全站列表项淡入同一语言。
+            // 热搜与历史共用同一条淡入曲线，并列入场观感一致。
+            val reduceMotion = LocalReduceMotion.current
+            val guideAlpha by animateFloatAsState(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = if (reduceMotion) 0 else MotionBaseMs),
+                label = "searchGuideFade",
+            )
+
+            // 热搜在上（对齐原版 BlankView：HotSearch 位于 HistorySearch 之前）
+            if (showHotBlock) {
+                Column(Modifier.graphicsLayer { alpha = guideAlpha }) {
+                    Text("热搜", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(viewModel.hotWords) { word ->
+                            FilterChip(
+                                label = word,
+                                selected = false,
                                 onClick = {
                                     textFieldState.setTextAndPlaceCursorAtEnd(word)
                                     viewModel.clearSuggestions()
                                     scope.launch { viewModel.search(word, selectedSource) }
                                 },
-                                onLongClick = { viewModel.removeHistory(word) },
                             )
-                            .padding(vertical = 6.dp),
+                        }
+                    }
+                }
+                // 两块并列时留出层级间距；仅一块显示时不产生多余空白
+                if (showHistoryBlock) Spacer(Modifier.height(12.dp))
+            }
+
+            // 历史在下（对齐原版 HistorySearch）；占据剩余空间滚动，兼容最多 30 条
+            if (showHistoryBlock) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text("搜索历史", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "长按删除单条",
+                        fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    // 统一走 TextActionButton：48dp 命中区 + 按压缩放 + Role.Button + 静帧降级，
+                    // 取代此前裸 clickable 的方角涟漪（字号/颜色/视觉位置保持原样）
+                    TextActionButton(
+                        text = "清空",
+                        onClick = { viewModel.clearHistory() },
+                        color = MiuixTheme.colorScheme.primary,
                     )
                 }
-            }
-            return@Column
-        }
-
-        // 热搜快捷入口（对齐原版搜索页热搜）：当没有可展示的历史、且输入为空/未搜索时，
-        // 展示内置 SDK 热搜词，点击即填入并搜索（与历史词同一路径），省去用户手动输入。
-        // showHot 门控对齐原版 isShowHotSearch：关掉「显示热搜」后不再展示。
-        if (showHot && inputIsBlank && !viewModel.hasSearched && viewModel.results.isEmpty()
-            && viewModel.songLists.isEmpty() && viewModel.hotWords.isNotEmpty()
-        ) {
-            // 进场淡入：只动 alpha（不触发布局），减弱动效时 0ms 到位，与全站列表项淡入同一语言。
-            val hotReduceMotion = LocalReduceMotion.current
-            val hotAlpha by animateFloatAsState(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = if (hotReduceMotion) 0 else MotionBaseMs),
-                label = "hotEntryFade",
-            )
-            Column(Modifier.graphicsLayer { alpha = hotAlpha }) {
-                Text("热搜", fontSize = MiuixTheme.textStyles.title1.fontSize)
-                Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(viewModel.hotWords) { word ->
-                        FilterChip(
-                            label = word,
-                            selected = false,
-                            onClick = {
-                                textFieldState.setTextAndPlaceCursorAtEnd(word)
-                                viewModel.clearSuggestions()
-                                scope.launch { viewModel.search(word, selectedSource) }
-                            },
+                Spacer(Modifier.height(4.dp))
+                // 历史最多 30 条，小屏上平铺会超出屏幕且下方条目不可见；用 weight + 滚动承载
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .graphicsLayer { alpha = guideAlpha }
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    viewModel.history.forEach { word ->
+                        Text(
+                            word,
+                            fontSize = MiuixTheme.textStyles.body1.fontSize,
+                            // 历史搜索词单行省略，避免超长词换行改变行高、挤掉下方条目。
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                // 与全站 unified 交互语言一致：indication=null 去掉方角涟漪 +
+                                // 轻微按压缩放 + Role.Button + 读屏描述（含长按删除提示）+ 静帧降级。
+                                // 此前是全站唯一一处裸 combinedClickable 的历史词条，与
+                                // BackIconButton / TextActionButton / 各列表操作键手感不一致。
+                                .historyRowClickable(
+                                    description = "搜索历史：$word，长按删除",
+                                    onClick = {
+                                        textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                        viewModel.clearSuggestions()
+                                        scope.launch { viewModel.search(word, selectedSource) }
+                                    },
+                                    onLongClick = { viewModel.removeHistory(word) },
+                                )
+                                .padding(vertical = 6.dp),
                         )
                     }
                 }
