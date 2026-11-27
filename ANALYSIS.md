@@ -6,7 +6,45 @@
 
 ---
 
-## 本轮执行状态（第五十三轮 · v1.9.2）
+## 本轮执行状态（第五十四轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦一处明确的
+> 功能差异：歌词对齐缺少原版第三档「居右」。仅修改 `PlayerScreen.kt` / `SettingScreen.kt` /
+> `SettingViewModel.kt` 三个源码文件，`scripts/selfcheck.py` 退出码 0；本地按项目约定不编译，
+> 构建由 GitHub Actions 云端（推送 master 自动触发 `Build APK`）确认。
+
+**本轮改动**
+1. **歌词对齐补齐第三档「居右」**：原版 `playDetail.style.align` 为 `left/center/right` 三档
+   （`src/screens/PlayDetail/components/SettingPopup/settings/SettingLrcAlign.tsx:13-17` 的
+   `ALIGN_LIST`），移植版渲染层此前用 `centered: Boolean` 只能表达两档。本轮把 `LyricView`
+   的 `centered: Boolean` 改为 `align: String`，映射为 `Alignment.Start/CenterHorizontally/End`；
+   播放页「更多设置」FilterChip 由两档扩为三档；设置页 `ArrowPreference` 摘要与
+   `cycleLyricAlign()` 循环同步扩为三档。偏好键 `playDetail.style.align` 不变，未知值回退 `left`，
+   老用户零突变。
+2. **放大变换原点随对齐方向平滑过渡**（`LyricLineRow`）：原点由「居中 0.5 / 其余 0」扩展为
+   「左 0 / 居中 0.5 / 右 1」，用 `animateFloatAsState` 平滑过渡（纯 `graphicsLayer` transform，
+   不触发布局），时长复用 `lyricDuration`，`LocalReduceMotion` 时 0ms 瞬时到位。避免居中/居右档
+   放大文字朝错误一侧外溢。
+
+**视觉 / 交互 / 可访问性**
+- 三档 FilterChip 复用全站公共 `FilterChip`（按压缩放、选中态渐变、48dp 热区、读屏「已选中」语义），
+  无逐帧布局动画；放大原点动画只改 transform，低性能设备可用。
+- 桌面歌词水平对齐（`desktopLyric.textPosition.x`，已是三档）是独立设置，与播放页内歌词对齐互不干扰。
+
+**假设与待确认**
+- 居右档读屏文案沿用「右对齐」，与原版 `play_detail_setting_lrc_align_right` 语义一致。
+- 经功能差异对比后按低风险原则本轮跳过的项：歌词上下缘渐隐（实验性 `Modifier.fadingEdge`，本地
+  无法编译验证）、播放进度条缓冲段（需改 `PlayerRepository`/`PlayState` 接 `bufferedPosition`）、
+  手动滚歌词 3s 自动归位（时序+定时器）、全站下拉刷新（新依赖）、播放状态文案细分（低价值）、
+  标红的中高风险项（同步 / 评论 / 逐字歌词 / 元数据缓存落盘 / 歌曲信息编辑 / Audio Offload /
+  蓝牙歌词 / 简繁歌词）——延续既有结论，本轮不触碰。
+
+**验证**：`python3 scripts/selfcheck.py` 退出码 0（`静态自检通过`）；本地无 Java 构建环境（约定禁止
+本地编译），构建由 GitHub Actions 云端确认。
+
+---
+
+## 上一轮执行状态（第五十三轮 · v1.9.2）
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦两处静态自检
 > 可覆盖、零新增依赖、不改核心逻辑的细节：搜索首屏加载空窗期的加载提示缺失，以及设置页字号档位

@@ -335,7 +335,8 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 zoomActive = zoomActiveLrc,
                 showTranslation = showLrcTranslation,
                 showRoma = showLrcRoma,
-                centered = lyricAlign == "center",
+                // 对齐原版 playDetail.style.align 的 left/center/right 三档（此前只接了两档）
+                align = lyricAlign,
                 showPlayLine = showLyricProgress,
                 fontShadow = lyricFontShadow,
                 reduceMotion = reduceMotion,
@@ -605,13 +606,19 @@ private fun LyricView(
     zoomActive: Boolean = false,
     showTranslation: Boolean = true,
     showRoma: Boolean = false,
-    centered: Boolean = false,
+    // 原版 playDetail.style.align：left/center/right 三档；移植版此前用 Boolean 只能表达两档。
+    // 改为直接传偏好值字符串，在此映射为 Alignment.Horizontal，未知值回退 left（老用户零突变）。
+    align: String = "left",
     showPlayLine: Boolean = false,
     fontShadow: Boolean = false,
     reduceMotion: Boolean = false,
     onSeek: (Long) -> Unit = {},
 ) {
-    val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
+    val horizontal = when (align) {
+        "center" -> Alignment.CenterHorizontally
+        "right" -> Alignment.End
+        else -> Alignment.Start
+    }
     if (lyricLines.isEmpty()) {
         // 与全站空态统一：居中 + 占位图标 + 入场淡入上浮；此处是全站最后一处裸文字空态。
         // 图标沿用已导入的 Favorites（歌词/收藏语义相近），减弱动效时静帧。
@@ -840,7 +847,19 @@ private fun LyricLineRow(
         animationSpec = tween(lyricDuration),
         label = "lyricScale",
     )
-    val originX = if (horizontal == Alignment.CenterHorizontally) 0.5f else 0f
+    // 变换原点随对齐档位走：左→0、居中→0.5、右→1，放大时文字始终朝远离所在边缘的方向生长，
+    // 不会因新增「居右」档而从错误的一侧外溢。用 animateFloatAsState 平滑过渡（纯 transform，
+    // 不触发布局），时长复用 lyricDuration：减弱动效时为 0，瞬时到位。
+    val originTarget = when (horizontal) {
+        Alignment.CenterHorizontally -> 0.5f
+        Alignment.End -> 1f
+        else -> 0f
+    }
+    val originX by animateFloatAsState(
+        targetValue = originTarget,
+        animationSpec = tween(lyricDuration),
+        label = "lyricOriginX",
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1070,13 +1089,14 @@ private fun PlayerMoreSettings(
                 valueRange = 0.8f..1.8f,
                 modifier = Modifier.fillMaxWidth(),
             )
-            // 歌词对齐（原版 playDetail.style.align）：左 / 居中两档。
+            // 歌词对齐（原版 playDetail.style.align）：左 / 居中 / 右三档，与原版 ALIGN_LIST 对齐。
+            // 此前移植版只有两档，缺「居右」；本轮补齐。
             // 改用全站公共 FilterChip：自带按压缩放、选中态渐变、48dp 热区与读屏「已选中」语义，
             // 与搜索页 / 设置页同一交互语言；此前这里是裸 Text 胶囊，按下无反馈、无减弱动效门控。
             Spacer(Modifier.size(6.dp))
             Text("歌词对齐", fontSize = MiuixTheme.textStyles.body2.fontSize)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("left" to "左对齐", "center" to "居中").forEach { (id, label) ->
+                listOf("left" to "左对齐", "center" to "居中", "right" to "右对齐").forEach { (id, label) ->
                     FilterChip(
                         label = label,
                         selected = lyricAlign == id,

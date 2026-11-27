@@ -272,7 +272,8 @@ class SettingViewModel : ViewModel() {
 
     fun setShowLyricTranslation(value: Boolean) = launch { settings.setShowLyricTranslation(value) }
     fun setShowLyricRoma(value: Boolean) = launch { settings.setShowLyricRoma(value) }
-    fun cycleLyricAlign() = launch { settings.setLyricAlign(next(lyricAlign.value, listOf("left", "center"))) }
+    // 对齐原版 playDetail.style.align 的 left/center/right 三档循环（此前只循环两档）
+    fun cycleLyricAlign() = launch { settings.setLyricAlign(next(lyricAlign.value, listOf("left", "center", "right"))) }
     fun setLyricFontSize(value: Float) = launch { settings.setLyricFontSize(value.coerceIn(0.8f, 1.8f)) }
     fun setIsZoomActiveLrc(value: Boolean) = launch { settings.setIsZoomActiveLrc(value) }
     fun setLyricFontShadow(value: Boolean) = launch { settings.setLyricFontShadow(value) }

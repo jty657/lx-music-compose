@@ -509,7 +509,12 @@ fun SettingScreen(
         )
         ArrowPreference(
             title = "歌词对齐",
-            summary = if (lyricAlign == "center") "居中" else "左对齐",
+            // 对齐原版 playDetail.style.align 的 left/center/right 三档（此前摘要只覆盖两档）
+            summary = when (lyricAlign) {
+                "center" -> "居中"
+                "right" -> "右对齐"
+                else -> "左对齐"
+            },
             onClick = { viewModel.cycleLyricAlign() },
         )
         SliderPreference(

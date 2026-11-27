@@ -1,6 +1,40 @@
 # 更新日志
 
-## 第五十三轮：搜索加载态与字号实时预览（v1.9.2，本次）
+## 第五十四轮：歌词对齐补齐「居右」档（v1.9.2，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 做低风险「功能差异 + UI/动效」打磨。仅修改
+> `PlayerScreen.kt` / `SettingScreen.kt` / `SettingViewModel.kt` 三个源码文件，`scripts/selfcheck.py`
+> 通过；按项目约定构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核、不触碰
+> QuickJS 与音源协议。
+
+### 功能对齐（原版缺失项）
+
+- **歌词对齐补齐第三档「居右」**（`PlayerScreen.kt` / `SettingScreen.kt` / `SettingViewModel.kt`）：
+  原版 `playDetail.style.align` 支持 `left / center / right` 三档（`SettingLrcAlign.tsx:13-17`），
+  移植版此前渲染层用 `centered: Boolean` 只能表达两档、设置页循环也只两档。本轮把 `LyricView`
+  参数改为 `align: String` 并映射为 `Alignment.Horizontal`（含 `Alignment.End`），播放页弹窗
+  FilterChip 与设置页循环/摘要同步扩为三档。偏好键不变（仍是 `playDetail.style.align`），
+  未知/旧值回退 `left`，老用户升级观感零突变。
+
+### UI / 动效
+
+- **放大当前歌词时变换原点随对齐方向走**（`PlayerScreen.kt` 的 `LyricLineRow`）：原点从原来
+  「居中 0.5 / 其余 0」扩展为「左 0 / 居中 0.5 / 右 1」，且用 `animateFloatAsState` 平滑过渡
+  （纯 `graphicsLayer` 变换，不触发布局），时长复用 `lyricDuration`；**减弱动效时为 0 瞬时到位**。
+  避免新增「居右」档下放大文字从错误一侧外溢。
+- 三档 FilterChip 复用全站公共组件，自带按压缩放、选中态渐变、48dp 热区与读屏「已选中」语义，
+  与搜索页/设置页交互语言一致；无逐帧布局动画。
+
+### 假设与待确认
+
+- 居右档的读屏文案沿用「右对齐」，与「左对齐 / 居中」同一措辞体系；原版为 `play_detail_setting_lrc_align_right`。
+- 桌面歌词有独立水平对齐（`desktopLyric.textPosition.x`，已是三档），与播放页内歌词对齐是两个设置，
+  本轮只动播放页内歌词，互不干扰。
+- 歌词边缘渐隐、进度条缓冲段、自动滚回当前歌词、下拉刷新、逐字歌词、简繁歌词、蓝牙歌词、
+  Audio Offload、同步、评论等差异经评估需实验性 API / 改播放内核 / 新依赖 / 中高风险，
+  本轮按低风险原则跳过，详见 ANALYSIS.md。
+
+## 第五十三轮：搜索加载态与字号实时预览（v1.9.2）
 
 > 对照原版 lx-music-mobile v1.9.2 做低风险「功能差异 + UI/动效」打磨。仅修改
 > `SearchScreen.kt` / `SettingScreen.kt` 两个源码文件，`scripts/selfcheck.py` 通过；按项目约定
