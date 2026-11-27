@@ -1,6 +1,9 @@
 package com.lingxu.music.ui.screens.playqueue
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -46,7 +49,9 @@ import com.lingxu.music.ui.navigation.LocalSaveScrollLocation
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.Motion
+import com.lingxu.music.ui.theme.MotionBaseMs
 import com.lingxu.music.ui.theme.animateListItem
+import com.lingxu.music.ui.theme.motionMs
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -121,6 +126,22 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             // key 只用稳定的歌曲 id：带上 index 会在排序/移除后导致整表重组与封面重载
             itemsIndexed(queue, key = { _, item -> item.id }) { index, music ->
+                // 切歌时「正在播放」的视觉反馈（卡片淡染、歌名着色、左侧图标）统一做平滑过渡，
+                // 与全站色值切换同一语言。此前卡片底色由 GlassSurface 内部 tween 淡入淡出，
+                // 但歌名颜色与左侧图标仍是硬切——两处不同步，切歌瞬间会看到文字/图标「跳变」。
+                // 这里把文字颜色与图标切换也接到同一时长与减弱动效降级上：只动 color/opacity，
+                // 不触发布局；LocalReduceMotion 下均为静帧。
+                val reduceMotion = LocalReduceMotion.current
+                val transitionMs = MotionBaseMs.motionMs(reduceMotion)
+                val nameColor by animateColorAsState(
+                    targetValue = if (index == currentIndex) {
+                        MiuixTheme.colorScheme.primary
+                    } else {
+                        MiuixTheme.colorScheme.onSurface
+                    },
+                    animationSpec = tween(transitionMs),
+                    label = "queueNameColor",
+                )
                 GlassSurface(
                     // animateItem：上移/下移/移除时条目平滑让位，而不是瞬移
                     modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
@@ -136,19 +157,27 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                     onLongClick = { actionTarget = music },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                        if (index == currentIndex) {
-                            // 当前曲目：三条律动音柱（暂停时静帧），比单纯染色更易识别
-                            PlayingIndicator(
-                                playing = isPlaying,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        } else {
-                            Icon(
-                                MiuixIcons.Play,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            )
+                        // 左侧指示图标：普通播放三角 ↔ 当前曲目律动音柱用 Crossfade 淡入淡出，
+                        // 与卡片底色/歌名颜色同步过渡，避免切歌瞬间图标硬切。
+                        Crossfade(
+                            targetState = index == currentIndex,
+                            animationSpec = tween(transitionMs),
+                            label = "queuePlayingIcon",
+                        ) { isCurrent ->
+                            if (isCurrent) {
+                                // 当前曲目：三条律动音柱（暂停时静帧），比单纯染色更易识别
+                                PlayingIndicator(
+                                    playing = isPlaying,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            } else {
+                                Icon(
+                                    MiuixIcons.Play,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                )
+                            }
                         }
                         Spacer(Modifier.size(10.dp))
                         TrackCover(url = music.meta.picUrl, size = Dimens.CoverRow, corner = Dimens.CornerS)
@@ -157,7 +186,8 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                             Text(
                                 music.name,
                                 fontSize = MiuixTheme.textStyles.main.fontSize,
-                                color = if (index == currentIndex) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                // 切歌时颜色平滑过渡，与卡片底色、左侧图标同一时长/降级策略
+                                color = nameColor,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )

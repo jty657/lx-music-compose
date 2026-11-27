@@ -6,6 +6,41 @@
 
 ---
 
+## 本轮执行状态（第五十一轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮不触碰任何
+> 中/高风险功能差异（同步、蓝牙歌词、Audio Offload、简繁歌词、自动清空已播放列表等——均已在
+> 前几轮评估并记录跳过），聚焦播放队列页一处真实的**动效不一致**：切歌时卡片底色已由
+> `GlassSurface` 内部平滑过渡，但歌名颜色与左侧指示图标仍是硬切。仅修改 1 个源码文件
+> （`PlayQueueScreen.kt`），通过 `scripts/selfcheck.py` 与本地 `assembleRelease` 编译（BUILD SUCCESSFUL）；
+> 零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+**本轮改动**
+1. **切歌视觉反馈三处同步过渡**（`PlayQueueScreen.kt`）：把当前曲目歌名颜色接入 `animateColorAsState`，
+   把左侧「播放三角 ↔ 律动音柱」硬切换为 `Crossfade` 淡入淡出，两者与卡片底色统一到
+   `MotionBaseMs`（240ms）时长。只动 color/opacity，不触发布局；`LocalReduceMotion`（系统动画
+   时长缩放=关闭）下均为 0ms 静帧。列表 key 仍为稳定歌曲 id，切歌只重组颜色/图标两处，
+   不重载封面、不触发整表重排。
+
+**视觉 / 交互 / 可访问性**
+- 三种反馈（卡片淡染、歌名着色、左侧图标）此前只有底色平滑、文字与图标跳变，扫视时割裂；
+  现统一到同一过渡曲线，切歌观感连贯。
+- 沿用 Miuix 语义色（primary / onSurface / onSurfaceVariantSummary），深浅主题自动适配，无新增主题变量。
+- 律动音柱 `PlayingIndicator` 自身的「正在播放/已暂停」读屏语义不变；`Crossfade` 仅替换显示层，
+  不影响命中区与 `contentDescription`。
+
+**假设与待确认**
+- 240ms 取全站中等时长 `MotionBaseMs`，与 `GlassSurface` 底色的 160ms（`MotionFastMs`）略有差异；
+  实测若感觉文字/图标比底色慢半拍，可把 `transitionMs` 统一改为 `MotionFastMs.motionMs(reduceMotion)`。
+- 未给其它列表页（收藏/歌单详情/榜单）增加「正在播放」行标记：原版在线列表项仅在多选态着色，
+  无独立播放高亮，移植版队列页专属高亮已是增强，无需扩散。
+
+**验证**：`python3 scripts/selfcheck.py` 退出码 0；`./gradlew assembleRelease --no-daemon --offline`
+退出码 0（`BUILD SUCCESSFUL in 2m 8s`，48 tasks），现有编译警告均来自既有代码而非本轮改动。
+推送后由 GitHub Actions 云端再次编译确认。
+
+---
+
 ## 本轮执行状态（第五十轮 · v1.9.2）
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」补齐。本轮对齐原版
