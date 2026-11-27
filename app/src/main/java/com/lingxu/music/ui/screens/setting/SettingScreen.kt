@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.player.PlayMode
@@ -355,6 +356,17 @@ fun SettingScreen(
                 )
             }
         }
+        // 字号实时预览（对齐原版 FontSize.tsx 的 SizeText）：固定基准字号用 sp，
+        // LxTheme 已把 fontScale 注入 LocalDensity，切换档位时这段示例文字会随全站字号即时缩放，
+        // 用户点档位当帧即可看到实际大小，不必退出设置页去猜。主色 + 次要色说明，纯展示不参与交互。
+        Spacer(Modifier.size(8.dp))
+        Text(
+            "字体大小预览 Aa 聆序音乐",
+            fontSize = 16.sp,
+            color = MiuixTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         ArrowPreference(
             title = "分享方式",
             summary = when (shareType) {
