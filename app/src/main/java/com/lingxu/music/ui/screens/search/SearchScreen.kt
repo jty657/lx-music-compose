@@ -1,6 +1,9 @@
 package com.lingxu.music.ui.screens.search
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -229,46 +232,47 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         Spacer(Modifier.height(8.dp))
 
         // 搜索联想下拉：位于输入框下方、结果列表之上；只在未搜索状态下出现。
-        // 进场淡入 + 轻微上浮（只动 alpha/transform，不触发布局），减弱动效时直接到位。
+        // 此前只有进场淡入，点联想词/清空输入时整块直接从组合树移除（硬切），与全站其它
+        // 弹层的淡出语言不一致。这里把进/出统一交给 AnimatedVisibility：只动 alpha，不触发
+        // 布局；减弱动效时 0ms 静帧到位。退场期间 suggestions 通常已被清空，保留最后一版
+        // 非空词条，让淡出的是真实内容而不是一张空卡片。
         val suggestions = viewModel.suggestions
-        if (suggestions.isNotEmpty() && !viewModel.hasSearched) {
-            val reduceMotion = LocalReduceMotion.current
-            val appear by animateFloatAsState(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = if (reduceMotion) 0 else MotionBaseMs),
-                label = "tipFade",
-            )
-            GlassSurface(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    Modifier
-                        .graphicsLayer {
-                            alpha = appear
-                            translationY = (1f - appear) * 8f
+        val showSuggestions = suggestions.isNotEmpty() && !viewModel.hasSearched
+        val reduceMotion = LocalReduceMotion.current
+        val suggestionTransitionMs = if (reduceMotion) 0 else MotionBaseMs
+        val lastSuggestions = remember { mutableStateOf<List<String>>(emptyList()) }
+        if (showSuggestions) lastSuggestions.value = suggestions
+        AnimatedVisibility(
+            visible = showSuggestions,
+            enter = fadeIn(tween(durationMillis = suggestionTransitionMs)),
+            exit = fadeOut(tween(durationMillis = suggestionTransitionMs)),
+        ) {
+            Column {
+                GlassSurface(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(vertical = 2.dp)) {
+                        lastSuggestions.value.forEach { word ->
+                            TextActionButton(
+                                text = word,
+                                onClick = {
+                                    textFieldState.setTextAndPlaceCursorAtEnd(word)
+                                    viewModel.clearSuggestions()
+                                    scope.launch { viewModel.search(word, selectedSource) }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .semantics { contentDescription = "联想搜索：$word" },
+                                color = MiuixTheme.colorScheme.onSurface,
+                                fontSize = MiuixTheme.textStyles.body1.fontSize,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                                // 对齐原版 TipList 的 numberOfLines={1}：超长联想词单行省略，
+                                // 避免换行撑高下拉、挤动下方结果列表。
+                                maxLines = 1,
+                            )
                         }
-                        .padding(vertical = 2.dp),
-                ) {
-                    suggestions.forEach { word ->
-                        TextActionButton(
-                            text = word,
-                            onClick = {
-                                textFieldState.setTextAndPlaceCursorAtEnd(word)
-                                viewModel.clearSuggestions()
-                                scope.launch { viewModel.search(word, selectedSource) }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .semantics { contentDescription = "联想搜索：$word" },
-                            color = MiuixTheme.colorScheme.onSurface,
-                            fontSize = MiuixTheme.textStyles.body1.fontSize,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Start,
-                            // 对齐原版 TipList 的 numberOfLines={1}：超长联想词单行省略，
-                            // 避免换行撑高下拉、挤动下方结果列表。
-                            maxLines = 1,
-                        )
                     }
                 }
+                Spacer(Modifier.height(8.dp))
             }
-            Spacer(Modifier.height(8.dp))
         }
 
         // 错误提示统一放在结果列表底部的可点「重试项」展示（见下方两个分支），

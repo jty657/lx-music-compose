@@ -6,6 +6,44 @@
 
 ---
 
+## 本轮执行状态（第五十二轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮不触碰
+> 中/高风险差异（同步、蓝牙歌词、Audio Offload、简繁歌词、自动清空已播放列表、横屏独立歌词字号
+> 等——均已在前几轮评估并记录跳过），聚焦两处可在静态自检覆盖范围内的细节：首页热搜订阅初值与
+> 设置默认不一致导致的冷启动闪烁，以及搜索联想下拉只有进场淡入、退场硬切。仅修改 2 个源码文件
+> （`HomeScreen.kt` / `SearchScreen.kt`），零新增依赖、不改路由/状态管理/播放内核、不触碰
+> QuickJS 与音源协议。按项目约定，本地只做静态自检，构建由 GitHub Actions 云端执行。
+
+**本轮改动**
+1. **首页热搜首帧不再闪烁**（`HomeScreen.kt`）：`isShowHotSearch` 的 `collectAsState` 初值由
+   `true` 改为 `false`，与 `SettingsRepository` 落盘默认及原版 `defaultSetting` 的
+   `search.isShowHotSearch: false` 一致，也与搜索页 `SearchScreen` 的订阅写法一致。此前未改过
+   设置的用户冷启动会先渲染热搜、DataStore 读到 `false` 后再消失，视觉上是一次无意义闪动。
+2. **搜索联想下拉补齐退场动效**（`SearchScreen.kt`）：把原来「`if` 条件渲染 + 进场
+   `animateFloatAsState`」改为 `AnimatedVisibility`，进/出统一 `fadeIn`/`fadeOut`（`MotionBaseMs`
+   240ms）。只动 alpha、不触发布局；`LocalReduceMotion`（系统动画时长缩放=关闭）时 0ms 静帧。
+   退场期间 `viewModel` 往往已清空联想列表，保留最后一版非空词条供淡出，避免淡出一张空卡片。
+
+**视觉 / 交互 / 可访问性**
+- 两处改动都沿用现有 Miuix 语义色、`MotionBaseMs` 和 `LocalReduceMotion`，无新增主题变量、
+  无新增依赖、无逐帧动画；热搜行本身的 48dp 热区、按压缩放与读屏语义不变，联想词条的
+  `TextActionButton`（按压缩放、单行省略、`contentDescription`）不变，仅改变显隐过渡方式。
+- 联想下拉退场期间仍保留最后一次内容，读屏不会在淡出过程中播报「空白列表」。
+
+**假设与待确认**
+- 240ms 沿用全站中等时长 `MotionBaseMs`，与搜索页空态引导区的淡入一致；若实机感觉退场偏慢，
+  可把 `suggestionTransitionMs` 改为 `MotionFastMs.motionMs(reduceMotion)`（160ms）。
+- 原版搜索联想退场无显式淡出；本轮属于交互打磨而非 1:1 移植，语义与命中区不变。
+- 首页热搜默认关闭与原版一致；用户开启后行为完全不变，老用户升级零突变。
+- 横屏独立歌词字号（`playDetail.horizontal.style.lrcFontSize`）在移植版无横屏歌词布局，
+  单独加偏好键不会产生可见效果，本轮跳过；如后续补横屏页面需一并评估。
+
+**验证**：`python3 scripts/selfcheck.py` 退出码 0（`静态自检通过`）；本地无 Java，按项目约定不执行
+`gradlew`，构建由 GitHub Actions 云端（推送 `master` 自动触发 `Build APK`）确认。
+
+---
+
 ## 本轮执行状态（第五十一轮 · v1.9.2）
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮不触碰任何

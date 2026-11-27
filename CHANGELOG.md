@@ -1,6 +1,26 @@
 # 更新日志
 
-## 第五十轮：深色模式隐藏背景（v1.9.2，本次）
+## 第五十二轮：热搜首帧与联想退场打磨（v1.9.2，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 做低风险「功能差异 + UI/动效」打磨。仅修改
+> `HomeScreen.kt` / `SearchScreen.kt` 两个源码文件，`scripts/selfcheck.py` 通过；按项目约定
+> 构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### UI / 动效
+
+- **首页热搜首帧不再闪烁**：`isShowHotSearch` 订阅初值 `true` → `false`，与落盘默认和原版
+  `defaultSetting` 一致（此前冷启动会先闪出热搜再消失）。
+- **搜索联想下拉补齐退场淡出**：改用 `AnimatedVisibility` 统一进出场（`fadeIn`/`fadeOut`，
+  `MotionBaseMs` 240ms），只动 alpha；`LocalReduceMotion` 时 0ms 静帧。退场期间保留最后一版
+  非空词条，避免淡出空卡片。
+
+### 假设与待确认
+
+- 退场时长沿用全站 240ms；如需更快可改为 `MotionFastMs`（160ms）。
+- 本轮为交互打磨而非与原文 1:1；不改联想词点击、热搜点击与读屏语义。
+- 横屏独立歌词字号因移植版无横屏歌词布局，未纳入本轮。
+
+## 第五十轮：深色模式隐藏背景（v1.9.2）
 
 > 对照原版 lx-music-mobile v1.9.2 继续做「功能差异 + UI/动效」低风险补齐。本轮对齐原版
 > `theme.hideBgDark`，修改 4 个源码文件，通过 `scripts/selfcheck.py`；构建按约定走 GitHub Actions

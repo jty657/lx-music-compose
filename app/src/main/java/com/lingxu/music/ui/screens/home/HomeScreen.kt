@@ -140,7 +140,10 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
 
         // 热搜（可在设置里关闭）。热搜与榜单并存：热搜占较小权重，榜单占剩余空间，
         // 避免此前「有热搜时榜单被完全屏蔽、用户看不到排行榜」的问题。
-        val showHotSearch by LxApp.app.settings.isShowHotSearch.collectAsState(initial = true)
+        // initial 与落盘/原版默认（SettingsRepository: false，defaultSetting search.isShowHotSearch=false）
+        // 保持一致：此前写 true 会让未改过设置的用户冷启动先闪出热搜、DataStore 读到 false 后再消失，
+        // 与同页搜索页（SearchScreen 用 initial=false）表现不一致。
+        val showHotSearch by LxApp.app.settings.isShowHotSearch.collectAsState(initial = false)
         val showHot = showHotSearch && hotSearch.isNotEmpty()
         if (showHot) {
             Text("热搜", fontSize = MiuixTheme.textStyles.title1.fontSize)
