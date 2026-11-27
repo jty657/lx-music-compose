@@ -1,6 +1,29 @@
 # 更新日志
 
-## 第五十二轮：热搜首帧与联想退场打磨（v1.9.2，本次）
+## 第五十三轮：搜索加载态与字号实时预览（v1.9.2，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 做低风险「功能差异 + UI/动效」打磨。仅修改
+> `SearchScreen.kt` / `SettingScreen.kt` 两个源码文件，`scripts/selfcheck.py` 通过；按项目约定
+> 构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### UI / 动效
+
+- **搜索首屏加载态补齐**（`SearchScreen.kt`）：首次搜索空窗期（`loading && !hasMore && 无错误 &&`
+  结果/歌单均为空）此前 `musicEmpty` 与歌单空态分支都因 `!loading` 被排除，整块空白像「搜索没反应」。
+  现复用全站 `LoadingHint`（三点流水灯，`LocalReduceMotion` 时静帧），拿到结果自然消失；已有旧结果
+  时不显示，避免换源/二次搜索列表闪动。
+- **字号实时预览**（`SettingScreen.kt`）：字号档位下方加一行主色示例文字「字体大小预览 Aa 聆序音乐」。
+  固定基准 `16.sp`，经 `LxTheme` 注入的 `LocalDensity` 随全站 `fontScale` 即时缩放，点档位当帧可见，
+  对齐原版 `FontSize.tsx` 的 `SizeText`；纯展示、单行省略、不参与交互。
+
+### 假设与待确认
+
+- 加载提示文案「正在搜索…」为移植版措辞，原版用下拉刷新指示器而非内联提示；语义等价，无命中区变化。
+- 预览固定 16.sp 基准仅用于展示缩放比例，不代表正文最终字号；如需与正文一致可改用 `body2` 字号。
+- 歌词边缘渐隐、进度条缓冲段、自动滚回当前歌词、下拉刷新等差异经评估需实验性 API / 改播放内核 / 新依赖，
+  本轮按低风险原则跳过，详见 ANALYSIS.md。
+
+## 第五十二轮：热搜首帧与联想退场打磨（v1.9.2）
 
 > 对照原版 lx-music-mobile v1.9.2 做低风险「功能差异 + UI/动效」打磨。仅修改
 > `HomeScreen.kt` / `SearchScreen.kt` 两个源码文件，`scripts/selfcheck.py` 通过；按项目约定

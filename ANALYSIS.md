@@ -6,6 +6,49 @@
 
 ---
 
+## 本轮执行状态（第五十三轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦两处静态自检
+> 可覆盖、零新增依赖、不改核心逻辑的细节：搜索首屏加载空窗期的加载提示缺失，以及设置页字号档位
+> 缺少实时预览。仅修改 2 个源码文件（`SearchScreen.kt` / `SettingScreen.kt`），`scripts/selfcheck.py`
+> 退出码 0；本地无可用 Gradle 缓存且按项目约定不本地编译，构建由 GitHub Actions 云端（推送 master
+> 自动触发 `Build APK`）确认。
+
+**本轮改动**
+1. **搜索首屏加载态**（`SearchScreen.kt:496`）：音乐结果分支新增 `LoadingHint` 显示条件
+   `loading && !hasMore && errorMessage == null && results.isEmpty() && songLists.isEmpty() && hasSearched`。
+   此前首次搜索的空窗期里，`musicEmpty`（含 `!loading`）与歌单空态分支（含 `!loading`）双双被排除，
+   列表区完全空白，用户误以为搜索无响应。现补上与全站一致的居中三点流水灯提示（减弱动效时静帧），
+   结果返回后自然消失；已有旧结果（换源/二次搜索）时不显示，避免列表闪动。只新增一条 `if` 显隐分支，
+   `viewModel.search` 链路、竞态版本锁、音源协议完全不动。
+2. **字号实时预览**（`SettingScreen.kt:359`）：5 档字号 FilterChip 下方新增主色示例文字
+   「字体大小预览 Aa 聆序音乐」，固定 `16.sp`。项目通过 `LxTheme` 把 `fontScale` 注入 `LocalDensity`
+   （`Theme.kt:74-79`），所有 `sp` 文字随档位全局缩放，故该示例在点击档位当帧即可预览实际大小，
+   对齐原版 `FontSize.tsx:49-55` 的 `SizeText`。纯展示，单行省略，不参与交互与状态管理。
+
+**视觉 / 交互 / 可访问性**
+- 两处均复用现有组件与语义：`LoadingHint` 的三点呼吸灯遵循 `LocalReduceMotion`（关闭动画时三点等亮静帧）；
+  预览文字用 Miuix 主色、正文 Text，无需新增主题变量或颜色。
+- 未新增点击热区、未改读屏语义；字号档位 FilterChip 的选中高亮与「已选中」语义保持原样。
+- 无逐帧布局动画：`LoadingHint` 只改 `graphicsLayer.alpha`；预览文字随全局字号重组，无独立动画。
+
+**假设与待确认**
+- 加载提示文案「正在搜索…」为移植版措辞，原版用 `RefreshControl` 下拉刷新指示器而非内联提示；
+  两者语义等价（都表示「请求进行中」），本轮不引入 PullToRefresh 依赖。
+- 预览固定 `16.sp` 仅表达缩放比例，不代表正文最终字号；若要与正文一致可改用 `body2` 字号。
+- 经功能差异对比后按低风险原则**本轮跳过**的项（均已在前几轮或本轮记录理由）：歌词上下缘渐隐
+  （原版 `fadingEdgeLength=100`，需 `Modifier.fadingEdge` 实验性 API，本地无法编译验证）、播放进度条
+  缓冲段（需改 `PlayerRepository`/`PlayState` 接 ExoPlayer `bufferedPosition`）、手动滚歌词 3s 自动归位
+  （涉及时序与定时器，中班风险）、全站下拉刷新（无现成依赖，属新增依赖）、播放状态文案细分
+  （低价值，可后续单独做）。
+- 中高风险功能差异（同步 / 歌曲评论 / 逐字歌词 / 元数据缓存落盘 / 歌曲信息编辑 / Audio Offload /
+  蓝牙歌词 / 简繁歌词）延续既有结论，本轮不触碰。
+
+**验证**：`python3 scripts/selfcheck.py` 退出码 0（`静态自检通过`）；本地无 Java 构建环境（约定禁止本地
+编译），构建由 GitHub Actions 云端确认；编译结果见 CHANGELOG 与本轮提交推送记录。
+
+---
+
 ## 本轮执行状态（第五十二轮 · v1.9.2）
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮不触碰
