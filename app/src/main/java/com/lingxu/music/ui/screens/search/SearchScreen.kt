@@ -63,6 +63,7 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.QualityBadge
 import com.lingxu.music.ui.components.LoadMoreButton
+import com.lingxu.music.ui.components.LoadingHint
 import com.lingxu.music.ui.components.RetryHint
 import com.lingxu.music.ui.components.TextActionButton
 import com.lingxu.music.ui.components.TrackCover
@@ -492,6 +493,15 @@ fun SearchScreen(initialKeyword: String = "", viewModel: SearchViewModel = viewM
         val resultState = rememberLazyListState()
         com.lingxu.music.ui.components.ReportScrollForMiniBar(resultState)
         AutoLoadMore(resultState, viewModel.hasMore, viewModel.loading) { viewModel.loadMore() }
+        // 首次搜索的空窗期（hasSearched 且 loading 且结果/歌单均为空且无错误）此前是一片空白：
+        // musicEmpty 因 !loading 被排除、歌单空态分支也被 !loading 排除，用户会误以为搜索没反应。
+        // 这里补上与全站一致的 LoadingHint（三点流水灯，减弱动效时静帧），并在拿到结果后自然消失。
+        // 只动显隐、不改 viewModel.search 的任何链路；已有旧结果时（换源/二次搜索）不显示，避免列表闪动。
+        if (viewModel.loading && !viewModel.hasMore && viewModel.errorMessage == null &&
+            results.isEmpty() && songLists.isEmpty() && viewModel.hasSearched
+        ) {
+            LoadingHint("正在搜索…")
+        }
         // 搜索后无结果：给出明确空态，避免只剩一片空白让用户以为卡住。
         // 同时在空态下补「换源重搜」出口：原版用户遇到单源无结果时习惯切到聚合源，
         // 但此前空态只是一行字，用户得自己往上滚回音源 chip 再点一次搜索。
