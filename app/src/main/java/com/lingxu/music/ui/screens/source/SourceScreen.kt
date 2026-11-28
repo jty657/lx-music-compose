@@ -1,5 +1,9 @@
 package com.lingxu.music.ui.screens.source
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import com.lingxu.music.ui.components.BackIconButton
 import com.lingxu.music.ui.components.ContentMaxWidth
 import com.lingxu.music.ui.components.EmptyHint
@@ -26,8 +30,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,15 +41,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.ui.theme.Dimens
+import com.lingxu.music.ui.theme.LocalReduceMotion
+import com.lingxu.music.ui.theme.MotionFastMs
 import com.lingxu.music.ui.theme.animateListItem
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -64,6 +78,16 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     val navigator = LocalNavigator.current
     var importUrl by remember { mutableStateOf("") }
     var showUrlInput by remember { mutableStateOf(false) }
+    // 网络导入输入框焦点：对齐原版 ScriptImportOnline 打开弹窗后自动聚焦输入框，
+    // 用户粘贴链接后可直接点「导入」，不必先点一下输入框。用 remember 保证重组后
+    // 仍是同一个 FocusRequester；短延时等 Dialog 窗口完成组合，失败静默不影响导入。
+    val urlFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(showUrlInput) {
+        if (showUrlInput) {
+            kotlinx.coroutines.delay(80)
+            runCatching { urlFocusRequester.requestFocus() }
+        }
+    }
     // 长按音源打开「管理音源」对话框（导出/删除）的目标 id
     var managingId by remember { mutableStateOf<String?>(null) }
     // 待导出的音源 id：点击「导出脚本」时先记下，SAF 选好保存位置后再写文件
@@ -71,6 +95,8 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
     // 待删除音源 id：对齐原版 user_api_remove_tip 的二次确认，删除不可撤销，误触代价高。
     // 点「删除」只记下 id 并弹出确认框，确认后才真正调用 delete（删除逻辑本身不变）。
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+    // 状态提示进出场：跟随全站「减弱动效」开关，系统关动画时瞬时到位。
+    val reduceMotion = LocalReduceMotion.current
 
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -304,6 +330,16 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                                 text = if (api.allowShowUpdateAlert) "开" else "关",
                                 color = if (api.allowShowUpdateAlert) MiuixTheme.colorScheme.primary
                                 else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                // 视觉上只有「开/关」一个字，读屏脱离左侧「更新提示」标签后
+                                // 无法判断操作对象；补完整标签，与 LoadingHint / EmptyHint 的
+                                // 读屏语义补齐语言一致，不改变视觉与点击行为。
+                                modifier = Modifier.semantics {
+                                    contentDescription = if (api.allowShowUpdateAlert) {
+                                        "更新提示已开启，点击关闭"
+                                    } else {
+                                        "更新提示已关闭，点击开启"
+                                    }
+                                },
                                 onClick = {
                                     viewModel.setAllowShowUpdateAlert(api.id, !api.allowShowUpdateAlert)
                                 },
@@ -315,16 +351,28 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
         }
 
         // 状态提示（成功/进行中用次要色，只有失败才是红字）
-        viewModel.statusMessage?.let { msg ->
-            // 导入失败的长异常信息限制两行并省略，避免撑高底部、压缩上方音源列表。
-            Text(
-                msg,
-                color = if (viewModel.statusIsError) MiuixTheme.colorScheme.error
-                else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        // 此前是硬切出现/消失，与全站玻璃弹窗、搜索联想下拉的淡变语言不一致；
+        // 补一层只动 alpha 的淡入淡出（MotionFastMs，纯 transform/opacity 家族，
+        // 不改布局高度），系统要求减弱动效时时长归零，与 GlassDialog 的降级保持一致。
+        AnimatedVisibility(
+            visible = viewModel.statusMessage != null,
+            enter = fadeIn(tween(if (reduceMotion) 0 else MotionFastMs)),
+            exit = fadeOut(tween(if (reduceMotion) 0 else MotionFastMs)),
+        ) {
+            viewModel.statusMessage?.let { msg ->
+                // 导入失败的长异常信息限制两行并省略，避免撑高底部、压缩上方音源列表。
+                Text(
+                    msg,
+                    color = if (viewModel.statusIsError) MiuixTheme.colorScheme.error
+                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    // 导入/导出/删除结果此前只以文字呈现，读屏用户关掉弹窗后听不到任何反馈；
+                    // 与全站加载态/空态一致用礼貌播报，状态变化时读一次，不打断正在进行的朗读。
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
         }
         }
     }
@@ -351,6 +399,10 @@ fun SourceScreen(viewModel: SourceViewModel = viewModel()) {
                             onValueChange = { importUrl = it },
                             placeholder = { Text("https://example.com/source.js") },
                             singleLine = true,
+                            // 手机上弹出网址键盘（含斜杠与 .com），复制粘贴链接更顺手；
+                            // 纯视觉/输入体验调整，导入校验与请求链路完全不变（URL trim 在 ViewModel 完成）。
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                            modifier = Modifier.focusRequester(urlFocusRequester),
                         )
                     }
                     Spacer(Modifier.size(16.dp))
