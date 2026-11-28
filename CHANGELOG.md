@@ -4,8 +4,8 @@
 
 > 对照上游 lx-music-mobile v1.9.3（2026-11-28 发布）做低风险「功能差异 + UI/可访问性」打磨。
 > 仅修改 `LrcParser.kt` / `PlayerScreen.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0；
-> 按项目约定构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核、
-> 不触碰 QuickJS 与音源协议。
+> 按项目约定构建由 GitHub Actions 云端执行，Run 46124204145 已成功（conclusion=success）。
+> 零新增依赖、不改路由/状态管理/播放内核、不触碰 QuickJS 与音源协议。
 
 ### 功能对齐（上游 v1.9.3 修复）
 - **歌词小数时间标签按百分秒解析**：对齐上游 `LyricPlayer.java` 的修复，非毫秒制 1 位小数由 `*100`

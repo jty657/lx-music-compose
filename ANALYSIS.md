@@ -13,7 +13,7 @@
 > 歌词时间标签解析修复；wy 歌单修复位于打包 SDK bundle（二进制产物，高风险）与 `player.isEnableAudioOffload`
 > 设置迁移（移植版无该偏好键）均跳过并记录。另补一处点击热区一致性。
 > 仅修改 `LrcParser.kt` / `PlayerScreen.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0，
-> 8 组解析用例全通过；本地按仓库约定不编译，构建由 GitHub Actions 云端确认。
+> 8 组解析用例全通过；本地按仓库约定不编译，构建由 GitHub Actions 云端确认——Run `46124204145` 已成功（conclusion=success，build job success）。
 
 **本轮改动**
 
