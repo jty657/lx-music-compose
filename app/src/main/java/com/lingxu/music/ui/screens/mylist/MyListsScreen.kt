@@ -54,6 +54,8 @@ import com.lingxu.music.ui.components.EmptyHint
 import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.QualityBadge
+import com.lingxu.music.ui.components.FilterChip
+import com.lingxu.music.ui.components.TextActionButton
 import com.lingxu.music.ui.components.rememberSavedLazyListState
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.LocalSaveScrollLocation
@@ -110,6 +112,13 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     // 多选模式
     var selectMode by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // 多选方式：false=逐项点选（原版 list_select_single），true=范围选（原版 list_select_range）。
+    // 范围选下点击一行会把「锚点行 → 当前行」之间的所有歌曲一次性选中，适合长列表批量操作；
+    // 这是原版多选底栏的两种模式之一，移植版此前只有逐项点选。纯 UI 层状态，不碰播放/持久化逻辑。
+    var selectRange by remember { mutableStateOf(false) }
+    // 范围选锚点（shownMusics 中的下标）。只有范围选会用到；单选切回时清空，
+    // 避免出现「模式已切回单选、锚点却残留」导致下次进入范围选的第一击选中一大段。
+    var rangeAnchor by remember { mutableStateOf<Int?>(null) }
     // 批量移动到其它列表
     var moveTargets by remember { mutableStateOf(false) }
     // 目标列表对话框的模式：false=移动（加后从源移除），true=复制添加（只加不移除）。
@@ -158,6 +167,42 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
     fun exitSelect() {
         selectMode = false
         selected = emptySet()
+        rangeAnchor = null
+        // 每次进入多选都从「单选」开始，对齐原版 MultipleModeBar 的初始 state('single')
+        selectRange = false
+    }
+
+    /**
+     * 多选点击：对齐原版 OnlineList/List.tsx 的 handleSelect。
+     * - 单选：记录锚点（原版 prevSelectIndexRef），逐项增删；
+     * - 范围选：已有锚点且已选中时，把 [锚点, 当前] 区间整体替换选中；点同一行清空；
+     *   首次点击（无锚点/无选中）只选当前行并设为新锚点。
+     * 用 shownMusics（搜索过滤后的可见列表）求下标，与用户看到的行序一致；
+     * 搜索词变化导致锚点越界时按「无锚点」处理，不会因旧下标选错区间。
+     */
+    fun toggleSelect(music: MusicInfo) {
+        val index = shownMusics.indexOfFirst { it.id == music.id }
+        if (!selectRange) {
+            // 单选：即使取消勾选也更新锚点（与原版 prevSelectIndexRef 一致），
+            // 这样切到范围选后第一击就能从刚点过的位置开始圈选。
+            rangeAnchor = index.takeIf { it >= 0 }
+            selected = if (music.id in selected) selected - music.id else selected + music.id
+            return
+        }
+        val anchor = rangeAnchor
+        if (index >= 0 && anchor != null && anchor in shownMusics.indices && selected.isNotEmpty()) {
+            if (anchor == index) {
+                // 点回锚点：整体取消，与原版范围选「prevIndex == currentIndex -> newList = []」一致
+                selected = emptySet()
+            } else {
+                val from = minOf(anchor, index)
+                val to = maxOf(anchor, index)
+                selected = shownMusics.subList(from, to + 1).map { it.id }.toSet()
+            }
+        } else {
+            selected = setOf(music.id)
+            rangeAnchor = index.takeIf { it >= 0 }
+        }
     }
 
     // 系统返回键：优先退出多选 / 退出列表内层，与顶部返回箭头行为一致
@@ -272,7 +317,7 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         modifier = animateListItem().fillMaxWidth().padding(vertical = Dimens.ItemGap),
                         onClick = {
                             if (selectMode) {
-                                selected = if (checked) selected - music.id else selected + music.id
+                                toggleSelect(music)
                             } else {
                                 viewModel.play(musics, music)
                             }
@@ -371,27 +416,73 @@ fun MyListsScreen(viewModel: MyListsViewModel = viewModel()) {
                         .horizontalScroll(rememberScrollState())
                         .padding(top = 8.dp),
                 ) {
-                    Button(onClick = {
-                        selected = if (selected.size == shownMusics.size) emptySet()
-                        else shownMusics.map { it.id }.toSet()
-                    }) { Text(if (selected.size == shownMusics.size) "取消全选" else "全选") }
+                    // 原版多选底栏提供「单选 / 范围选」两种模式（list_select_single / list_select_range），
+                    // 移植版此前只有逐项点选。这里用全站公共 FilterChip 承载模式切换：
+                    // 选中态主色淡底 + 按压缩放 + Role.Tab 读屏 + 减弱动效静帧，与搜索页/播放页 chip 同语言。
+                    FilterChip(
+                        label = "单选",
+                        selected = !selectRange,
+                        onClick = {
+                            if (selectRange) {
+                                selectRange = false
+                                rangeAnchor = null
+                            }
+                        },
+                        horizontalPadding = 10,
+                    )
+                    Spacer(Modifier.size(6.dp))
+                    FilterChip(
+                        label = "范围选",
+                        selected = selectRange,
+                        onClick = {
+                            if (!selectRange) {
+                                selectRange = true
+                                rangeAnchor = null
+                            }
+                        },
+                        horizontalPadding = 10,
+                    )
                     Spacer(Modifier.size(8.dp))
-                    Button(onClick = {
-                        val queue = shownMusics.filter { it.id in selected }
-                        if (queue.isNotEmpty()) viewModel.play(queue, queue.first())
-                    }) { Text("播放(${selected.size})") }
+                    // 批量操作按钮统一为 TextActionButton：48dp 热区 + 按压缩放 + Role.Button
+                    // + 减弱动效静帧，与设置页/播放页/搜索页弹窗语言一致（原为裸 Button）。
+                    TextActionButton(
+                        text = if (selected.size == shownMusics.size) "取消全选" else "全选",
+                        onClick = {
+                            selected = if (selected.size == shownMusics.size) emptySet()
+                            else shownMusics.map { it.id }.toSet()
+                            // 全选/取消全选后锚点失去意义，清掉，避免下次范围选第一击误圈
+                            rangeAnchor = null
+                        },
+                    )
                     Spacer(Modifier.size(8.dp))
-                    Button(onClick = { if (selected.isNotEmpty()) { targetModeAdd = true; moveTargets = true } }) { Text("添加") }
+                    TextActionButton(
+                        text = "播放(${selected.size})",
+                        onClick = {
+                            val queue = shownMusics.filter { it.id in selected }
+                            if (queue.isNotEmpty()) viewModel.play(queue, queue.first())
+                        },
+                    )
                     Spacer(Modifier.size(8.dp))
-                    Button(onClick = { if (selected.isNotEmpty()) { targetModeAdd = false; moveTargets = true } }) { Text("移动") }
+                    TextActionButton(
+                        text = "添加",
+                        onClick = { if (selected.isNotEmpty()) { targetModeAdd = true; moveTargets = true } },
+                    )
                     Spacer(Modifier.size(8.dp))
-                    Button(onClick = {
-                        scope.launch {
-                            viewModel.removeMusics(listId, selected.toList())
-                            musics = musics.filterNot { it.id in selected }
-                            exitSelect()
-                        }
-                    }) { Text("移除") }
+                    TextActionButton(
+                        text = "移动",
+                        onClick = { if (selected.isNotEmpty()) { targetModeAdd = false; moveTargets = true } },
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    TextActionButton(
+                        text = "移除",
+                        onClick = {
+                            scope.launch {
+                                viewModel.removeMusics(listId, selected.toList())
+                                musics = musics.filterNot { it.id in selected }
+                                exitSelect()
+                            }
+                        },
+                    )
                 }
             }
         }
