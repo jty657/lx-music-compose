@@ -781,9 +781,11 @@ private fun LyricView(
                             color = MiuixTheme.colorScheme.primary,
                         )
                         Spacer(Modifier.size(8.dp))
+                        // 点按热区对齐全站 Dimens.TouchTarget（48dp）：此前硬编码 44dp，
+                        // 比无障碍最小热区小 4dp，与同页其它可点入口不一致。
                         Box(
                             Modifier
-                                .size(44.dp)
+                                .size(Dimens.TouchTarget)
                                 .clip(CircleShape)
                                 .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.14f))
                                 .clickable(role = Role.Button, onClickLabel = "跳转到该句歌词") {
