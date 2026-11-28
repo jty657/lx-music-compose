@@ -6,7 +6,11 @@
 
 ---
 
-## 本轮执行状态（第五十九轮 · 音源管理功能对齐与读屏打磨）
+## 本轮执行状态（第六十轮 · 播放队列定位当前播放 + 弹窗交互统一）
+
+对照 `lyswhut/lx-music-mobile` v1.9.3 的列表定位交互做低风险补齐：① 播放队列页顶栏新增「定位当前播放」按钮（对齐原版 `Mylist/MusicList/List.tsx` 中 `scrollToIndex` 到 `playIndex` 的行为），队列较长、当前曲目滚出视口时一键滑回并居中；② 清空确认弹窗的裸 `Button` 改为全站统一的 `TextActionButton`（48dp 热区 + 按压缩放 + 读屏语义 + 减弱动效静帧）。仅修改 `PlayQueueScreen.kt` 一个源码文件，`scripts/selfcheck.py` 退出码 0；按项目约定构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核与音源协议。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
+
+## 上一轮执行状态（第五十九轮 · 音源管理功能对齐与读屏打磨）
 
 对照 `lyswhut/lx-music-mobile` v1.9.3 的「音源导入 / 使用」链路做低风险补齐：① 网络导入 URL 自动 `trim()`，对齐原版 `getText()` 行为，粘贴带首尾空格的链接不再被误判为无效；② 删除当前启用的自定义音源后优先回退到剩余自定义音源、无其它自定义音源时回退内置首项，替代硬编码 `kw`；③ 导入弹窗自动聚焦输入框并改用网址键盘；④ 音源导入/导出/删除结果接入礼貌读屏播报，「更新提示」开关补完整读屏标签；⑤ 状态提示改为 160ms 淡入淡出（减弱动效时瞬时到位）。仅修改 `SourceScreen.kt` / `SourceViewModel.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0；按项目约定构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 

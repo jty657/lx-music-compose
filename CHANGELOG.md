@@ -1,6 +1,25 @@
 # 更新日志
 
-## 第五十九轮：音源管理功能对齐与读屏打磨（本次）
+## 第六十轮：播放队列定位当前播放 + 弹窗交互统一（本次）
+
+> 对照上游 lx-music-mobile v1.9.3 的列表定位交互做低风险补齐。仅修改
+> `PlayQueueScreen.kt` 一个源码文件，`scripts/selfcheck.py` 退出码 0；
+> 按项目约定构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核、
+> 不触碰 QuickJS 与音源协议。
+
+### 功能对齐（列表定位当前播放）
+- **播放队列「定位当前播放」按钮**：对齐原版 `Mylist/MusicList/List.tsx` 的 `scrollToIndex(playIndex, viewPosition: 0.3)`；顶栏新增图标按钮，队列较长、当前曲目滚出视口时一键滑回并居中（`offset = -viewportHeight/3`），减弱动效时瞬时到位。
+
+### UI / 动效 / 可访问性
+- **清空确认弹窗按钮统一**：裸 `Button` 改为 `TextActionButton`，获得 48dp 热区、按压缩放、`Role.Button` 读屏语义与减弱动效静帧，与设置页/搜索页/播放页弹窗语言一致。
+- **listState 作用域提升**：`saveScroll` / `listState` 提到 Composable 顶层，供顶栏按钮与列表共用，不新增状态副本。
+
+### 假设与待确认
+- 定位入口放在播放队列页（原版入口在「我的列表」歌曲列表）；Compose `LazyListState` 索引稳定，原版 `handleScrollToIndexFailed` 兜底不适用。版本号沿用最近两轮不变。详见 ANALYSIS.md。
+
+---
+
+## 第五十九轮：音源管理功能对齐与读屏打磨
 
 > 对照上游 lx-music-mobile v1.9.3 的音源导入 / 使用链路做低风险补齐。仅修改
 > `SourceScreen.kt` / `SourceViewModel.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0；

@@ -6,7 +6,44 @@
 
 ---
 
-## 本轮执行状态（第五十九轮 · 音源管理功能对齐与读屏打磨）
+## 本轮执行状态（第六十轮 · 播放队列定位当前播放 + 弹窗交互统一）
+
+> 对照上游 `lyswhut/lx-music-mobile` v1.9.3 的列表定位交互做低风险「功能差异 + UI/动效」打磨。
+> 仅修改 `ui/screens/playqueue/PlayQueueScreen.kt` 一个源码文件，`scripts/selfcheck.py`
+> 退出码 0；本地无 Android SDK platform 37，按 `AGENTS.md` 约定不做本地编译，构建由 GitHub Actions 云端确认。
+> 零新增依赖、未改锁文件、不改路由/状态管理/播放内核/QuickJS 与音源协议。
+
+**功能差异对比（本轮聚焦列表定位当前播放 / 弹窗交互语言）**
+
+| 上游 `lx-music-mobile` v1.9.3 | 移植版改动前 | 本轮处理 |
+|---|---|---|
+| `Mylist/MusicList/List.tsx`：`scrollToIndex(playIndex, viewPosition: 0.3, animated: true)` 定位当前播放 | 播放队列页无定位入口，长队列中正在播放曲目滚出视口后需手动翻找 | 已补：顶栏「定位当前播放」按钮，滑动到 `currentIndex` 并留出顶部偏移居中 |
+| `handleScrollToIndexFailed` 兜底 | 无（Compose `LazyListState` 索引稳定，不需要） | 不适用，见假设 |
+| 全站弹窗按钮统一按压/热区/读屏 | 清空确认弹窗用裸 `Button`，无热区统一、无缩放反馈、读屏只当普通按钮 | 已统一：改用 `TextActionButton` |
+| 音源导入/使用、歌词 3s 归位、时间标签解析、退出键、热搜并列等 | 均已对齐 | 本轮不重复改动 |
+| 同步 / 评论 / 逐字歌词 / 歌曲信息编辑 / 蓝牙歌词 / 简繁歌词 / Audio Offload / 自动清空已播放列表 / wy 歌单修复 | 未对齐 | 高风险或不适用，继续跳过（见第 6 节） |
+
+**本轮改动**
+
+1. `PlayQueueScreen`：把 `saveScroll` / `listState` 从列表分支提升到 Composable 顶层作用域，供顶栏与列表共用同一个 `LazyListState`；新增 `rememberCoroutineScope` 与读取一次的 `topBarReduceMotion`。
+2. 顶栏新增「定位当前播放」按钮：`currentIndex >= 0 && queue.isNotEmpty()` 时显示，点击后 `scope.launch` 中用 `listState.animateScrollToItem(currentIndex, offset)`（减弱动效时 `scrollToItem`），`offset = -viewportHeight/3` 让当前行落在屏幕中部；复用 `queueActionClickable` 获得 48dp 热区、按压缩放、`Role.Button` 与静帧降级。
+3. 清空确认弹窗两个裸 `Button` 改为 `TextActionButton`，「清空」沿用 `colorScheme.error`，获得全站一致的热区/反馈/语义。
+
+**动效 / 性能 / 可访问性影响**
+- 新增动画只有滚动定位一处（`animateScrollToItem`），只改滚动位置不触发布局重排；`topBarReduceMotion` 在系统减弱动效时退化为瞬时 `scrollToItem`。
+- 定位按钮复用既有 `queueActionClickable`（`Motion.press` 弹簧、`Role.Button`、48dp 热区），未新增逐帧循环。
+- `TextActionButton` 是项目已有公共组件，零新增依赖；「取消/清空」读屏语义与全站一致。
+- 未改 `GlassSurface` / `GlassDialog` 采样边界，`screens/` 下无 `drawBackdrop`，无自采样递归风险；`selfcheck` 退出码 0。
+
+**假设与待确认**
+- 原版定位入口在「我的列表」歌曲列表，移植版放到播放队列页（都在长列表 + 当前播放高亮场景中定位当前曲目）；原版播放队列页是否有同款独立入口未在公开源码明确，属交互对齐而非逐行移植。
+- Compose `LazyListState` 索引稳定，原版 RN `handleScrollToIndexFailed` 兜底不适用；`offset` 在首帧视口高度为 0 时为 0，退化为顶部对齐，数据就绪后用户再次点击即居中。
+- 版本号沿用最近两轮惯例保持不变（`versionCode=49` / `1.9.2`），避免无关改动。
+- 本地无 Java / Android SDK platform 37，按 `AGENTS.md` 约定不做本地编译；云端构建结果以推送后的 Actions 为准。
+
+---
+
+## 上一轮执行状态（第五十九轮 · 音源管理功能对齐与读屏打磨）
 
 > 对照上游 `lyswhut/lx-music-mobile` v1.9.3（2026-11-28）的**音源导入 / 音源使用**链路做
 > 低风险「功能差异 + UI/动效/可访问性」打磨。仅修改 `ui/screens/source/SourceViewModel.kt` 与
