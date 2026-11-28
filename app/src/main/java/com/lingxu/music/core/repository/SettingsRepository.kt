@@ -37,6 +37,9 @@ class SettingsRepository(private val context: Context) {
         val KEY_ALLOW_PROGRESS_BAR_SEEK = booleanPreferencesKey("common.allowProgressBarSeek")
         // 原版 common.sourceNameType：音源显示名类型 real（原名）/ alias（别名），默认 real
         val KEY_SOURCE_NAME_TYPE = stringPreferencesKey("common.sourceNameType")
+        // 原版 common.showBackBtn：二级页是否显示返回按钮。移植版历史一直显示，
+        // 默认 true 保持老用户零突变；与原版默认 false 的差异记录在本轮报告的待确认项。
+        val KEY_SHOW_BACK_BTN = booleanPreferencesKey("common.showBackBtn")
         // player
         val KEY_QUALITY = stringPreferencesKey("player.quality")
         val KEY_PLAY_MODE = stringPreferencesKey("player.playMode")
@@ -144,6 +147,9 @@ class SettingsRepository(private val context: Context) {
     val allowProgressBarSeek: Flow<Boolean> = context.dataStore.data.map { it[KEY_ALLOW_PROGRESS_BAR_SEEK] ?: true }
     // 默认 real（原名）：与移植版历史显示一致，老用户升级后观感不变；原版默认 alias，见报告待确认项
     val sourceNameType: Flow<String> = context.dataStore.data.map { it[KEY_SOURCE_NAME_TYPE] ?: SOURCE_NAME_REAL }
+    // 默认 true：移植版此前二级页恒有返回键，新增开关后老用户观感零突变；
+    // 关闭后仅隐藏图标并禁用点击，48dp 占位保留，避免顶栏标题横向跳动。
+    val showBackBtn: Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_BACK_BTN] ?: true }
 
     // ================= player =================
 
@@ -276,6 +282,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setAutoHidePlayBar(value: Boolean) = context.dataStore.edit { it[KEY_AUTO_HIDE_PLAY_BAR] = value }
     suspend fun setAllowProgressBarSeek(value: Boolean) = context.dataStore.edit { it[KEY_ALLOW_PROGRESS_BAR_SEEK] = value }
     suspend fun setSourceNameType(value: String) = context.dataStore.edit { it[KEY_SOURCE_NAME_TYPE] = value }
+    suspend fun setShowBackBtn(value: Boolean) = context.dataStore.edit { it[KEY_SHOW_BACK_BTN] = value }
 
     suspend fun setQuality(value: String) = context.dataStore.edit { it[KEY_QUALITY] = value }
     suspend fun setPlayMode(value: String) = context.dataStore.edit { it[KEY_PLAY_MODE] = value }

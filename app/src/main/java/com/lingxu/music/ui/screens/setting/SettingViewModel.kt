@@ -49,6 +49,8 @@ class SettingViewModel : ViewModel() {
     val autoHidePlayBar: StateFlow<Boolean> = state(settings.autoHidePlayBar, true)
     val allowProgressBarSeek: StateFlow<Boolean> = state(settings.allowProgressBarSeek, true)
     val sourceNameType: StateFlow<String> = state(settings.sourceNameType, "real")
+    // 原版 common.showBackBtn：二级页返回键显隐，默认 true 保持移植版既有手感
+    val showBackBtn: StateFlow<Boolean> = state(settings.showBackBtn, true)
 
     // ============ 播放 ============
     val quality: StateFlow<String> = state(settings.quality, "128k")
@@ -201,6 +203,9 @@ class SettingViewModel : ViewModel() {
         val nextValue = if (sourceNameType.value == "real") "alias" else "real"
         settings.setSourceNameType(nextValue)
     }
+
+    /** 二级页返回按钮显隐（原版 common.showBackBtn），写盘后由 AppRoot 下发到全站返回键 */
+    fun setShowBackBtn(value: Boolean) = launch { settings.setShowBackBtn(value) }
 
     fun cycleQuality() = launch { settings.setQuality(next(quality.value, listOf("128k", "192k", "320k", "flac", "flac24bit"))) }
 

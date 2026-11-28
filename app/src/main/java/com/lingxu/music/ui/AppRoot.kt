@@ -75,6 +75,7 @@ import com.lingxu.music.core.model.MusicInfo
 import com.lingxu.music.ui.components.GlassContext
 import com.lingxu.music.ui.components.GlassHost
 import com.lingxu.music.ui.components.LocalGlass
+import com.lingxu.music.ui.components.LocalShowBackBtn
 import com.lingxu.music.ui.components.SongActionMenu
 import com.lingxu.music.ui.components.TrackCover
 import com.lingxu.music.ui.navigation.LocalBottomBarHeight
@@ -128,6 +129,9 @@ fun AppRoot() {
     val blurRadius by LxApp.app.settings.blurRadius.collectAsState(initial = 24f)
     // 列表滚动位置记忆开关（原版 list.isSaveScrollLocation）：收集一次下发给各列表页
     val saveScrollLocation by LxApp.app.settings.saveScrollLocation.collectAsState(initial = true)
+    // 二级页返回键显隐（原版 common.showBackBtn）：一处收集下发给全站 BackIconButton，
+    // 避免每个二级页各自订阅设置流；默认 true 与老用户既有观感一致。
+    val showBackBtn by LxApp.app.settings.showBackBtn.collectAsState(initial = true)
     // RenderEffect 需 API 31+；低版本上 backdrop 的 blur 是静默 no-op，只会得到半透明色块，
     // 因此这里直接降级为普通底栏，观感与「关闭模糊」一致
     val renderEffectSupported = android.os.Build.VERSION.SDK_INT >= 31
@@ -191,6 +195,7 @@ fun AppRoot() {
             LocalBottomBarHeight provides bottomBarHeight.value,
             LocalMiniBarHeight provides miniBarHeight.value,
             LocalSaveScrollLocation provides saveScrollLocation,
+            LocalShowBackBtn provides showBackBtn,
         ) {
             GlassHost(
                 dark = dark,

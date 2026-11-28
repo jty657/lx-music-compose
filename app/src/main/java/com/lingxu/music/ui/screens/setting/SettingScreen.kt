@@ -110,6 +110,7 @@ fun SettingScreen(
     val autoHidePlayBar by viewModel.autoHidePlayBar.collectAsState(initial = true)
     val allowProgressBarSeek by viewModel.allowProgressBarSeek.collectAsState(initial = true)
     val sourceNameType by viewModel.sourceNameType.collectAsState(initial = "real")
+    val showBackBtn by viewModel.showBackBtn.collectAsState(initial = true)
 
     val quality by viewModel.quality.collectAsState(initial = "128k")
     val playMode by viewModel.playMode.collectAsState(initial = "listLoop")
@@ -393,6 +394,14 @@ fun SettingScreen(
             summary = "在底部迷你播放条的进度条上拖动即可跳转播放位置（对齐原版）",
             checked = allowProgressBarSeek,
             onCheckedChange = { viewModel.setAllowProgressBarSeek(it) },
+        )
+        // 对齐原版 common.showBackBtn：二级页返回按钮显隐。默认开启保持移植版既有手感；
+        // 关闭后返回手势/系统返回键仍可用，仅隐藏页面左上角图标（48dp 占位保留，标题不位移）。
+        SwitchPreference(
+            title = "显示返回按钮",
+            summary = "二级页左上角显示返回图标（对齐原版 common.showBackBtn；关闭后仍可用系统返回）",
+            checked = showBackBtn,
+            onCheckedChange = { viewModel.setShowBackBtn(it) },
         )
 
         Spacer(Modifier.size(12.dp))
