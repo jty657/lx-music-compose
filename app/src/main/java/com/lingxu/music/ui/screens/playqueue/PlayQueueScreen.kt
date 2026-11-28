@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import com.lingxu.music.ui.components.GlassSurface
 import com.lingxu.music.ui.components.GlassTopBar
 import com.lingxu.music.ui.components.PlayingIndicator
 import com.lingxu.music.ui.components.TrackCover
+import com.lingxu.music.ui.components.TextActionButton
 import com.lingxu.music.ui.components.rememberSavedLazyListState
 import com.lingxu.music.ui.navigation.LocalNavigator
 import com.lingxu.music.ui.navigation.LocalSaveScrollLocation
@@ -61,6 +63,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Play
+import top.yukonga.miuix.kmp.icon.extended.Playlist
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
@@ -88,6 +91,13 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
     val showSource by LxApp.app.settings.isShowSource.collectAsState(initial = true)
     val showInterval by LxApp.app.settings.isShowInterval.collectAsState(initial = true)
     val showAlbumName by LxApp.app.settings.isShowAlbumName.collectAsState(initial = false)
+    // 滚动位置记忆（原版 list.isSaveScrollLocation）：播放队列用固定 key。
+    // 提到顶栏可见作用域，供「定位当前播放」按钮共用同一个 LazyListState。
+    val saveScroll = LocalSaveScrollLocation.current
+    val listState = rememberSavedLazyListState(if (saveScroll) "playQueue" else null)
+    val scope = rememberCoroutineScope()
+    // 在 Composable 作用域读取一次，供协程 lambda 捕获（composition local 不能在协程内直接读）
+    val topBarReduceMotion = LocalReduceMotion.current
 
     Column(Modifier.fillMaxSize()) {
         GlassTopBar {
@@ -99,6 +109,33 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                 modifier = Modifier.padding(start = 12.dp),
             )
             Spacer(Modifier.weight(1f))
+            // 定位当前播放（对齐原版 Mylist 列表 scrollToIndex 到 playIndex 的交互）：
+            // 队列较长时正在播放的曲目可能已滚出视口，一键滑回并居中。
+            // 只动列表滚动位置不触发布局；减弱动效时瞬时到位，与全站降级策略一致。
+            if (currentIndex >= 0 && queue.isNotEmpty()) {
+                Box(
+                    Modifier
+                        .size(48.dp)
+                        .queueActionClickable {
+                            scope.launch {
+                                // 用可视区偏移让当前行落在屏幕中部，而非贴着顶栏
+                                val offset = -listState.layoutInfo.viewportSize.height / 3
+                                if (topBarReduceMotion) {
+                                    listState.scrollToItem(currentIndex, offset)
+                                } else {
+                                    listState.animateScrollToItem(currentIndex, offset)
+                                }
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        MiuixIcons.Playlist,
+                        contentDescription = "定位正在播放的歌曲",
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
             if (queue.isNotEmpty()) {
                 ClearQueueButton(onClick = { showClearConfirm = true })
             }
@@ -119,9 +156,7 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
         }
 
         // 列表滚动上报，供迷你播放条自动隐藏（设置项 common.autoHidePlayBar）
-        // 滚动位置记忆（原版 list.isSaveScrollLocation）：播放队列用固定 key
-        val saveScroll = LocalSaveScrollLocation.current
-        val listState = rememberSavedLazyListState(if (saveScroll) "playQueue" else null)
+        // listState / saveScroll 已提升到顶栏作用域，供「定位当前播放」按钮共用
         com.lingxu.music.ui.components.ReportScrollForMiniBar(listState)
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             // key 只用稳定的歌曲 id：带上 index 会在排序/移除后导致整表重组与封面重载
@@ -282,12 +317,18 @@ fun PlayQueueScreen(viewModel: PlayQueueViewModel = viewModel()) {
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
                     ) {
-                        top.yukonga.miuix.kmp.basic.Button(onClick = { showClearConfirm = false }) { Text("取消") }
+                        // 统一到全站 TextActionButton：48dp 热区 + 按压缩放 + Role.Button + 读屏语义
+                        // + 减弱动效静帧，与设置页/搜索页/播放页的弹窗按钮语言一致。
+                        TextActionButton(text = "取消", onClick = { showClearConfirm = false })
                         Spacer(Modifier.size(8.dp))
-                        top.yukonga.miuix.kmp.basic.Button(onClick = {
-                            viewModel.clearQueue()
-                            showClearConfirm = false
-                        }) { Text("清空") }
+                        TextActionButton(
+                            text = "清空",
+                            color = MiuixTheme.colorScheme.error,
+                            onClick = {
+                                viewModel.clearQueue()
+                                showClearConfirm = false
+                            },
+                        )
                     }
                 }
             }
