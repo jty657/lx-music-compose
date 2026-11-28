@@ -45,6 +45,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -90,6 +91,7 @@ import com.lingxu.music.ui.theme.LocalReduceMotion
 import com.lingxu.music.ui.theme.isInDarkTheme
 import com.lingxu.music.ui.theme.Motion
 import com.lingxu.music.ui.theme.MotionFastMs
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -340,6 +342,9 @@ fun PlayerScreen(viewModel: PlayerViewModel = viewModel()) {
                 showPlayLine = showLyricProgress,
                 fontShadow = lyricFontShadow,
                 reduceMotion = reduceMotion,
+                // 手动滚动 3s 自动归位（对齐原版 onScrollEndDrag）：播放中才自动回到当前行，
+                // 暂停时保持回看位置不动，让用户能静止阅读歌词。
+                isPlaying = state.isPlaying,
                 onSeek = { viewModel.seekTo(it) },
             )
 
@@ -612,6 +617,10 @@ private fun LyricView(
     showPlayLine: Boolean = false,
     fontShadow: Boolean = false,
     reduceMotion: Boolean = false,
+    // 原版 Lyric.tsx 的 onScrollEndDrag：手动滚动歌词后 3 秒无操作自动回到当前播放行。
+    // 移植版此前只有「回到当前歌词」手动按钮，缺少这条自动归位行为。0 表示关闭（预览/测试用）。
+    autoReturnMs: Long = 3000L,
+    isPlaying: Boolean = false,
     onSeek: (Long) -> Unit = {},
 ) {
     val horizontal = when (align) {
@@ -631,6 +640,24 @@ private fun LyricView(
     // 自动跟随开关：用户手动触摸歌词列表时暂停跟随，避免每句切换都把正在回看的歌词拽回当前行。
     // 以 currentId 为 key：切到下一首时自动恢复跟随。点「回到当前歌词」也恢复。
     var followCurrent by remember(currentId) { mutableStateOf(true) }
+    // 手动滚动计数：每次手指按下 +1，作为归位计时器的 key。用户连续回看时，新的按下会
+    // 取消上一次计时并重新开始，保证「最后一次触摸后 3 秒」才归位（对齐原版 onScrollEndDrag
+    // 的 clearTimeout + 重新 setTimeout 语义），不会在用户正读歌词时突然把他拽回当前行。
+    var manualScrollEpoch by remember(currentId) { mutableIntStateOf(0) }
+
+    // 原版 Lyric.tsx onScrollEndDrag：手动滚动后 3 秒无操作、且正在播放时自动回到当前行，
+    // 同时收起定位线与「回到当前歌词」入口（两者都由 followCurrent 派生，归位即自动消失）。
+    // 移植版此前只有手动按钮，回看后需用户自己点一下才归位，与原版观感不一致，这里补齐。
+    // LaunchedEffect 随 key 变化自动取消旧协程：新触摸/切歌/恢复跟随时不会留下过期定时器。
+    // autoReturnMs<=0 表示关闭；暂停时不自动归位（原版 if (!isPlay) return），让用户能静止回看。
+    if (autoReturnMs > 0L) {
+        LaunchedEffect(followCurrent, manualScrollEpoch, currentId, isPlaying, autoReturnMs) {
+            if (!followCurrent && isPlaying) {
+                delay(autoReturnMs)
+                followCurrent = true
+            }
+        }
+    }
 
     BoxWithConstraints(modifier) {
         val edgePad = maxHeight * 0.4f
@@ -673,6 +700,9 @@ private fun LyricView(
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
                         followCurrent = false
+                        // 每次新的按下都让归位计时器重新计时（LaunchedEffect 随该 key 重启）：
+                        // 连续回看时不会在上一次触摸的 3 秒到点后把用户拽回。
+                        manualScrollEpoch++
                         // 等本次手势的所有手指抬起，期间不重复置位
                         do {
                             val event = awaitPointerEvent()
