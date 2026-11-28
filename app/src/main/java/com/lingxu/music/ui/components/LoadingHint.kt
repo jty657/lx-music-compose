@@ -22,6 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
@@ -72,6 +75,9 @@ fun LoadingHint(
             text,
             fontSize = MiuixTheme.textStyles.body2.fontSize,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            // 加载态出现时礼貌播报一次（如「正在加载…」）。此前外层 Column 的重复语义已移除，
+            // 这里只在该 Text 节点标注 liveRegion，不与读屏对 Text 本身的朗读冲突。
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
 }

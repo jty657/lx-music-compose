@@ -17,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.lingxu.music.ui.theme.Dimens
 import com.lingxu.music.ui.theme.LocalReduceMotion
@@ -79,6 +82,9 @@ fun EmptyHint(
             text,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             fontSize = MiuixTheme.textStyles.body2.fontSize,
+            // 空态出现时礼貌播报一次（如「暂无歌词」），让读屏用户知道内容已加载完成但为空，
+            // 而不是面对一片沉默。只加语义，不影响视觉与动效。
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
 }
