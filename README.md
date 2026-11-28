@@ -6,7 +6,11 @@
 
 ---
 
-## 本轮执行状态（第五十四轮 · v1.9.2）
+## 本轮执行状态（第五十六轮 · v1.9.2）
+
+对照原版 `lyswhut/lx-music-mobile` v1.9.2 的低风险打磨：补齐原版 `common.showExitBtn`（退出应用入口显隐）——移植版此前无任何退出入口。新增偏好键/Flow/setter、ViewModel StateFlow，「基本设置」加显示开关、「关于」分区加受控的「退出应用」入口，点击弹与原文一致的确认框后走定时退出同款 `finishAffinity()` 路径。本轮只改 `SettingsRepository.kt` / `SettingViewModel.kt` / `SettingScreen.kt` 三个源码文件，静态自检通过，构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
+
+## 上一轮执行状态（第五十四轮 · v1.9.2）
 
 对照原版 `lyswhut/lx-music-mobile` v1.9.2 的低风险打磨：补齐歌词对齐缺失的第三档「居右」（原版 `playDetail.style.align` 为 left/center/right 三档，此前移植版只有两档），并让放大当前歌词时的变换原点随对齐方向平滑过渡。本轮只改 `PlayerScreen.kt` / `SettingScreen.kt` / `SettingViewModel.kt` 三个源码文件，静态自检通过，构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 

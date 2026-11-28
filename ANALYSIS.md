@@ -6,7 +6,50 @@
 
 ---
 
-## 本轮执行状态（第五十五轮 · v1.9.2）
+## 本轮执行状态（第五十六轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦一处明确的
+> 功能差异：原版 `common.showExitBtn`（导航区「退出应用」入口显隐，原版默认 true）移植版完全缺失——
+> 此前移植版没有任何退出应用入口。补齐偏好键 / Flow / setter、ViewModel StateFlow 与 setter，
+> 设置页「基本设置」新增开关、「关于」分区新增受控的「退出应用」入口，点击弹出与
+> 原版一致的确认框（「确定要退出应用吗？」），确认后走与定时退出相同的 `finishAffinity()` 路径。
+> 仅修改 3 个源码文件（`SettingsRepository.kt` / `SettingViewModel.kt` / `SettingScreen.kt`），
+> `scripts/selfcheck.py` 退出码 0；本地按仓库约定不编译，构建由 GitHub Actions 云端确认。
+
+**本轮改动**
+1. **补齐退出应用入口**（对齐原版 `common.showExitBtn` 与原版 `DrawerNav.tsx` 的
+   `nav_exit` 分支）：新增偏好键 `common.showExitBtn`（默认 true，与原版默认一致）、Flow 与 setter，
+   ViewModel 的 `showExitBtn: StateFlow` 与 setter。设置页「基本设置」加 `SwitchPreference`，
+   「关于」分区在「开源项目」下方加受控的 `ArrowPreference`「退出应用」。
+2. **确认弹窗防误触**（对齐原版 `confirmDialog('exit_app_tip')`）：点击退出入口先弹 `GlassDialog`，
+   文案「确定要退出应用吗？」与原版 zh-cn 一致，取消 / 退出两个按钮复用全站 `Button` 与玻璃弹窗动效；
+   确认后 `(exitCtx as? Activity)?.finishAffinity()`，与 `timeoutExit` 既有退出路径一致。
+
+**视觉 / 交互 / 可访问性**
+- 入口与开关复用 Miuix `ArrowPreference` / `SwitchPreference`，弹窗复用 `GlassDialog` / `Button`，
+  沿用项目现有主题变量与间距节奏，无自定义颜色变量、无新依赖；按压缩放与进出场沿用全站既有动效，
+  受 `LocalReduceMotion` 约束。
+- 关闭开关只隐藏「关于」分区的入口，不影响系统返回键、手势导航与后台播放；`if (showExitBtn)` 仅控制
+  一个条目的组合，不触及其余设置项状态。
+- 不新增逐帧动画；不改路由、状态管理结构、播放内核、QuickJS 与音源协议。
+
+**假设与待确认**
+- 移植版用底部导航栏而非原版抽屉导航，因此退出入口放在「设置 → 关于」分区（而非抽屉）——交互语义
+  等价，但位置与原版不同；若要逐像素一致需在导航层做较大改动，本轮按低风险原则跳过。
+- 默认值取 `true` 与原版一致（而非像 `showBackBtn` 那样取 false 保持零突变）：新增的是**此前完全不存在**
+  的入口，默认显示更符合「补齐缺失功能」的目标；若担心老用户升级突变可改为 false，记录待确认。
+- 关闭应用走 `finishAffinity()`（与原版 `exitApp('Exit Btn')` 语义相近），与移植版定时退出同一路径；
+  进程存活的播放服务由系统随任务结束回收，未额外 `stopService`，与既有定时退出行为保持一致。
+- 经功能差异对比后按低风险原则继续跳过：音源「更新提示」接入 `syncSourceList`、歌词上下缘渐隐、
+  播放进度条缓冲段、手动滚歌词 3s 归位、全站下拉刷新、同步 / 评论 / 逐字歌词 / 歌曲信息编辑 /
+  Audio Offload / 蓝牙歌词 / 简繁歌词（高风险大工程，详见第 6 节路线图）。
+
+**验证**：`python3 scripts/selfcheck.py` 退出码 0（基线 / 批次1 / 批次2 各一次）；本地按 AGENTS.md
+无 Java 构建约定不执行 `gradlew`，构建由 GitHub Actions 云端（推送 master 自动触发 `Build APK`）确认。
+
+---
+
+## 上一轮执行状态（第五十五轮 · v1.9.2）
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦一处明确的
 > 功能差异：原版 `common.showBackBtn`（二级页返回键显隐）移植版缺失，此前所有二级页强制显示返回图标、

@@ -1,6 +1,35 @@
 # 更新日志
 
-## 第五十四轮：歌词对齐补齐「居右」档（v1.9.2，本次）
+## 第五十六轮：补齐退出应用入口与确认弹窗（v1.9.2，本次）
+
+> 对照原版 lx-music-mobile v1.9.2 做低风险「功能差异」打磨。仅修改
+> `SettingsRepository.kt` / `SettingViewModel.kt` / `SettingScreen.kt` 三个源码文件，
+> `scripts/selfcheck.py` 通过；按项目约定构建由 GitHub Actions 云端执行。零新增依赖、不改路由/
+> 状态管理/播放内核、不触碰 QuickJS 与音源协议。
+
+### 功能对齐（原版缺失项）
+
+- **补齐退出应用入口**（对齐原版 `common.showExitBtn`，默认 true）：移植版此前没有任何退出应用入口。
+  新增偏好键 `common.showExitBtn` / Flow / setter 与 ViewModel StateFlow / setter；设置页「基本设置」
+  加「显示退出应用按钮」开关，「关于」分区加受控的「退出应用」入口。
+- **退出确认弹窗**（对齐原版 `DrawerNav.tsx` 的 `confirmDialog('exit_app_tip')`）：点击入口先弹
+  `GlassDialog`，文案「确定要退出应用吗？」与原版 zh-cn 一致；确认后 `finishAffinity()`，
+  与 `timeoutExit` 既有退出路径一致，防止误触。
+
+### UI / 动效 / 可访问性
+
+- 开关与入口复用 Miuix `ArrowPreference` / `SwitchPreference`，弹窗复用 `GlassDialog` / `Button`，
+  沿用全站主题变量与按压缩放/进出场动效，受 `LocalReduceMotion` 约束；无新依赖、无逐帧布局动画。
+- 关闭开关只隐藏「关于」分区一个条目，不影响系统返回键、手势导航与后台播放。
+
+### 假设与待确认
+
+- 移植版为底部导航而非原版抽屉，退出入口放在「设置 → 关于」分区而非抽屉，语义等价但位置不同。
+- 默认值取 true 与原版一致（新增的此前不存在的入口默认显示）；如担心老用户突变可改 false。
+- 退出走 `finishAffinity()` 与原版 `exitApp('Exit Btn')` 语义相近，与定时退出同一路径。
+- 同步 / 评论 / 逐字歌词 / 蓝牙歌词 / Audio Offload / 简繁歌词等经评估为中高风险，本轮跳过。
+
+## 第五十四轮：歌词对齐补齐「居右」档（v1.9.2）
 
 > 对照原版 lx-music-mobile v1.9.2 做低风险「功能差异 + UI/动效」打磨。仅修改
 > `PlayerScreen.kt` / `SettingScreen.kt` / `SettingViewModel.kt` 三个源码文件，`scripts/selfcheck.py`
