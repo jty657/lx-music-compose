@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lingxu.music.LxApp
 import com.lingxu.music.core.model.ApiSourceInfo
+import com.lingxu.music.core.model.SourceConst
 import com.lingxu.music.core.repository.ApiSourceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,7 +85,11 @@ class SourceViewModel : ViewModel() {
     /** 网络导入（对应原版 ScriptImportOnline） */
     fun importFromUrl(url: String) {
         if (importing) return
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        // 对齐原版 ScriptImportOnline 的 `getText(): text.trim()`：用户从聊天/网页复制
+        // 链接时经常带上首尾空格或换行，此前直接 startsWith 判断会被误判为「无效的 URL」。
+        // trim 只作用于本次请求，不改输入框状态，避免用户正在编辑时文字被突然改写。
+        val targetUrl = url.trim()
+        if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
             setStatus("无效的 URL", isError = true)
             return
         }
@@ -100,7 +105,7 @@ class SourceViewModel : ViewModel() {
             runCatching {
                 withContext(Dispatchers.IO) {
                     val client = OkHttpClient()
-                    val request = Request.Builder().url(url).build()
+                    val request = Request.Builder().url(targetUrl).build()
                     client.newCall(request).execute().use { resp ->
                         if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
                         val body = resp.body?.string() ?: throw IllegalStateException("empty body")
@@ -241,9 +246,22 @@ class SourceViewModel : ViewModel() {
 
     fun delete(id: String) {
         viewModelScope.launch {
+            val wasCurrent = currentSource == id
+            // 对齐原版 UserApiEditModal/List.tsx 的 handleRemove「删当前音源后选一个可用的」：
+            // 原版在内置源不可用时回退到首个剩余用户音源；移植版内置源常驻可用，此前无论用户
+            // 之前用的是 kg/wy 还是自定义源，一律跳回 kw，会打断自定义音源的连续使用。
+            // 这里优先留在用户音源域（首个剩余自定义音源），没有其它自定义音源时再回退内置首项。
+            // 注意 repo.remove 之前计算回退目标，避免读到「已删除但仍在列表里」的旧状态。
+            val fallback = if (wasCurrent) {
+                repo.getAll().firstOrNull { it.id != id }?.id
+                    ?: SourceConst.ONLINE.firstOrNull()
+                    ?: SourceConst.KW
+            } else {
+                null
+            }
             repo.remove(listOf(id))
-            if (currentSource == id) {
-                switchSource("kw")
+            if (wasCurrent && fallback != null) {
+                switchSource(fallback)
             }
             setStatus("已删除")
         }
