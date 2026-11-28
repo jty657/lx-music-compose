@@ -1099,6 +1099,21 @@ private fun PlayerMoreSettings(
                 valueRange = 0.5f..3f,
                 modifier = Modifier.fillMaxWidth(),
             )
+            // 对齐原版播放页 SettingPopup 的「重置播放速率」按钮（SettingPlaybackRate.tsx:44-52/69）：
+            // 一键回到 1.0x。移植版此前只有滑块，需手动拖回。复用全站 TextActionButton 获得
+            // 48dp 热区、按压缩放、Role.Button 读屏语义与减弱动效静帧降级，零新增偏好/依赖。
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextActionButton(
+                    text = "重置为 1.0x",
+                    onClick = {
+                        localRate = 1f
+                        viewModel.setPlaybackRate(1f)
+                    },
+                )
+            }
             Spacer(Modifier.size(8.dp))
             Text("音量 ${(localVolume * 100).toInt()}%", fontSize = MiuixTheme.textStyles.body2.fontSize)
             Slider(

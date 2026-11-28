@@ -6,7 +6,11 @@
 
 ---
 
-## 本轮执行状态（第六十轮 · 播放队列定位当前播放 + 弹窗交互统一）
+## 本轮执行状态（第六十一轮 · 播放倍速一键重置）
+
+对照 `lyswhut/lx-music-mobile` v1.9.3 播放页倍速设置做低风险功能补齐：原版 `SettingPlaybackRate.tsx` 在倍速滑块下方提供「重置」按钮（`handleReset` 一键回到 1.0x 并同步播放器/偏好），移植版此前只有滑块、需手动拖回。本轮在 `PlayerMoreSettings` 倍速滑块下新增「重置为 1.0x」入口，点击后 `localRate = 1f` 并调用既有 `viewModel.setPlaybackRate(1f)`（内部同步播放器速率与 DataStore 偏好），复用全站 `TextActionButton` 获得 48dp 热区、按压缩放、`Role.Button` 读屏语义与减弱动效静帧降级。仅修改 `PlayerScreen.kt` 一个源码文件，`scripts/selfcheck.py` 退出码 0；按项目约定构建由 GitHub Actions 云端执行。零新增依赖、未改锁文件、不改路由/状态管理/播放内核/音源协议。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
+
+## 上一轮执行状态（第六十轮 · 播放队列定位当前播放 + 弹窗交互统一）
 
 对照 `lyswhut/lx-music-mobile` v1.9.3 的列表定位交互做低风险补齐：① 播放队列页顶栏新增「定位当前播放」按钮（对齐原版 `Mylist/MusicList/List.tsx` 中 `scrollToIndex` 到 `playIndex` 的行为），队列较长、当前曲目滚出视口时一键滑回并居中；② 清空确认弹窗的裸 `Button` 改为全站统一的 `TextActionButton`（48dp 热区 + 按压缩放 + 读屏语义 + 减弱动效静帧）。仅修改 `PlayQueueScreen.kt` 一个源码文件，`scripts/selfcheck.py` 退出码 0；按项目约定构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核与音源协议。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 

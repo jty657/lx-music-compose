@@ -6,7 +6,39 @@
 
 ---
 
-## 本轮执行状态（第六十轮 · 播放队列定位当前播放 + 弹窗交互统一）
+## 本轮执行状态（第六十一轮 · 播放倍速一键重置）
+
+> 对照上游 `lyswhut/lx-music-mobile` v1.9.3 播放页倍速设置做低风险「功能差异 + UI/动效」补齐。
+> 仅修改 `ui/screens/player/PlayerScreen.kt` 一个源码文件，`scripts/selfcheck.py` 退出码 0；
+> 本地无 Android SDK platform 37，按 `AGENTS.md` 约定不做本地编译，构建由 GitHub Actions 云端确认。
+> 零新增依赖、未改锁文件、不改路由/状态管理/播放内核/QuickJS 与音源协议。
+
+**功能差异对比（本轮聚焦播放页倍速重置入口）**
+
+| 上游 `lx-music-mobile` v1.9.3 | 移植版改动前 | 本轮处理 |
+|---|---|---|
+| `SettingPopup/settings/SettingPlaybackRate.tsx:69` 的 `ButtonPrimary onPress={handleReset}`（`:44-52` 一键置 1 并同步播放器/歌词/通知栏/偏好） | 播放设置弹窗只有倍速 Slider，无重置入口，需手动拖回 100% | 已补：滑块下方新增「重置为 1.0x」按钮，点击置 `localRate=1f` 并调用 `viewModel.setPlaybackRate(1f)` |
+| 上游 reset 同步歌词速率 `setLyricPlaybackRate(1)` 与通知栏元数据 `updateMetaData` | 移植版歌词滚动按播放进度驱动、无独立歌词速率状态；通知栏速率由 ExoPlayer 承载 | 调用既有 `setPlaybackRate` 同步播放器与偏好即可，歌词/通知栏随播放器速率自动跟随，见假设 |
+| 全站按钮热区/按压反馈/读屏语义 | 若新增裸 `Button` 会与全站 `TextActionButton` 语言不一致 | 复用 `TextActionButton`：48dp 热区、`Motion.press` 缩放、`Role.Button`、reduceMotion 静帧 |
+
+**本轮改动**
+
+1. `PlayerMoreSettings`：在播放倍速 Slider 之后新增右对齐的「重置为 1.0x」`TextActionButton`，点击同时更新本地滑块态与播放器/偏好（`PlayerViewModel.setPlaybackRate(1f)` → `playerRepository.setPlaybackRate` + `settings.setPlaybackRate`）。
+
+**动效 / 性能 / 可访问性影响**
+- 无新增逐帧动画；缩放反馈来自已有 `TextActionButton`（`Motion.press` 弹簧、只动 transform 不触发布局），系统减弱动效时退化为静帧。
+- 未引入新依赖、未改偏好键结构；重置走既有 API，无额外协程或网络请求。
+- 未改 `GlassSurface` / `GlassDialog` 采样边界，`screens/` 下无 `drawBackdrop`，无自采样递归风险；`selfcheck` 退出码 0。
+
+**假设与待确认**
+- 上游 reset 显式调用了 `setLyricPlaybackRate(1)`（独立歌词速率状态）与 `updateMetaData`（通知栏速率）；移植版歌词逐行高亮由播放进度驱动、通知栏由 ExoPlayer 元数据承载，无对应独立状态，故只复用 `setPlaybackRate`。若真机发现重置后歌词/通知栏速率未跟随，需单独补同步逻辑。
+- 移植版倍速范围 0.5~3.0（上游 0.6~2.0），沿用现状不收窄，避免影响既有用户设置。
+- 版本号沿用最近轮次惯例保持不变（`versionCode=49` / `1.9.2`），避免无关改动。
+- 本地无 Java / Android SDK platform 37，按 `AGENTS.md` 约定不做本地编译；云端构建结果以推送后的 Actions 为准。
+
+---
+
+## 上一轮执行状态（第六十轮 · 播放队列定位当前播放 + 弹窗交互统一）
 
 > 对照上游 `lyswhut/lx-music-mobile` v1.9.3 的列表定位交互做低风险「功能差异 + UI/动效」打磨。
 > 仅修改 `ui/screens/playqueue/PlayQueueScreen.kt` 一个源码文件，`scripts/selfcheck.py`

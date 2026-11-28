@@ -1,6 +1,24 @@
 # 更新日志
 
-## 第六十轮：播放队列定位当前播放 + 弹窗交互统一（本次）
+## 第六十一轮：播放倍速一键重置（本次）
+
+> 对照上游 lx-music-mobile v1.9.3 播放页倍速设置做低风险功能补齐。仅修改
+> `PlayerScreen.kt` 一个源码文件，`scripts/selfcheck.py` 退出码 0；
+> 按项目约定构建由 GitHub Actions 云端执行。零新增依赖、不改路由/状态管理/播放内核、
+> 不触碰 QuickJS 与音源协议。
+
+### 功能对齐（播放倍速重置）
+- **「重置为 1.0x」按钮**：对齐原版 `SettingPopup/settings/SettingPlaybackRate.tsx` 的 `ButtonPrimary onPress={handleReset}`；播放设置弹窗倍速滑块下新增重置入口，点击置 `localRate=1f` 并调用既有 `viewModel.setPlaybackRate(1f)` 同步播放器速率与偏好，无需手动拖回。
+
+### UI / 动效 / 可访问性
+- **复用全站公共按钮**：重置入口用 `TextActionButton`，获得 48dp 热区、`Motion.press` 按压缩放、`Role.Button` 读屏语义与减弱动效静帧降级，与设置页/搜索页/播放队列弹窗交互语言一致。
+
+### 假设与待确认
+- 上游 reset 另显式同步独立歌词速率与通知栏元数据；移植版歌词随播放进度驱动、通知栏由 ExoPlayer 承载，无对应独立状态，故仅复用 `setPlaybackRate`。倍速范围沿用移植版 0.5~3.0 不收窄。详见 ANALYSIS.md。
+
+---
+
+## 第六十轮：播放队列定位当前播放 + 弹窗交互统一
 
 > 对照上游 lx-music-mobile v1.9.3 的列表定位交互做低风险补齐。仅修改
 > `PlayQueueScreen.kt` 一个源码文件，`scripts/selfcheck.py` 退出码 0；
