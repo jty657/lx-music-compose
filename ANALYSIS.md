@@ -6,7 +6,53 @@
 
 ---
 
-## 本轮执行状态（第五十六轮 · v1.9.2）
+## 本轮执行状态（第五十七轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + 可访问性」打磨。本轮聚焦两处：
+> ① 原版 `Lyric.tsx` 的 `onScrollEndDrag` —— 手动滚动歌词后 3 秒无操作、且正在播放时自动回到当前播放行，
+> 移植版此前只有手动「回到当前歌词」按钮，缺少这条自动归位行为；② 全站共用加载态/空态缺读屏播报。
+> 仅修改 `PlayerScreen.kt` / `EmptyHint.kt` / `LoadingHint.kt` 三个源码文件，`scripts/selfcheck.py`
+> 退出码 0；本地按仓库约定不编译，构建由 GitHub Actions 云端确认（推送 master 自动触发 `Build APK`）。
+
+**本轮改动**
+1. **歌词手动滚动 3s 自动归位**（对齐原版 `Lyric.tsx` 的 `onScrollEndDrag` 3000ms 定时器与
+   `if (!playerState.isPlay) return` 门控）：`LyricView` 新增 `autoReturnMs`（默认 3000）与
+   `isPlaying` 参数。手动触摸歌词时 `followCurrent=false` 并递增 `manualScrollEpoch`，
+   `LaunchedEffect(followCurrent, manualScrollEpoch, currentId, isPlaying, autoReturnMs)` 在播放中
+   等待 3 秒后把 `followCurrent` 置回 true——归位由既有的跟随滚动 effect 完成（当前行滑回居中，
+   减弱动效时瞬时到位），定位线与「回到当前歌词」按钮随之自动收起。以 epoch 为 key 保证连续回看时
+   每次按下都重新计时（等价原版 clearTimeout + 重设），`LaunchedEffect` 随 key 变化自动取消旧协程，
+   切歌/暂停不留过期定时器。
+
+2. **加载态/空态读屏播报**（可访问性）：`LoadingHint` / `EmptyHint` 的文案 Text 加
+   `Modifier.semantics { liveRegion = LiveRegionMode.Polite }`，读屏用户在「正在加载 → 暂无歌词/无结果」
+   状态切换时能听到一次播报，不再面对沉默。只加语义节点，不改视觉与动效。
+
+**视觉 / 交互 / 可访问性**
+- 自动归位只复用既有的 `animateScrollToItem`（正常）/ `scrollToItem`（减弱动效）路径，未新增逐帧动画，
+  归位时长与切歌滚动一致，只动列表滚动位置不触发布局重排；暂停时不归位，保留静止回看体验。
+- 两个新参数均带默认值，`LyricView` 的 Preview / 其它潜在调用点零改动；`autoReturnMs<=0` 可关闭该行为。
+- `liveRegion` 用 Compose 标准语义 API，已在项目现有 Compose 1.11.1 依赖内，零新增依赖；
+  标注在承载文案的 Text 节点上，与既有 `contentDescription` 语义不冲突。
+
+**假设与待确认**
+- 原版在 `onScrollEndDrag`（手指抬起）时计时，移植版在 `awaitFirstDown`（手指按下）时以 epoch 重置。
+  对「一次触摸 = 一次回看」的语义等价；长按连续拖动时计时起点略早（按下而非抬起），差异在百毫秒级，
+  按低风险原则不引入额外的 `awaitPointerEvent` 抬起回调来对齐到毫秒。
+- 原版暂停时清除暂停标记但不滚回（见 `if (!playerState.isPlay) return`）；移植版暂停时干脆不启动计时，
+  `followCurrent` 保持 false，恢复播放后需再触摸歌词或在下一次手动归位后才跟随——静止回看体验更稳定，
+  与原版「暂停不归位」一致，仅恢复播放瞬间的跟随时机略有差异。
+- 经功能差异对比后按低风险原则继续跳过：音源「更新提示」接入 `syncSourceList`、歌词上下缘渐隐
+  （实验性 `Modifier.fadingEdge`，本地无法编译验证）、播放进度条缓冲段（需改 `PlayerRepository`/`PlayState`
+  接 `bufferedPosition`）、同步 / 评论 / 逐字歌词 / 歌曲信息编辑 / Audio Offload / 蓝牙歌词 / 简繁歌词
+  （高风险大工程，详见第 6 节路线图）。
+
+**验证**：`python3 scripts/selfcheck.py` 退出码 0；本地按 AGENTS.md 无 Java 构建约定不执行 `gradlew`，
+构建由 GitHub Actions 云端（推送 master 自动触发 `Build APK`）确认。
+
+---
+
+## 上一轮执行状态（第五十六轮 · v1.9.2）
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦一处明确的
 > 功能差异：原版 `common.showExitBtn`（导航区「退出应用」入口显隐，原版默认 true）移植版完全缺失——

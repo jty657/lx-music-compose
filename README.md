@@ -6,7 +6,11 @@
 
 ---
 
-## 本轮执行状态（第五十六轮 · v1.9.2）
+## 本轮执行状态（第五十七轮 · v1.9.2）
+
+对照原版 `lyswhut/lx-music-mobile` v1.9.2 的低风险「功能差异 + 可访问性」打磨：补齐原版 `Lyric.tsx` 的 `onScrollEndDrag` 行为——手动滚动歌词后 3 秒无操作且正在播放时自动回到当前行，收起定位线与「回到当前歌词」入口（移植版此前只有手动按钮，回看后需自己点一下才归位）。同时给全站共用的加载态/空态文案加礼貌读屏播报。本轮只改 `PlayerScreen.kt` / `EmptyHint.kt` / `LoadingHint.kt` 三个源码文件，静态自检通过，构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
+
+## 上一轮执行状态（第五十六轮 · v1.9.2）
 
 对照原版 `lyswhut/lx-music-mobile` v1.9.2 的低风险打磨：补齐原版 `common.showExitBtn`（退出应用入口显隐）——移植版此前无任何退出入口。新增偏好键/Flow/setter、ViewModel StateFlow，「基本设置」加显示开关、「关于」分区加受控的「退出应用」入口，点击弹与原文一致的确认框后走定时退出同款 `finishAffinity()` 路径。本轮只改 `SettingsRepository.kt` / `SettingViewModel.kt` / `SettingScreen.kt` 三个源码文件，静态自检通过，构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 
