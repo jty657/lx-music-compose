@@ -6,7 +6,44 @@
 
 ---
 
-## 本轮执行状态（第五十四轮 · v1.9.2）
+## 本轮执行状态（第五十五轮 · v1.9.2）
+
+> 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦一处明确的
+> 功能差异：原版 `common.showBackBtn`（二级页返回键显隐）移植版缺失，此前所有二级页强制显示返回图标、
+> 用户不可配置。仅修改 5 个源码文件（`SettingsRepository.kt` / `SettingViewModel.kt` /
+> `SettingScreen.kt` / `BackIconButton.kt` / `AppRoot.kt`），`scripts/selfcheck.py` 退出码 0；
+> 本地按仓库约定不编译，构建由 GitHub Actions 云端（推送 master 自动触发 `Build APK`）确认。
+
+**本轮改动**
+1. **补齐返回键显隐开关**（对齐原版 `common.showBackBtn`，参照
+   `settings/Basic/IsShowBackBtn.tsx:12-20`）：新增偏好键 / Flow / setter（默认 true，保持移植版既有
+   观感）、ViewModel StateFlow 与 setter、设置页「基本设置」分区的 `SwitchPreference`。AppRoot 一处收集
+   后通过 `LocalShowBackBtn` 下发，所有使用 `BackIconButton` 的二级页自动生效，无需逐页订阅设置流。
+2. **显隐过渡走合成层**（`BackIconButton.kt`）：关闭时只把 `graphicsLayer.alpha` 从 1 淡到 0，
+   `tween(MotionFastMs)` 160ms；`LocalReduceMotion`（系统动画时长缩放=关闭）时 0ms 静帧。
+   48dp 占位保留，开关切换时顶栏标题不会横向跳动；按压缩放 0.9 的既有手感不变。
+
+**视觉 / 交互 / 可访问性**
+- 关闭后 `clickable(enabled=false)` 阻止误触，`semantics { invisibleToUser() }` 让读屏不再播报
+  看不见的「返回」按钮；开启后 `Role.Button` 与「返回」标签保持原样。
+- 系统返回手势 / 硬件返回键始终可用，本开关只控制页面上的可见图标，不改变导航结构。
+- 无新增颜色变量、无新增依赖、无逐帧布局动画；深色模式与窄屏布局不受影响。
+
+**假设与待确认**
+- 默认值取 `true` 而非原版 `false`：移植版此前二级页恒有返回键，默认 true 让老用户升级零突变；
+  如后续要 1:1 对齐原版默认值，需评估「升级后返回键突然消失」的用户影响。
+- 关闭后保留 48dp 空白（标题位置稳定）；原版隐藏后标题更靠左，若要逐像素一致需同步改各页顶栏布局。
+- 经功能差异对比后按低风险原则继续跳过：音源「更新提示」接入 `syncSourceList`（需脚本 URL 落盘+
+  网络检测）、歌词上下缘渐隐（实验性 `Modifier.fadingEdge`）、播放进度条缓冲段（需改播放状态结构）、
+  手动滚歌词 3s 归位（时序+定时器）、同步 / 评论 / 逐字歌词 / 歌曲信息编辑 / Audio Offload /
+  蓝牙歌词 / 简繁歌词（高风险大工程）。
+
+**验证**：`python3 scripts/selfcheck.py` 退出码 0（`静态自检通过`，基线 / 批次1 / 批次2 各一次）；
+本地无 Java 构建约定限制，按 `AGENTS.md` 不执行 `gradlew`，构建由 GitHub Actions 云端确认。
+
+---
+
+## 上一轮执行状态（第五十四轮 · v1.9.2）
 
 > 对照 `lyswhut/lx-music-mobile` v1.9.2 做低风险「功能差异 + UI/动效」打磨。本轮聚焦一处明确的
 > 功能差异：歌词对齐缺少原版第三档「居右」。仅修改 `PlayerScreen.kt` / `SettingScreen.kt` /
