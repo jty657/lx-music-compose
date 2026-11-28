@@ -6,7 +6,11 @@
 
 ---
 
-## 本轮执行状态（第五十七轮 · v1.9.2）
+## 本轮执行状态（第五十八轮 · 对齐上游 v1.9.3）
+
+对照上游 `lyswhut/lx-music-mobile` v1.9.3（2026-11-28 发布）做低风险「功能差异 + UI/可访问性」打磨：① 对齐其歌词时间标签解析修复——非毫秒制下 1 位小数按百分秒处理（`.4` = 40ms，旧实现按 `*100` 得 400ms，使这类歌词整体偏慢），并补齐上游支持而移植版缺失的 `时:分:秒` 三段时间标签；② 歌词定位线跳转按钮点击热区由硬编码 44dp 提升到全站 `Dimens.TouchTarget` 48dp。本轮只改 `LrcParser.kt` / `PlayerScreen.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0、8 组解析用例全通过，构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
+
+## 上一轮执行状态（第五十七轮 · v1.9.2）
 
 对照原版 `lyswhut/lx-music-mobile` v1.9.2 的低风险「功能差异 + 可访问性」打磨：补齐原版 `Lyric.tsx` 的 `onScrollEndDrag` 行为——手动滚动歌词后 3 秒无操作且正在播放时自动回到当前行，收起定位线与「回到当前歌词」入口（移植版此前只有手动按钮，回看后需自己点一下才归位）。同时给全站共用的加载态/空态文案加礼貌读屏播报。本轮只改 `PlayerScreen.kt` / `EmptyHint.kt` / `LoadingHint.kt` 三个源码文件，静态自检通过，构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 
