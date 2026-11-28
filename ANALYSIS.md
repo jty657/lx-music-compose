@@ -6,7 +6,46 @@
 
 ---
 
-## 本轮执行状态（第五十八轮 · 对齐上游 v1.9.3）
+## 本轮执行状态（第五十九轮 · 音源管理功能对齐与读屏打磨）
+
+> 对照上游 `lyswhut/lx-music-mobile` v1.9.3（2026-11-28）的**音源导入 / 音源使用**链路做
+> 低风险「功能差异 + UI/动效/可访问性」打磨。仅修改 `ui/screens/source/SourceViewModel.kt` 与
+> `ui/screens/source/SourceScreen.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0；
+> 本地无 Android SDK platform 37，按 `AGENTS.md` 约定不做本地编译，构建由 GitHub Actions 云端确认。
+> 零新增依赖、未改锁文件、不改路由/状态管理/播放内核/QuickJS 与音源协议。
+
+**功能差异对比（本轮聚焦音源导入 / 使用 / 搜索）**
+
+| 上游 `lx-music-mobile` v1.9.3 | 移植版改动前 | 本轮处理 |
+|---|---|---|
+| `ScriptImportOnline.getText()` 返回 `text.trim()` | `importFromUrl()` 直接 `startsWith`，带空格链接被误判无效 | 已对齐：请求前 trim，输入框原文不动 |
+| `UserApiEditModal/List.tsx` 删除当前音源后回退到首个可用源 | 硬编码 `switchSource("kw")`，丢失用户原选源 | 已补回退：剩余自定义首项 → `ONLINE.firstOrNull()` → `kw`（优先级与上游内置优先不同，见假设） |
+| 弹窗打开后自动聚焦输入框 | 需手动点击输入框 | 已补：80ms 后请求焦点，失败静默降级 |
+| `ListItem` 的 `allowShowUpdateAlert` 复选框 | 「开/关」文字按钮，读屏只念单字 | 保留视觉，补完整 `contentDescription` |
+| 导入结果 `toast` | 状态文字，读屏无播报 | 补 `liveRegion=Polite` |
+| 状态切换无专门淡变 | 硬切出现/消失 | 补 160ms alpha 淡变，reduceMotion 归零 |
+| 搜索/榜单/歌单、热搜、聚合搜索、歌曲菜单清理链接缓存、备份二次确认、歌词 3s 归位、退出键/返回键开关 | 均已对齐 | 本轮不重复改动 |
+| 同步 / 评论 / 逐字歌词 / 歌曲信息编辑 / 蓝牙歌词 / 简繁歌词 / Audio Offload / 手动歌曲换源 / 音源更新检测 / wy 歌单修复 | 未对齐 | 高风险或不适用，继续跳过（见第 6 节） |
+
+**本轮改动**
+
+1. `SourceViewModel.importFromUrl()`：新增 `val targetUrl = url.trim()`，校验与 OkHttp `Request` 均使用 trim 后的值；trim 只作用于本次请求，避免用户编辑中的文字被改写。
+2. `SourceViewModel.delete()`：在 `repo.remove()` 前计算回退目标（避免读到「已删但未刷新」的列表），删除的是当前音源时优先切到首个剩余自定义音源，无其它自定义音源则回退内置首项；删除非当前音源不改变现有音源。
+3. `SourceScreen`：网络导入输入框加 `KeyboardOptions(keyboardType = KeyboardType.Uri)` 与 `FocusRequester`；状态提示加 `liveRegion` 并用 `AnimatedVisibility(fadeIn/fadeOut, MotionFastMs)` 包裹；「更新提示」按钮补完整读屏标签。
+
+**动效 / 性能 / 可访问性影响**
+- 新增动画只有一处 alpha 淡变（160ms），无逐帧循环、无布局参数变化，不走 measure/layout；`MotionFastMs` 来自项目现有 token，减弱动效时时长归零。
+- 焦点请求带短延时与 `runCatching` 保护，失败时用户仍可手动点击，不影响导入链路；键盘类型为输入体验调整，不参与校验逻辑。
+- 未改 `GlassSurface` / `GlassDialog` 采样边界，页面内无 `drawBackdrop`，无自采样递归风险；`selfcheck` 退出码 0。
+
+**假设与待确认**
+- 自动聚焦延时 80ms 是等待 Dialog 组合的经验值；不同机型软键盘弹出时机略有差异，真机可复核。
+- 回退优先级为「剩余自定义音源 → 内置首项 `kw`」，与上游 `apiSourceInfo.find(!disabled)` 的「内置优先」顺序不同：上游公开源码的 `apiSourceInfo` 数组为空、实际会回退到首个用户音源；移植版内置源常驻可用，故优先保持用户在自定义音源域的连续使用。若需 100% 逐项对齐内置优先，可再调整。
+- 本地无 Android SDK platform 37，按仓库约定不执行 `gradlew`；云端构建结果以推送后的 Actions 为准。
+
+---
+
+## 上一轮执行状态（第五十八轮 · 对齐上游 v1.9.3）
 
 > 对照上游 `lyswhut/lx-music-mobile` v1.9.3（2026-11-28 发布，当前最新）做低风险「功能差异 + UI/可访问性」打磨。
 > 上游 v1.9.2→v1.9.3 共 12 个文件变更，逐项评估后只移植其中**可静态验证、零新增依赖、不改内核**的

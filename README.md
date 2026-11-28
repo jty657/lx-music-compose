@@ -6,7 +6,11 @@
 
 ---
 
-## 本轮执行状态（第五十八轮 · 对齐上游 v1.9.3）
+## 本轮执行状态（第五十九轮 · 音源管理功能对齐与读屏打磨）
+
+对照 `lyswhut/lx-music-mobile` v1.9.3 的「音源导入 / 使用」链路做低风险补齐：① 网络导入 URL 自动 `trim()`，对齐原版 `getText()` 行为，粘贴带首尾空格的链接不再被误判为无效；② 删除当前启用的自定义音源后优先回退到剩余自定义音源、无其它自定义音源时回退内置首项，替代硬编码 `kw`；③ 导入弹窗自动聚焦输入框并改用网址键盘；④ 音源导入/导出/删除结果接入礼貌读屏播报，「更新提示」开关补完整读屏标签；⑤ 状态提示改为 160ms 淡入淡出（减弱动效时瞬时到位）。仅修改 `SourceScreen.kt` / `SourceViewModel.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0；按项目约定构建由 GitHub Actions 云端执行。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
+
+## 上一轮执行状态（第五十八轮 · 对齐上游 v1.9.3）
 
 对照上游 `lyswhut/lx-music-mobile` v1.9.3（2026-11-28 发布）做低风险「功能差异 + UI/可访问性」打磨：① 对齐其歌词时间标签解析修复——非毫秒制下 1 位小数按百分秒处理（`.4` = 40ms，旧实现按 `*100` 得 400ms，使这类歌词整体偏慢），并补齐上游支持而移植版缺失的 `时:分:秒` 三段时间标签；② 歌词定位线跳转按钮点击热区由硬编码 44dp 提升到全站 `Dimens.TouchTarget` 48dp。本轮只改 `LrcParser.kt` / `PlayerScreen.kt` 两个源码文件，`scripts/selfcheck.py` 退出码 0、8 组解析用例全通过，GitHub Actions 云端构建已成功（Run 46124204145，conclusion=success）。详见 [ANALYSIS.md](ANALYSIS.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 
