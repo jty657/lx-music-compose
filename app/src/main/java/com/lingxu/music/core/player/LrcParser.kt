@@ -5,8 +5,12 @@ import com.lingxu.music.core.model.LyricInfo
 /** LRC 歌词解析（对应原版 utils/lrcTools.ts 的基础解析） */
 object LrcParser {
 
-    /** 时间标签，如 [01:23.45] 或 [01:23.456] 或 [1:23] */
-    private val TIME_TAG = Regex("\\[(\\d{1,3}):(\\d{1,2})(?:[.:](\\d{1,3}))?]")
+    /**
+     * 时间标签：兼容 2 段（分:秒）与 3 段（时:分:秒）。
+     * 原版 timeExp 为 `\d{1,3}(:\d{1,3}){0,2}(?:\.\d{1,3})`，移植版此前只认 2 段，
+     * 带小时的长歌词整行会被跳过。分组：1=首段, 2=次段, 3=三段(可选), 4=小数。
+     */
+    private val TIME_TAG = Regex("\\[(\\d{1,3}):(\\d{1,2})(?::(\\d{1,2}))?(?:[.:](\\d{1,3}))?]")
 
     /** 整体时间偏移标签 [offset:±ms]（正数表示歌词整体提前） */
     private val OFFSET_TAG = Regex("\\[offset:\\s*([+-]?\\d+)\\s*]", RegexOption.IGNORE_CASE)
@@ -55,13 +59,26 @@ object LrcParser {
             val text = line.substring(matches.last().range.last + 1).trim()
             if (text.isEmpty()) continue
             for (m in matches) {
-                val min = m.groupValues[1].toLongOrNull() ?: continue
-                val sec = m.groupValues[2].toLongOrNull() ?: continue
-                val frac = m.groupValues[3]
+                val first = m.groupValues[1].toLongOrNull() ?: continue
+                val second = m.groupValues[2].toLongOrNull() ?: continue
+                val third = m.groupValues[3]
+                // 2 段 [分:秒]：first=分、second=秒；3 段 [时:分:秒]：first=时、second=分、third=秒
+                val min: Long
+                val sec: Long
+                if (third.isEmpty()) {
+                    min = first
+                    sec = second
+                } else {
+                    sec = third.toLongOrNull() ?: continue
+                    min = first * 60 + second
+                }
+                val frac = m.groupValues[4]
+                // 对齐上游 v1.9.3 LyricPlayer 的时间标签修复：非毫秒制下小数部分按百分秒
+                // 补齐（[00:01.4] 的 .4 表示 40ms，旧实现 *100 得到 400ms，时间整体偏慢）。
+                // 1/2 位小数统一 *10；3 位已是毫秒直接用；超过 3 位按上游取前 3 位。
                 val ms = when (frac.length) {
                     0 -> 0L
-                    1 -> frac.toLong() * 100
-                    2 -> frac.toLong() * 10
+                    1, 2 -> frac.toLong() * 10
                     else -> frac.take(3).toLong()
                 }
                 // offset 为正且歌词靠前时，ms-offset 可能为负，会导致第 0 秒就高亮首行；钳到 0
