@@ -51,6 +51,8 @@ class SettingViewModel : ViewModel() {
     val sourceNameType: StateFlow<String> = state(settings.sourceNameType, "real")
     // 原版 common.showBackBtn：二级页返回键显隐，默认 true 保持移植版既有手感
     val showBackBtn: StateFlow<Boolean> = state(settings.showBackBtn, true)
+    // 原版 common.showExitBtn：退出应用入口显隐，默认 true 对齐原版
+    val showExitBtn: StateFlow<Boolean> = state(settings.showExitBtn, true)
 
     // ============ 播放 ============
     val quality: StateFlow<String> = state(settings.quality, "128k")
@@ -206,6 +208,9 @@ class SettingViewModel : ViewModel() {
 
     /** 二级页返回按钮显隐（原版 common.showBackBtn），写盘后由 AppRoot 下发到全站返回键 */
     fun setShowBackBtn(value: Boolean) = launch { settings.setShowBackBtn(value) }
+
+    /** 退出应用入口显隐（原版 common.showExitBtn） */
+    fun setShowExitBtn(value: Boolean) = launch { settings.setShowExitBtn(value) }
 
     fun cycleQuality() = launch { settings.setQuality(next(quality.value, listOf("128k", "192k", "320k", "flac", "flac24bit"))) }
 

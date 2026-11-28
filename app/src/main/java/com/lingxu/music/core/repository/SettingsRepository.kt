@@ -40,6 +40,10 @@ class SettingsRepository(private val context: Context) {
         // 原版 common.showBackBtn：二级页是否显示返回按钮。移植版历史一直显示，
         // 默认 true 保持老用户零突变；与原版默认 false 的差异记录在本轮报告的待确认项。
         val KEY_SHOW_BACK_BTN = booleanPreferencesKey("common.showBackBtn")
+        // 原版 common.showExitBtn：导航区是否显示「退出应用」入口，原版默认 true。
+        // 移植版此前无退出入口，默认 true 对齐原版：升级后在「关于」分区出现退出按钮；
+        // 关闭后隐藏入口，不影响系统返回键与后台播放。
+        val KEY_SHOW_EXIT_BTN = booleanPreferencesKey("common.showExitBtn")
         // player
         val KEY_QUALITY = stringPreferencesKey("player.quality")
         val KEY_PLAY_MODE = stringPreferencesKey("player.playMode")
@@ -150,6 +154,8 @@ class SettingsRepository(private val context: Context) {
     // 默认 true：移植版此前二级页恒有返回键，新增开关后老用户观感零突变；
     // 关闭后仅隐藏图标并禁用点击，48dp 占位保留，避免顶栏标题横向跳动。
     val showBackBtn: Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_BACK_BTN] ?: true }
+    // 原版 common.showExitBtn：默认 true，对齐原版默认行为（移植版此前无此键）
+    val showExitBtn: Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_EXIT_BTN] ?: true }
 
     // ================= player =================
 
@@ -283,6 +289,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setAllowProgressBarSeek(value: Boolean) = context.dataStore.edit { it[KEY_ALLOW_PROGRESS_BAR_SEEK] = value }
     suspend fun setSourceNameType(value: String) = context.dataStore.edit { it[KEY_SOURCE_NAME_TYPE] = value }
     suspend fun setShowBackBtn(value: Boolean) = context.dataStore.edit { it[KEY_SHOW_BACK_BTN] = value }
+    suspend fun setShowExitBtn(value: Boolean) = context.dataStore.edit { it[KEY_SHOW_EXIT_BTN] = value }
 
     suspend fun setQuality(value: String) = context.dataStore.edit { it[KEY_QUALITY] = value }
     suspend fun setPlayMode(value: String) = context.dataStore.edit { it[KEY_PLAY_MODE] = value }

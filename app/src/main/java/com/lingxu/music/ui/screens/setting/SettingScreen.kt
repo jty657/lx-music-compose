@@ -71,6 +71,10 @@ fun SettingScreen(
     // 纯展示 + 复用全站 GlassDialog / TextActionButton，不引入新依赖、不触碰播放与音源逻辑。
     var showAboutProject by remember { mutableStateOf(false) }
 
+    // 退出应用确认弹窗（对齐原版 DrawerNav.tsx nav_exit → confirmDialog('exit_app_tip')）。
+    // 只在用户点「退出应用」后弹出，确认才真正退出，避免误触。
+    var showExitConfirm by remember { mutableStateOf(false) }
+
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
@@ -111,6 +115,7 @@ fun SettingScreen(
     val allowProgressBarSeek by viewModel.allowProgressBarSeek.collectAsState(initial = true)
     val sourceNameType by viewModel.sourceNameType.collectAsState(initial = "real")
     val showBackBtn by viewModel.showBackBtn.collectAsState(initial = true)
+    val showExitBtn by viewModel.showExitBtn.collectAsState(initial = true)
 
     val quality by viewModel.quality.collectAsState(initial = "128k")
     val playMode by viewModel.playMode.collectAsState(initial = "listLoop")
@@ -402,6 +407,14 @@ fun SettingScreen(
             summary = "二级页左上角显示返回图标（对齐原版 common.showBackBtn；关闭后仍可用系统返回）",
             checked = showBackBtn,
             onCheckedChange = { viewModel.setShowBackBtn(it) },
+        )
+        // 对齐原版 common.showExitBtn：控制「关于」分区退出应用入口的显隐。
+        // 关闭只隐藏入口，不影响系统返回键与后台播放（对齐原版抽屉导航行为）。
+        SwitchPreference(
+            title = "显示退出应用按钮",
+            summary = "设置页「关于」分区显示退出应用入口（对齐原版 common.showExitBtn）",
+            checked = showExitBtn,
+            onCheckedChange = { viewModel.setShowExitBtn(it) },
         )
 
         Spacer(Modifier.size(12.dp))
@@ -984,6 +997,17 @@ fun SettingScreen(
             onClick = { showAboutProject = true },
         )
 
+        // 退出应用入口（对齐原版 nav_exit）：受 common.showExitBtn 控制显隐。
+        // 点击先弹确认框（对齐原版「确定要退出应用吗？」），确认后 finishAffinity 回到桌面。
+        if (showExitBtn) {
+            Spacer(Modifier.size(8.dp))
+            ArrowPreference(
+                title = "退出应用",
+                summary = "结束播放并退出聆序（对齐原版 common.showExitBtn）",
+                onClick = { showExitConfirm = true },
+            )
+        }
+
         Spacer(Modifier.size(24.dp))
     }
     if (showAboutProject) {
@@ -1026,6 +1050,27 @@ fun SettingScreen(
                 Spacer(Modifier.size(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Button(onClick = { showAboutProject = false }) { Text("关闭") }
+                }
+            }
+        }
+    }
+    if (showExitConfirm) {
+        // 退出确认对齐原版 drawernav 的 confirmDialog('exit_app_tip')：
+        // 文案「确定要退出应用吗？」与原版 zh-cn 一致，确认才 finishAffinity（与定时退出同一退出路径）。
+        val exitCtx = androidx.compose.ui.platform.LocalContext.current
+        GlassDialog(onDismissRequest = { showExitConfirm = false }) {
+            Column(Modifier.padding(horizontal = 4.dp)) {
+                Text("退出应用", fontSize = MiuixTheme.textStyles.title1.fontSize)
+                Spacer(Modifier.size(12.dp))
+                Text("确定要退出应用吗？")
+                Spacer(Modifier.size(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { showExitConfirm = false }) { Text("取消") }
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        showExitConfirm = false
+                        (exitCtx as? android.app.Activity)?.finishAffinity()
+                    }) { Text("退出") }
                 }
             }
         }
